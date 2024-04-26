@@ -18,9 +18,6 @@
 %s wins!
 == %s утту!
 
--Page %d-
-== -Барак %d-
-
 Abort
 == Жокко чыгаруу
 
@@ -87,12 +84,6 @@ Controls
 Count players only
 == Оюнчуларды гана саноо
 
-Crc:
-== Crc:
-
-Created:
-== Жаратылганы:
-
 Current
 == Кезектегиси
 
@@ -104,9 +95,6 @@ Delete
 
 Delete demo
 == Демону өчүрүү
-
-Demo details
-== Демо деталдары
 
 Demofile: %s
 == Демофайлы: %s
@@ -150,9 +138,6 @@ Favorites
 Feet
 == Бут
 
-Filter
-== Фильтр
-
 Fire
 == Атуу
 
@@ -164,9 +149,6 @@ Force vote
 
 Free-View
 == Эркин сереп
-
-Friends
-== Достор
 
 Fullscreen
 == Толук экран
@@ -210,9 +192,6 @@ Hook
 Hue
 == Түсү
 
-Info
-== Маалымат
-
 Internet
 == Интернет
 
@@ -240,9 +219,6 @@ LAN
 Language
 == Тил
 
-Length:
-== Узундугу:
-
 Lht.
 == Ач. түс.
 
@@ -251,9 +227,6 @@ MOTD
 
 Map
 == Картасы
-
-Map:
-== Картасы:
 
 Max Screenshots
 == Сүрөттөрдүн жогорку чеги
@@ -285,9 +258,6 @@ Name
 Name plates size
 == Ат көрнөкчөлөрдүн өлчөмү
 
-Netversion:
-== Версиясы:
-
 New name:
 == Жаңы аты:
 
@@ -315,9 +285,6 @@ No servers match your filter criteria
 Ok
 == ОК
 
-Open
-== Ачуу
-
 Parent Folder
 == Ата-энелик каталог
 
@@ -332,10 +299,6 @@ Ping
 
 Pistol
 == Тапанча
-
-[Demo browser]
-Play
-== Көрүү
 
 Play background music
 == Фон музыкасын ойнотуу
@@ -361,9 +324,6 @@ Prev. weapon
 Quit
 == Чыгуу
 
-Quit anyway?
-== Чыгуу?
-
 Reason:
 == Себеби:
 
@@ -376,9 +336,6 @@ Red team
 Red team wins!
 == Кызылдар утту!
 
-Refresh
-== Жаңылоо
-
 Remote console
 == Алыскы консоль
 
@@ -387,9 +344,6 @@ Remove
 
 Remove friend
 == Досту өчүрүү
-
-Rename
-== Атын өзгөртүү
 
 Rename demo
 == Демо атын өзгөртүү
@@ -424,12 +378,6 @@ Screenshot
 Server address:
 == Сервер дареги:
 
-Server details
-== Сервер деталдары
-
-Server filter
-== Сервер фильтри
-
 Server info
 == Маалымат
 
@@ -450,9 +398,6 @@ Show ingame HUD
 
 Show name plates
 == Оюнчулардын аттарын көрсөтүү
-
-Size:
-== Өлчөмү:
 
 Sound
 == Үн
@@ -502,9 +447,6 @@ The audio device couldn't be initialised.
 The server is running a non-standard tuning on a pure game type.
 == Бул сервер стандартту эмес ырастоолор менен таза оюн түрүндө иштеп жатат.
 
-There's an unsaved map in the editor, you might want to save it before you quit the game.
-== Редактордо сакталбаган карта бар, аны оюндан чыгаар алдында сактасаңыз болот.
-
 Time limit
 == Убакыт чеги
 
@@ -516,9 +458,6 @@ Try again
 
 Type
 == Түрү
-
-Type:
-== Түрү:
 
 UI Color
 == Интерфейс түсү
@@ -537,9 +476,6 @@ V-Sync
 
 Version
 == Версиясы
-
-Version:
-== Версиясы:
 
 Vote command:
 == Добуш коммандасы:
@@ -616,10 +552,19 @@ Could not initialize the given graphics backend, this is probably because you di
 Could not save downloaded map. Try manually deleting this file: %s
 == 
 
+Error playing demo
+== 
+
 Successfully saved the replay!
 == 
 
-Saving ddnet-settings.cfg failed
+Failed saving the replay!
+== 
+
+Saving settings to '%s' failed
+== 
+
+Error saving settings
 == 
 
 Replay feature is disabled!
@@ -638,6 +583,9 @@ Connected
 == 
 
 Loading map file from storage
+== 
+
+Loading demo file from storage
 == 
 
 Loading DDNet Client
@@ -667,6 +615,39 @@ Quitting. Please wait…
 Restarting. Please wait…
 == 
 
+Loading skin files
+== 
+
+Searching
+== 
+
+Enter Username
+== 
+
+Enter Password
+== 
+
+NOT CONNECTED
+== 
+
+Match %d of %d
+== 
+
+No results
+== 
+
+Lines %d - %d (%s)
+== 
+
+Locked
+== 
+
+Following
+== 
+
+Loading commands…
+== 
+
 Debug mode enabled. Press Ctrl+Shift+D to disable debug mode.
 == 
 
@@ -691,34 +672,37 @@ Personal best:
 Team %d
 == 
 
+Some map images could not be loaded. Check the local console for details.
+== 
+
 Uploading map data to GPU
 == 
 
+Some map sounds could not be loaded. Check the local console for details.
+== 
+
+Loading menu themes
+== 
+
 Reset
+== 
+
+Press a key…
+== 
+
+Settings
+== 
+
+Editor
+== 
+
+Main menu
 == 
 
 Browser
 == 
 
 Ghost
-== 
-
-Trying to determine UDP connectivity...
-== 
-
-UDP seems to be filtered.
-== 
-
-UDP and TCP IP addresses seem to be different. Try disabling VPN, proxy or network accelerators.
-== 
-
-No answer from server yet.
-== 
-
-Getting game info
-== 
-
-Requesting to join the game
 == 
 
 Reconnect in %d sec
@@ -728,6 +712,15 @@ Rename folder
 == 
 
 Render demo
+== 
+
+Render complete
+== 
+
+Restart
+== 
+
+Are you sure that you want to restart?
 == 
 
 Welcome to DDNet
@@ -754,6 +747,12 @@ Your nickname '%s' is already used (%d points). Do you still want to use it?
 Checking for existing player with your name
 == 
 
+There's an unsaved map in the editor, you might want to save it.
+== 
+
+Continue anyway?
+== 
+
 A demo with this name already exists
 == 
 
@@ -778,6 +777,12 @@ Speed
 Video name:
 == 
 
+Videos directory
+== 
+
+Video was saved to '%s'
+== 
+
 Join Tutorial Server
 == 
 
@@ -788,6 +793,24 @@ Show DDNet map finishes in server browser
 == 
 
 transmits your player name to info.ddnet.org
+== 
+
+Trying to determine UDP connectivity...
+== 
+
+UDP seems to be filtered.
+== 
+
+UDP and TCP IP addresses seem to be different. Try disabling VPN, proxy or network accelerators.
+== 
+
+No answer from server yet.
+== 
+
+Getting game info
+== 
+
+Requesting to join the game
 == 
 
 Theme
@@ -841,6 +864,9 @@ Exclude
 Are you sure that you want to disconnect and switch to a different server?
 == 
 
+No login required
+== 
+
 Filter connecting players
 == 
 
@@ -854,6 +880,9 @@ Countries
 == 
 
 Types
+== 
+
+Communities
 == 
 
 Copy info
@@ -896,6 +925,12 @@ Are you sure that you want to remove the clan '%s' from your friends list?
 Add Clan
 == 
 
+Server filter
+== 
+
+Friends
+== 
+
 Play the current demo
 == 
 
@@ -905,10 +940,33 @@ Pause the current demo
 Stop the current demo
 == 
 
+Go back the specified duration
+== 
+
+[Demo player duration]
+%d min.
+== 
+
+[Demo player duration]
+%d sec.
+== 
+
+Change the skip duration
+== 
+
+Go forward the specified duration
+== 
+
 Go back one tick
 == 
 
 Go forward one tick
+== 
+
+Go back one marker
+== 
+
+Go forward one marker
 == 
 
 Slow down the demo
@@ -924,12 +982,6 @@ Mark the end of a cut (right click to reset)
 == 
 
 Export cut as a separate demo
-== 
-
-Go back one marker
-== 
-
-Go forward one marker
 == 
 
 Close the demo player
@@ -950,7 +1002,10 @@ Cut length
 Remove chat
 == 
 
-Please use a different name
+Render cut to video
+== 
+
+Please use a different filename
 == 
 
 File already exists, do you want to overwrite it?
@@ -962,28 +1017,41 @@ Loading demo files
 All combined
 == 
 
-Folder Link
-== 
-
-Markers:
-== 
-
-%.2f MiB
-== 
-
-%.2f KiB
-== 
-
 Demo
-== 
-
-Markers
 == 
 
 Length
 == 
 
 Date
+== 
+
+No demo selected
+== 
+
+Folder Link
+== 
+
+Created
+== 
+
+Markers
+== 
+
+Netversion
+== 
+
+Size
+== 
+
+[Demo details]
+map not included
+== 
+
+%.2f MiB
+== 
+
+%.2f KiB
 == 
 
 Fetch Info
@@ -1002,9 +1070,6 @@ Are you sure that you want to delete the demo '%s'?
 == 
 
 Delete folder
-== 
-
-Render
 == 
 
 Unable to delete the demo '%s'
@@ -1034,13 +1099,22 @@ Kill
 Pause
 == 
 
+Loading…
+== 
+
 Loading ghost files
 == 
 
 Time
 == 
 
-Reload
+Ghosts directory
+== 
+
+Activate all
+== 
+
+Deactivate all
 == 
 
 Deactivate
@@ -1097,13 +1171,10 @@ Automatically create statboard csv
 Max CSVs
 == 
 
-Dummy settings
+Dummy
 == 
 
-Loading skin files
-== 
-
-Toggle to edit your dummy settings
+Player info change cooldown
 == 
 
 Download skins
@@ -1121,10 +1192,10 @@ Fat skins (DDFat)
 Skin prefix
 == 
 
-Choose default eyes when joining a server
+Create a random skin
 == 
 
-Create a random skin
+Choose default eyes when joining a server
 == 
 
 Skin Database
@@ -1157,19 +1228,22 @@ Show all
 Toggle dyncam
 == 
 
-Toggle dummy
+Toggle ghost
 == 
 
-Toggle ghost
+Converse
+== 
+
+Chat command
+== 
+
+Toggle dummy
 == 
 
 Dummy copy
 == 
 
 Hammerfly dummy
-== 
-
-Converse
 == 
 
 Statboard
@@ -1182,9 +1256,6 @@ Show entities
 == 
 
 Show HUD
-== 
-
-Chat command
 == 
 
 Enable controller
@@ -1241,9 +1312,6 @@ Are you sure that you want to reset the controls to their defaults?
 == 
 
 Cancel
-== 
-
-Dummy
 == 
 
 Windowed
@@ -1339,16 +1407,16 @@ Name Plate
 Hook Collisions
 == 
 
-Kill Messages
+Info Messages
 == 
 
 Show health, shields and ammo
 == 
 
-Show kill messages
+Show score
 == 
 
-Show score
+Show local time always
 == 
 
 Show votes window after voting
@@ -1387,10 +1455,19 @@ Show freeze bars
 Opacity of freeze bars inside freeze
 == 
 
+Always show chat
+== 
+
 Show names in chat in team colors
 == 
 
 Use old chat style
+== 
+
+Chat font size
+== 
+
+Chat width
 == 
 
 Messages
@@ -1423,7 +1500,13 @@ Show clan above name plates
 Clan plates size
 == 
 
-Show hook strength indicator
+Show friend mark (♥) in name plates
+== 
+
+Show hook strength icon indicator
+== 
+
+Show hook strength number indicator
 == 
 
 Show other players' key presses
@@ -1432,10 +1515,25 @@ Show other players' key presses
 Show local player's key presses
 == 
 
+Authed name color in scoreboard
+== 
+
+Same clan color in scoreboard
+== 
+
 Hook collision line
 == 
 
+Show own player's hook collision line
+== 
+
+Always show own player's hook collision line
+== 
+
 Show other players' hook collision lines
+== 
+
+Always show other players' hook collision lines
 == 
 
 Hook collision line width
@@ -1457,6 +1555,12 @@ Something hookable
 == 
 
 A Tee
+== 
+
+Show kill messages
+== 
+
+Show finish messages
 == 
 
 Normal Color
@@ -1507,13 +1611,22 @@ Enable replays
 Default length
 == 
 
+Enable ghost
+== 
+
 When you cross the start line, show a ghost tee replicating the movements of your best time
 == 
 
 Show ghost
 == 
 
+Opacity
+== 
+
 Save ghost
+== 
+
+Only save improvements
 == 
 
 Gameplay
@@ -1523,12 +1636,6 @@ Overlay entities
 == 
 
 Show text entities
-== 
-
-Size
-== 
-
-Opacity
 == 
 
 Adjust the opacity of entities belonging to other teams, such as tees and nameplates
@@ -1561,16 +1668,19 @@ AntiPing: predict grenade paths
 Background
 == 
 
-Entities Background color
+Regular background color
+== 
+
+Entities background color
+== 
+
+Reload
 == 
 
 Use current map as background
 == 
 
 Show tiles layers from BG map
-== 
-
-Regular Background Color
 == 
 
 New random timeout code
@@ -1642,9 +1752,6 @@ Can't find a Tutorial server
 Website
 == 
 
-Settings
-== 
-
 Stop server
 == 
 
@@ -1652,9 +1759,6 @@ Run server
 == 
 
 Server executable not found, can't run server
-== 
-
-Editor
 == 
 
 [Start menu]
@@ -1668,9 +1772,6 @@ Downloading %s:
 == 
 
 Update failed! Check log...
-== 
-
-Restart
 == 
 
 Loading race demo files

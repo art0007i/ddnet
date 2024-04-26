@@ -13,15 +13,15 @@ CSaveTee::CSaveTee() = default;
 
 void CSaveTee::Save(CCharacter *pChr)
 {
-	m_ClientID = pChr->m_pPlayer->GetCID();
-	str_copy(m_aName, pChr->Server()->ClientName(m_ClientID), sizeof(m_aName));
+	m_ClientId = pChr->m_pPlayer->GetCid();
+	str_copy(m_aName, pChr->Server()->ClientName(m_ClientId), sizeof(m_aName));
 
 	m_Alive = pChr->m_Alive;
 	m_Paused = absolute(pChr->m_pPlayer->IsPaused());
 	m_NeededFaketuning = pChr->m_NeededFaketuning;
 
-	m_TeeStarted = pChr->Teams()->TeeStarted(m_ClientID);
-	m_TeeFinished = pChr->Teams()->TeeFinished(m_ClientID);
+	m_TeeStarted = pChr->Teams()->TeeStarted(m_ClientId);
+	m_TeeFinished = pChr->Teams()->TeeFinished(m_ClientId);
 	m_IsSolo = pChr->m_Core.m_Solo;
 
 	for(int i = 0; i < NUM_WEAPONS; i++)
@@ -31,6 +31,14 @@ void CSaveTee::Save(CCharacter *pChr)
 		m_aWeapons[i].m_Ammocost = pChr->m_Core.m_aWeapons[i].m_Ammocost;
 		m_aWeapons[i].m_Got = pChr->m_Core.m_aWeapons[i].m_Got;
 	}
+
+	m_Ninja.m_ActivationDir = pChr->m_Core.m_Ninja.m_ActivationDir;
+	if(pChr->m_Core.m_Ninja.m_ActivationTick)
+		m_Ninja.m_ActivationTick = pChr->Server()->Tick() - pChr->m_Core.m_Ninja.m_ActivationTick;
+	else
+		m_Ninja.m_ActivationTick = 0;
+	m_Ninja.m_CurrentMoveTime = pChr->m_Core.m_Ninja.m_CurrentMoveTime;
+	m_Ninja.m_OldVelAmount = pChr->m_Core.m_Ninja.m_OldVelAmount;
 
 	m_LastWeapon = pChr->m_LastWeapon;
 	m_QueuedWeapon = pChr->m_QueuedWeapon;
@@ -100,7 +108,7 @@ void CSaveTee::Save(CCharacter *pChr)
 	m_HookTick = pChr->m_Core.m_HookTick;
 
 	m_HookState = pChr->m_Core.m_HookState;
-	m_HookedPlayer = pChr->m_Core.m_HookedPlayer;
+	m_HookedPlayer = pChr->m_Core.HookedPlayer();
 	m_NewHook = pChr->m_Core.m_NewHook != 0;
 
 	m_InputDirection = pChr->m_SavedInput.m_Direction;
@@ -122,9 +130,9 @@ void CSaveTee::Load(CCharacter *pChr, int Team, bool IsSwap)
 
 	if(!IsSwap)
 	{
-		pChr->Teams()->SetForceCharacterTeam(pChr->m_pPlayer->GetCID(), Team);
-		pChr->Teams()->SetStarted(pChr->m_pPlayer->GetCID(), m_TeeStarted);
-		pChr->Teams()->SetFinished(pChr->m_pPlayer->GetCID(), m_TeeFinished);
+		pChr->Teams()->SetForceCharacterTeam(pChr->m_pPlayer->GetCid(), Team);
+		pChr->Teams()->SetStarted(pChr->m_pPlayer->GetCid(), m_TeeStarted);
+		pChr->Teams()->SetFinished(pChr->m_pPlayer->GetCid(), m_TeeFinished);
 	}
 
 	for(int i = 0; i < NUM_WEAPONS; i++)
@@ -135,6 +143,14 @@ void CSaveTee::Load(CCharacter *pChr, int Team, bool IsSwap)
 		pChr->m_Core.m_aWeapons[i].m_Ammocost = m_aWeapons[i].m_Ammocost;
 		pChr->m_Core.m_aWeapons[i].m_Got = m_aWeapons[i].m_Got;
 	}
+
+	pChr->m_Core.m_Ninja.m_ActivationDir = m_Ninja.m_ActivationDir;
+	if(m_Ninja.m_ActivationTick)
+		pChr->m_Core.m_Ninja.m_ActivationTick = pChr->Server()->Tick() - m_Ninja.m_ActivationTick;
+	else
+		pChr->m_Core.m_Ninja.m_ActivationTick = 0;
+	pChr->m_Core.m_Ninja.m_CurrentMoveTime = m_Ninja.m_CurrentMoveTime;
+	pChr->m_Core.m_Ninja.m_OldVelAmount = m_Ninja.m_OldVelAmount;
 
 	pChr->m_LastWeapon = m_LastWeapon;
 	pChr->m_QueuedWeapon = m_QueuedWeapon;
@@ -231,7 +247,7 @@ char *CSaveTee::GetString(const CSaveTeam *pTeam)
 	{
 		for(int n = 0; n < pTeam->GetMembersCount(); n++)
 		{
-			if(m_HookedPlayer == pTeam->m_pSavedTees[n].GetClientID())
+			if(m_HookedPlayer == pTeam->m_pSavedTees[n].GetClientId())
 			{
 				HookedPlayer = n;
 				break;
@@ -272,7 +288,8 @@ char *CSaveTee::GetString(const CSaveTeam *pTeam)
 		"%d\t%d\t%d\t%d\t" // input stuff
 		"%d\t" // m_ReloadTimer
 		"%d\t" // m_TeeStarted
-		"%d", //m_LiveFreeze
+		"%d\t" //m_LiveFreeze
+		"%f\t%f\t%d\t%d\t%d", // m_Ninja
 		m_aName, m_Alive, m_Paused, m_NeededFaketuning, m_TeeFinished, m_IsSolo,
 		// weapons
 		m_aWeapons[0].m_AmmoRegenStart, m_aWeapons[0].m_Ammo, m_aWeapons[0].m_Ammocost, m_aWeapons[0].m_Got,
@@ -305,7 +322,8 @@ char *CSaveTee::GetString(const CSaveTeam *pTeam)
 		m_InputDirection, m_InputJump, m_InputFire, m_InputHook,
 		m_ReloadTimer,
 		m_TeeStarted,
-		m_LiveFrozen);
+		m_LiveFrozen,
+		m_Ninja.m_ActivationDir.x, m_Ninja.m_ActivationDir.y, m_Ninja.m_ActivationTick, m_Ninja.m_CurrentMoveTime, m_Ninja.m_OldVelAmount);
 	return m_aString;
 }
 
@@ -345,7 +363,8 @@ int CSaveTee::FromString(const char *pString)
 		"%d\t%d\t%d\t%d\t" // input stuff
 		"%d\t" // m_ReloadTimer
 		"%d\t" // m_TeeStarted
-		"%d", // m_LiveFreeze
+		"%d\t" // m_LiveFreeze
+		"%f\t%f\t%d\t%d\t%d", // m_Ninja
 		m_aName, &m_Alive, &m_Paused, &m_NeededFaketuning, &m_TeeFinished, &m_IsSolo,
 		// weapons
 		&m_aWeapons[0].m_AmmoRegenStart, &m_aWeapons[0].m_Ammo, &m_aWeapons[0].m_Ammocost, &m_aWeapons[0].m_Got,
@@ -378,7 +397,8 @@ int CSaveTee::FromString(const char *pString)
 		&m_InputDirection, &m_InputJump, &m_InputFire, &m_InputHook,
 		&m_ReloadTimer,
 		&m_TeeStarted,
-		&m_LiveFrozen);
+		&m_LiveFrozen,
+		&m_Ninja.m_ActivationDir.x, &m_Ninja.m_ActivationDir.y, &m_Ninja.m_ActivationTick, &m_Ninja.m_CurrentMoveTime, &m_Ninja.m_OldVelAmount);
 	switch(Num) // Don't forget to update this when you save / load more / less.
 	{
 	case 96:
@@ -408,6 +428,20 @@ int CSaveTee::FromString(const char *pString)
 		m_LiveFrozen = false;
 		[[fallthrough]];
 	case 110:
+		if(m_aWeapons[WEAPON_NINJA].m_Got)
+		{
+			// remove ninja
+			m_aWeapons[WEAPON_NINJA].m_Got = false;
+			m_aWeapons[WEAPON_NINJA].m_Ammo = 0;
+			m_ActiveWeapon = m_LastWeapon;
+		}
+		m_Ninja.m_ActivationDir.x = 0.0;
+		m_Ninja.m_ActivationDir.y = 0.0;
+		m_Ninja.m_ActivationTick = 0;
+		m_Ninja.m_CurrentMoveTime = 0;
+		m_Ninja.m_OldVelAmount = 0;
+		[[fallthrough]];
+	case 115:
 		return 0;
 	default:
 		dbg_msg("load", "failed to load tee-string");
@@ -420,7 +454,7 @@ void CSaveTee::LoadHookedPlayer(const CSaveTeam *pTeam)
 {
 	if(m_HookedPlayer == -1)
 		return;
-	m_HookedPlayer = pTeam->m_pSavedTees[m_HookedPlayer].GetClientID();
+	m_HookedPlayer = pTeam->m_pSavedTees[m_HookedPlayer].GetClientId();
 }
 
 bool CSaveTee::IsHooking() const
@@ -445,7 +479,12 @@ int CSaveTeam::Save(CGameContext *pGameServer, int Team, bool Dry)
 		return 1;
 
 	IGameController *pController = pGameServer->m_pController;
-	CGameTeams *pTeams = &(((CGameControllerDDRace *)pController)->m_Teams);
+	CGameTeams *pTeams = &pController->Teams();
+
+	if(pTeams->TeamFlock(Team))
+	{
+		return 5;
+	}
 
 	m_MembersCount = pTeams->Count(Team);
 	if(m_MembersCount <= 0)
@@ -465,17 +504,17 @@ int CSaveTeam::Save(CGameContext *pGameServer, int Team, bool Dry)
 	m_Practice = pTeams->IsPractice(Team);
 
 	m_pSavedTees = new CSaveTee[m_MembersCount];
-	int aPlayerCIDs[MAX_CLIENTS];
+	int aPlayerCids[MAX_CLIENTS];
 	int j = 0;
 	CCharacter *p = (CCharacter *)pGameServer->m_World.FindFirst(CGameWorld::ENTTYPE_CHARACTER);
 	for(; p; p = (CCharacter *)p->TypeNext())
 	{
-		if(pTeams->m_Core.Team(p->GetPlayer()->GetCID()) != Team)
+		if(pTeams->m_Core.Team(p->GetPlayer()->GetCid()) != Team)
 			continue;
 		if(m_MembersCount == j)
 			return 3;
 		m_pSavedTees[j].Save(p);
-		aPlayerCIDs[j] = p->GetPlayer()->GetCID();
+		aPlayerCids[j] = p->GetPlayer()->GetCid();
 		j++;
 	}
 	if(m_MembersCount != j)
@@ -497,31 +536,34 @@ int CSaveTeam::Save(CGameContext *pGameServer, int Team, bool Dry)
 	}
 	if(!Dry)
 	{
-		pGameServer->m_World.RemoveEntitiesFromPlayers(aPlayerCIDs, m_MembersCount);
+		pGameServer->m_World.RemoveEntitiesFromPlayers(aPlayerCids, m_MembersCount);
 	}
 	return 0;
 }
 
-bool CSaveTeam::HandleSaveError(int Result, int ClientID, CGameContext *pGameContext)
+bool CSaveTeam::HandleSaveError(int Result, int ClientId, CGameContext *pGameContext)
 {
 	switch(Result)
 	{
 	case 0:
 		return false;
 	case 1:
-		pGameContext->SendChatTarget(ClientID, "You have to be in a team (from 1-63)");
+		pGameContext->SendChatTarget(ClientId, "You have to be in a team (from 1-63)");
 		break;
 	case 2:
-		pGameContext->SendChatTarget(ClientID, "Could not find your Team");
+		pGameContext->SendChatTarget(ClientId, "Could not find your Team");
 		break;
 	case 3:
-		pGameContext->SendChatTarget(ClientID, "To save all players in your team have to be alive and not in '/spec'");
+		pGameContext->SendChatTarget(ClientId, "To save all players in your team have to be alive and not in '/spec'");
 		break;
 	case 4:
-		pGameContext->SendChatTarget(ClientID, "Your team has not started yet");
+		pGameContext->SendChatTarget(ClientId, "Your team has not started yet");
+		break;
+	case 5:
+		pGameContext->SendChatTarget(ClientId, "Team can't be saved while in team 0 mode");
 		break;
 	default: // this state should never be reached
-		pGameContext->SendChatTarget(ClientID, "Unknown error while saving");
+		pGameContext->SendChatTarget(ClientId, "Unknown error while saving");
 		break;
 	}
 	return true;
@@ -530,20 +572,20 @@ bool CSaveTeam::HandleSaveError(int Result, int ClientID, CGameContext *pGameCon
 void CSaveTeam::Load(CGameContext *pGameServer, int Team, bool KeepCurrentWeakStrong)
 {
 	IGameController *pController = pGameServer->m_pController;
-	CGameTeams *pTeams = &(((CGameControllerDDRace *)pController)->m_Teams);
+	CGameTeams *pTeams = &pController->Teams();
 
 	pTeams->ChangeTeamState(Team, m_TeamState);
 	pTeams->SetTeamLock(Team, m_TeamLocked);
 	pTeams->SetPractice(Team, m_Practice);
 
-	int aPlayerCIDs[MAX_CLIENTS];
+	int aPlayerCids[MAX_CLIENTS];
 	for(int i = m_MembersCount; i-- > 0;)
 	{
-		int ClientID = m_pSavedTees[i].GetClientID();
-		aPlayerCIDs[i] = ClientID;
-		if(pGameServer->m_apPlayers[ClientID] && pTeams->m_Core.Team(ClientID) == Team)
+		int ClientId = m_pSavedTees[i].GetClientId();
+		aPlayerCids[i] = ClientId;
+		if(pGameServer->m_apPlayers[ClientId] && pTeams->m_Core.Team(ClientId) == Team)
 		{
-			CCharacter *pChr = MatchCharacter(pGameServer, m_pSavedTees[i].GetClientID(), i, KeepCurrentWeakStrong);
+			CCharacter *pChr = MatchCharacter(pGameServer, m_pSavedTees[i].GetClientId(), i, KeepCurrentWeakStrong);
 			m_pSavedTees[i].Load(pChr, Team);
 		}
 	}
@@ -559,18 +601,18 @@ void CSaveTeam::Load(CGameContext *pGameServer, int Team, bool KeepCurrentWeakSt
 		}
 	}
 	// remove projectiles and laser
-	pGameServer->m_World.RemoveEntitiesFromPlayers(aPlayerCIDs, m_MembersCount);
+	pGameServer->m_World.RemoveEntitiesFromPlayers(aPlayerCids, m_MembersCount);
 }
 
-CCharacter *CSaveTeam::MatchCharacter(CGameContext *pGameServer, int ClientID, int SaveID, bool KeepCurrentCharacter)
+CCharacter *CSaveTeam::MatchCharacter(CGameContext *pGameServer, int ClientId, int SaveId, bool KeepCurrentCharacter) const
 {
-	if(KeepCurrentCharacter && pGameServer->m_apPlayers[ClientID]->GetCharacter())
+	if(KeepCurrentCharacter && pGameServer->m_apPlayers[ClientId]->GetCharacter())
 	{
 		// keep old character to retain current weak/strong order
-		return pGameServer->m_apPlayers[ClientID]->GetCharacter();
+		return pGameServer->m_apPlayers[ClientId]->GetCharacter();
 	}
-	pGameServer->m_apPlayers[ClientID]->KillCharacter(WEAPON_GAME);
-	return pGameServer->m_apPlayers[ClientID]->ForceSpawn(m_pSavedTees[SaveID].GetPos());
+	pGameServer->m_apPlayers[ClientId]->KillCharacter(WEAPON_GAME);
+	return pGameServer->m_apPlayers[ClientId]->ForceSpawn(m_pSavedTees[SaveId].GetPos());
 }
 
 char *CSaveTeam::GetString()
@@ -751,7 +793,7 @@ int CSaveTeam::FromString(const char *pString)
 	return 0;
 }
 
-bool CSaveTeam::MatchPlayers(const char (*paNames)[MAX_NAME_LENGTH], const int *pClientID, int NumPlayer, char *pMessage, int MessageLen)
+bool CSaveTeam::MatchPlayers(const char (*paNames)[MAX_NAME_LENGTH], const int *pClientId, int NumPlayer, char *pMessage, int MessageLen) const
 {
 	if(NumPlayer > m_MembersCount)
 	{
@@ -783,7 +825,7 @@ bool CSaveTeam::MatchPlayers(const char (*paNames)[MAX_NAME_LENGTH], const int *
 		{
 			if(str_comp(m_pSavedTees[i].GetName(), paNames[j]) == 0)
 			{
-				m_pSavedTees[i].SetClientID(pClientID[j]);
+				m_pSavedTees[i].SetClientId(pClientId[j]);
 				Found = true;
 				break;
 			}
@@ -794,7 +836,7 @@ bool CSaveTeam::MatchPlayers(const char (*paNames)[MAX_NAME_LENGTH], const int *
 			return false;
 		}
 	}
-	// match hook to correct ClientID
+	// match hook to correct ClientId
 	for(int n = 0; n < m_MembersCount; n++)
 		m_pSavedTees[n].LoadHookedPlayer(this);
 	return true;

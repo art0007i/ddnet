@@ -4,8 +4,9 @@
 
 #define TW_DILATE_ALPHA_THRESHOLD 10
 
-static void Dilate(int w, int h, int BPP, const unsigned char *pSrc, unsigned char *pDest, unsigned char AlphaThreshold = TW_DILATE_ALPHA_THRESHOLD)
+static void Dilate(int w, int h, const uint8_t *pSrc, uint8_t *pDest, uint8_t AlphaThreshold = TW_DILATE_ALPHA_THRESHOLD)
 {
+	const int BPP = 4; // RGBA assumed
 	int ix, iy;
 	const int aDirX[] = {0, -1, 1, 0};
 	const int aDirY[] = {-1, 0, 0, 1};
@@ -32,10 +33,7 @@ static void Dilate(int w, int h, int BPP, const unsigned char *pSrc, unsigned ch
 				if(pSrc[k + AlphaCompIndex] > AlphaThreshold)
 				{
 					for(int p = 0; p < BPP - 1; ++p)
-						// Seems safe for BPP = 3, 4 which we use. clang-analyzer seems to
-						// assume being called with larger value. TODO: Can make this
-						// safer anyway.
-						aSumOfOpaque[p] += pSrc[k + p]; // NOLINT(clang-analyzer-core.uninitialized.Assign)
+						aSumOfOpaque[p] += pSrc[k + p];
 					++Counter;
 					break;
 				}
@@ -46,7 +44,7 @@ static void Dilate(int w, int h, int BPP, const unsigned char *pSrc, unsigned ch
 				for(int i = 0; i < BPP - 1; ++i)
 				{
 					aSumOfOpaque[i] /= Counter;
-					pDest[m + i] = (unsigned char)aSumOfOpaque[i];
+					pDest[m + i] = (uint8_t)aSumOfOpaque[i];
 				}
 
 				pDest[m + AlphaCompIndex] = 255;
@@ -55,7 +53,7 @@ static void Dilate(int w, int h, int BPP, const unsigned char *pSrc, unsigned ch
 	}
 }
 
-static void CopyColorValues(int w, int h, int BPP, const unsigned char *pSrc, unsigned char *pDest)
+static void CopyColorValues(int w, int h, int BPP, const uint8_t *pSrc, uint8_t *pDest)
 {
 	int m = 0;
 	for(int y = 0; y < h; y++)
@@ -71,35 +69,34 @@ static void CopyColorValues(int w, int h, int BPP, const unsigned char *pSrc, un
 	}
 }
 
-void DilateImage(unsigned char *pImageBuff, int w, int h, int BPP)
+void DilateImage(uint8_t *pImageBuff, int w, int h)
 {
-	DilateImageSub(pImageBuff, w, h, BPP, 0, 0, w, h);
+	DilateImageSub(pImageBuff, w, h, 0, 0, w, h);
 }
 
-void DilateImageSub(unsigned char *pImageBuff, int w, int h, int BPP, int x, int y, int sw, int sh)
+void DilateImageSub(uint8_t *pImageBuff, int w, int h, int x, int y, int sw, int sh)
 {
-	unsigned char *apBuffer[2] = {NULL, NULL};
+	const int BPP = 4; // RGBA assumed
+	uint8_t *apBuffer[2] = {NULL, NULL};
 
-	apBuffer[0] = (unsigned char *)malloc((size_t)sw * sh * sizeof(unsigned char) * BPP);
-	apBuffer[1] = (unsigned char *)malloc((size_t)sw * sh * sizeof(unsigned char) * BPP);
-	unsigned char *pBufferOriginal = (unsigned char *)malloc((size_t)sw * sh * sizeof(unsigned char) * BPP);
-
-	unsigned char *pPixelBuff = (unsigned char *)pImageBuff;
+	apBuffer[0] = (uint8_t *)malloc((size_t)sw * sh * sizeof(uint8_t) * BPP);
+	apBuffer[1] = (uint8_t *)malloc((size_t)sw * sh * sizeof(uint8_t) * BPP);
+	uint8_t *pBufferOriginal = (uint8_t *)malloc((size_t)sw * sh * sizeof(uint8_t) * BPP);
 
 	for(int Y = 0; Y < sh; ++Y)
 	{
 		int SrcImgOffset = ((y + Y) * w * BPP) + (x * BPP);
 		int DstImgOffset = (Y * sw * BPP);
 		int CopySize = sw * BPP;
-		mem_copy(&pBufferOriginal[DstImgOffset], &pPixelBuff[SrcImgOffset], CopySize);
+		mem_copy(&pBufferOriginal[DstImgOffset], &pImageBuff[SrcImgOffset], CopySize);
 	}
 
-	Dilate(sw, sh, BPP, pBufferOriginal, apBuffer[0]);
+	Dilate(sw, sh, pBufferOriginal, apBuffer[0]);
 
 	for(int i = 0; i < 5; i++)
 	{
-		Dilate(sw, sh, BPP, apBuffer[0], apBuffer[1]);
-		Dilate(sw, sh, BPP, apBuffer[1], apBuffer[0]);
+		Dilate(sw, sh, apBuffer[0], apBuffer[1]);
+		Dilate(sw, sh, apBuffer[1], apBuffer[0]);
 	}
 
 	CopyColorValues(sw, sh, BPP, apBuffer[0], pBufferOriginal);
@@ -112,7 +109,7 @@ void DilateImageSub(unsigned char *pImageBuff, int w, int h, int BPP, int x, int
 		int SrcImgOffset = ((y + Y) * w * BPP) + (x * BPP);
 		int DstImgOffset = (Y * sw * BPP);
 		int CopySize = sw * BPP;
-		mem_copy(&pPixelBuff[SrcImgOffset], &pBufferOriginal[DstImgOffset], CopySize);
+		mem_copy(&pImageBuff[SrcImgOffset], &pBufferOriginal[DstImgOffset], CopySize);
 	}
 
 	free(pBufferOriginal);
@@ -228,12 +225,8 @@ static void ResizeImage(const uint8_t *pSourceImage, uint32_t SW, uint32_t SH, u
 
 uint8_t *ResizeImage(const uint8_t *pImageData, int Width, int Height, int NewWidth, int NewHeight, int BPP)
 {
-	// All calls to Resize() ensure width & height are > 0, BPP is always > 0,
-	// thus no allocation size 0 possible.
-	uint8_t *pTmpData = (uint8_t *)malloc((size_t)NewWidth * NewHeight * BPP); // NOLINT(clang-analyzer-optin.portability.UnixAPI)
-
+	uint8_t *pTmpData = (uint8_t *)malloc((size_t)NewWidth * NewHeight * BPP);
 	ResizeImage(pImageData, Width, Height, pTmpData, NewWidth, NewHeight, BPP);
-
 	return pTmpData;
 }
 

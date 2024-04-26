@@ -21,9 +21,6 @@ Team
 Chat
 == Diskutejo
 
--Page %d-
-== -Paĝo %d-
-
 Game paused
 == Paŭzata ludo
 
@@ -144,12 +141,6 @@ Checking for existing player with your name
 Are you sure that you want to disconnect and switch to a different server?
 == Ĉu vi certas malkonektiĝi kaj movi al alia servilo?
 
-There's an unsaved map in the editor, you might want to save it before you quit the game.
-== Estas nesavata mapo en la redaktilo, vi eble volas savi ĝin antaŭ eliri la ludon.
-
-Quit anyway?
-== Eliri tamen
-
 No
 == Ne
 
@@ -252,9 +243,6 @@ Exclude
 Server address:
 == Retadreso de servilo:
 
-Refresh
-== Aktualigi
-
 Count players only
 == Nur nombri ludantojn
 
@@ -273,9 +261,6 @@ Countries
 Favorite
 == Favorati
 
-Friends
-== Amikoj
-
 Name
 == Nomo
 
@@ -285,36 +270,14 @@ Clan
 Add Friend
 == Aldoni amikon
 
-Filter
-== Filtri
-
-Please use a different name
-== Bonvolu uzi malsaman nomon
-
 Remove chat
 == Malmontri la diskutejon
 
 Folder
 == Dosierujo
 
-Version:
-== Versio:
-
-Map:
-== Mapo:
-
-Open
-== Malfermi
-
-[Demo browser]
-Play
-== Legi
-
 Delete
 == Forigi
-
-Rename
-== Renomigi
 
 Connect Dummy
 == Konektigi pupon
@@ -387,9 +350,6 @@ Add
 
 Time
 == Tempo
-
-Dummy settings
-== Agordoj de la pupo
 
 Skin Database
 == Datumbazo de haŭtoj
@@ -608,10 +568,25 @@ Could not initialize the given graphics backend, this is probably because you di
 Could not save downloaded map. Try manually deleting this file: %s
 == 
 
+Error playing demo
+== 
+
 Successfully saved the replay!
 == 
 
-Saving ddnet-settings.cfg failed
+Failed saving the replay!
+== 
+
+Sound error
+== 
+
+The audio device couldn't be initialised.
+== 
+
+Saving settings to '%s' failed
+== 
+
+Error saving settings
 == 
 
 Replay feature is disabled!
@@ -624,6 +599,9 @@ The format of texture %s is not RGBA which will cause visual bugs.
 == 
 
 Preparing demo playback
+== 
+
+Loading demo file from storage
 == 
 
 Why are you slowmo replaying to read this?
@@ -645,6 +623,39 @@ Quitting. Please wait…
 == 
 
 Restarting. Please wait…
+== 
+
+Loading skin files
+== 
+
+Searching
+== 
+
+Enter Username
+== 
+
+Enter Password
+== 
+
+NOT CONNECTED
+== 
+
+Match %d of %d
+== 
+
+No results
+== 
+
+Lines %d - %d (%s)
+== 
+
+Locked
+== 
+
+Following
+== 
+
+Loading commands…
 == 
 
 Debug mode enabled. Press Ctrl+Shift+D to disable debug mode.
@@ -671,37 +682,28 @@ Personal best:
 Team %d
 == 
 
+Some map images could not be loaded. Check the local console for details.
+== 
+
 Uploading map data to GPU
+== 
+
+Some map sounds could not be loaded. Check the local console for details.
+== 
+
+Loading menu themes
 == 
 
 Reset
 == 
 
+Press a key…
+== 
+
 Demos
 == 
 
-Sound error
-== 
-
-The audio device couldn't be initialised.
-== 
-
-Trying to determine UDP connectivity...
-== 
-
-UDP seems to be filtered.
-== 
-
-UDP and TCP IP addresses seem to be different. Try disabling VPN, proxy or network accelerators.
-== 
-
-No answer from server yet.
-== 
-
-Getting game info
-== 
-
-Requesting to join the game
+Main menu
 == 
 
 Rename folder
@@ -713,7 +715,13 @@ Rename demo
 Render demo
 == 
 
+Render complete
+== 
+
 Password incorrect
+== 
+
+Are you sure that you want to restart?
 == 
 
 DDraceNetwork is a cooperative online game where the goal is for you and your group of tees to reach the finish line of the map. As a newcomer you should start on Novice servers, which host the easiest maps. Consider the ping to choose a server close to you.
@@ -723,6 +731,12 @@ Use k key to kill (restart), q to pause and watch other players. See settings fo
 == 
 
 It's recommended that you check the settings to adjust them to your liking before joining a server.
+== 
+
+There's an unsaved map in the editor, you might want to save it.
+== 
+
+Continue anyway?
 == 
 
 A demo with this name already exists
@@ -743,19 +757,43 @@ File '%s' already exists, do you want to overwrite it?
 Replace video
 == 
 
-(paused)
-== 
-
 Show ingame HUD
 == 
 
+(paused)
+== 
+
 Video name:
+== 
+
+Videos directory
+== 
+
+Video was saved to '%s'
 == 
 
 Show DDNet map finishes in server browser
 == 
 
 transmits your player name to info.ddnet.org
+== 
+
+Trying to determine UDP connectivity...
+== 
+
+UDP seems to be filtered.
+== 
+
+UDP and TCP IP addresses seem to be different. Try disabling VPN, proxy or network accelerators.
+== 
+
+No answer from server yet.
+== 
+
+Getting game info
+== 
+
+Requesting to join the game
 == 
 
 Error loading demo
@@ -767,13 +805,16 @@ The server is running a non-standard tuning on a pure game type.
 Loading menu images
 == 
 
-Server filter
+Reset filter
 == 
 
 Has people playing
 == 
 
 Server not full
+== 
+
+No login required
 == 
 
 Strict gametype filter
@@ -794,10 +835,7 @@ Unfinished map
 Types
 == 
 
-Reset filter
-== 
-
-Server details
+Communities
 == 
 
 Copy info
@@ -843,7 +881,10 @@ Remove friend
 Add Clan
 == 
 
-Info
+Server filter
+== 
+
+Friends
 == 
 
 Play the current demo
@@ -855,10 +896,33 @@ Pause the current demo
 Stop the current demo
 == 
 
+Go back the specified duration
+== 
+
+[Demo player duration]
+%d min.
+== 
+
+[Demo player duration]
+%d sec.
+== 
+
+Change the skip duration
+== 
+
+Go forward the specified duration
+== 
+
 Go back one tick
 == 
 
 Go forward one tick
+== 
+
+Go back one marker
+== 
+
+Go forward one marker
 == 
 
 Slow down the demo
@@ -874,12 +938,6 @@ Mark the end of a cut (right click to reset)
 == 
 
 Export cut as a separate demo
-== 
-
-Go back one marker
-== 
-
-Go forward one marker
 == 
 
 Close the demo player
@@ -900,6 +958,12 @@ Cut interval
 Cut length
 == 
 
+Render cut to video
+== 
+
+Please use a different filename
+== 
+
 File already exists, do you want to overwrite it?
 == 
 
@@ -907,6 +971,18 @@ Loading demo files
 == 
 
 All combined
+== 
+
+Demo
+== 
+
+Length
+== 
+
+Date
+== 
+
+No demo selected
 == 
 
 Parent Folder
@@ -918,46 +994,26 @@ Folder Link
 Invalid Demo
 == 
 
-Demo details
+Created
 == 
 
-Created:
+Markers
 == 
 
-Type:
+Netversion
 == 
 
-Length:
+Size
 == 
 
-Markers:
-== 
-
-Size:
+[Demo details]
+map not included
 == 
 
 %.2f MiB
 == 
 
 %.2f KiB
-== 
-
-Crc:
-== 
-
-Netversion:
-== 
-
-Demo
-== 
-
-Markers
-== 
-
-Length
-== 
-
-Date
 == 
 
 Fetch Info
@@ -981,9 +1037,6 @@ Delete folder
 Delete demo
 == 
 
-Render
-== 
-
 Unable to delete the demo '%s'
 == 
 
@@ -1002,13 +1055,22 @@ Score limit
 Time limit
 == 
 
+Loading…
+== 
+
 Remove
 == 
 
 Loading ghost files
 == 
 
-Reload
+Ghosts directory
+== 
+
+Activate all
+== 
+
+Deactivate all
 == 
 
 Deactivate
@@ -1041,18 +1103,6 @@ Client
 Skip the main menu
 == 
 
-Automatically record demos
-== 
-
-Max demos
-== 
-
-Automatically take game over screenshot
-== 
-
-Max Screenshots
-== 
-
 Refresh Rate
 == 
 
@@ -1077,6 +1127,18 @@ Themes directory
 Open the directory to add custom themes
 == 
 
+Automatically record demos
+== 
+
+Max demos
+== 
+
+Automatically take game over screenshot
+== 
+
+Max Screenshots
+== 
+
 Automatically take statboard screenshot
 == 
 
@@ -1086,13 +1148,7 @@ Automatically create statboard csv
 Max CSVs
 == 
 
-Loading skin files
-== 
-
-Your skin
-== 
-
-Toggle to edit your dummy settings
+Player info change cooldown
 == 
 
 Download skins
@@ -1110,13 +1166,16 @@ Fat skins (DDFat)
 Skin prefix
 == 
 
-Choose default eyes when joining a server
+Your skin
 == 
 
 Create a random skin
 == 
 
 Custom colors
+== 
+
+Choose default eyes when joining a server
 == 
 
 Body
@@ -1143,16 +1202,7 @@ Default zoom
 Toggle dyncam
 == 
 
-Toggle dummy
-== 
-
 Toggle ghost
-== 
-
-Dummy copy
-== 
-
-Hammerfly dummy
 == 
 
 Shotgun
@@ -1171,6 +1221,18 @@ Team chat
 == 
 
 Converse
+== 
+
+Chat command
+== 
+
+Toggle dummy
+== 
+
+Dummy copy
+== 
+
+Hammerfly dummy
 == 
 
 Emoticon
@@ -1207,9 +1269,6 @@ Show entities
 == 
 
 Show HUD
-== 
-
-Chat command
 == 
 
 Enable controller
@@ -1391,19 +1450,16 @@ Name Plate
 Hook Collisions
 == 
 
-Kill Messages
+Info Messages
 == 
 
 Show health, shields and ammo
 == 
 
-Show name plates
-== 
-
-Show kill messages
-== 
-
 Show score
+== 
+
+Show local time always
 == 
 
 Show votes window after voting
@@ -1439,6 +1495,9 @@ Show freeze bars
 Opacity of freeze bars inside freeze
 == 
 
+Always show chat
+== 
+
 Show names in chat in team colors
 == 
 
@@ -1446,6 +1505,12 @@ Show only chat messages from friends
 == 
 
 Use old chat style
+== 
+
+Chat font size
+== 
+
+Chat width
 == 
 
 Messages
@@ -1460,6 +1525,9 @@ Highlighted message
 Client message
 == 
 
+Show name plates
+== 
+
 Name plates size
 == 
 
@@ -1472,7 +1540,13 @@ Clan plates size
 Use team colors for name plates
 == 
 
-Show hook strength indicator
+Show friend mark (♥) in name plates
+== 
+
+Show hook strength icon indicator
+== 
+
+Show hook strength number indicator
 == 
 
 Show other players' key presses
@@ -1481,10 +1555,25 @@ Show other players' key presses
 Show local player's key presses
 == 
 
+Authed name color in scoreboard
+== 
+
+Same clan color in scoreboard
+== 
+
 Hook collision line
 == 
 
+Show own player's hook collision line
+== 
+
+Always show own player's hook collision line
+== 
+
 Show other players' hook collision lines
+== 
+
+Always show other players' hook collision lines
 == 
 
 Hook collision line width
@@ -1503,6 +1592,12 @@ Nothing hookable
 == 
 
 Something hookable
+== 
+
+Show kill messages
+== 
+
+Show finish messages
 == 
 
 Normal Color
@@ -1553,13 +1648,22 @@ Enable replays
 Default length
 == 
 
+Enable ghost
+== 
+
 When you cross the start line, show a ghost tee replicating the movements of your best time
 == 
 
 Show ghost
 == 
 
+Opacity
+== 
+
 Save ghost
+== 
+
+Only save improvements
 == 
 
 Gameplay
@@ -1569,12 +1673,6 @@ Overlay entities
 == 
 
 Show text entities
-== 
-
-Size
-== 
-
-Opacity
 == 
 
 Adjust the opacity of entities belonging to other teams, such as tees and nameplates
@@ -1607,16 +1705,19 @@ AntiPing: predict grenade paths
 Background
 == 
 
-Entities Background color
+Regular background color
+== 
+
+Entities background color
+== 
+
+Reload
 == 
 
 Use current map as background
 == 
 
 Show tiles layers from BG map
-== 
-
-Regular Background Color
 == 
 
 New random timeout code

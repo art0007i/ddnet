@@ -25,7 +25,6 @@
 #endif
 
 #if defined(CONF_FAMILY_WINDOWS)
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 // windows.h must be included before imm.h, but clang-format requires includes to be sorted alphabetically, hence this comment.
 #include <imm.h>
@@ -147,7 +146,7 @@ void CInput::UpdateActiveJoystick()
 	}
 	// Fall back to first joystick if no match was found
 	if(!m_pActiveJoystick)
-		m_pActiveJoystick = &m_vJoysticks[0]; // NOLINT(readability-container-data-pointer)
+		m_pActiveJoystick = &m_vJoysticks.front();
 }
 
 void CInput::ConchainJoystickGuidChanged(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
@@ -175,7 +174,7 @@ CInput::CJoystick::CJoystick(CInput *pInput, int Index, SDL_Joystick *pDelegate)
 	m_NumHats = SDL_JoystickNumHats(pDelegate);
 	str_copy(m_aName, SDL_JoystickName(pDelegate));
 	SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(pDelegate), m_aGUID, sizeof(m_aGUID));
-	m_InstanceID = SDL_JoystickInstanceID(pDelegate);
+	m_InstanceId = SDL_JoystickInstanceID(pDelegate);
 }
 
 void CInput::CloseJoysticks()
@@ -259,23 +258,18 @@ bool CInput::MouseRelative(float *pX, float *pY)
 	if(!m_MouseFocus || !m_InputGrabbed)
 		return false;
 
-	int nx = 0, ny = 0;
+	ivec2 Relative;
 #if defined(CONF_PLATFORM_ANDROID) // No relative mouse on Android
-	static int s_LastX = 0;
-	static int s_LastY = 0;
-	SDL_GetMouseState(&nx, &ny);
-	int XTmp = nx - s_LastX;
-	int YTmp = ny - s_LastY;
-	s_LastX = nx;
-	s_LastY = ny;
-	nx = XTmp;
-	ny = YTmp;
+	ivec2 CurrentPos;
+	SDL_GetMouseState(&CurrentPos.x, &CurrentPos.y);
+	Relative = CurrentPos - m_LastMousePos;
+	m_LastMousePos = CurrentPos;
 #else
-	SDL_GetRelativeMouseState(&nx, &ny);
+	SDL_GetRelativeMouseState(&Relative.x, &Relative.y);
 #endif
 
-	*pX = nx;
-	*pY = ny;
+	*pX = Relative.x;
+	*pY = Relative.y;
 	return *pX != 0.0f || *pY != 0.0f;
 }
 
@@ -417,7 +411,7 @@ void CInput::HandleJoystickAxisMotionEvent(const SDL_JoyAxisEvent &Event)
 	if(!g_Config.m_InpControllerEnable)
 		return;
 	CJoystick *pJoystick = GetActiveJoystick();
-	if(!pJoystick || pJoystick->GetInstanceID() != Event.which)
+	if(!pJoystick || pJoystick->GetInstanceId() != Event.which)
 		return;
 	if(Event.axis >= NUM_JOYSTICK_AXES)
 		return;
@@ -456,7 +450,7 @@ void CInput::HandleJoystickButtonEvent(const SDL_JoyButtonEvent &Event)
 	if(!g_Config.m_InpControllerEnable)
 		return;
 	CJoystick *pJoystick = GetActiveJoystick();
-	if(!pJoystick || pJoystick->GetInstanceID() != Event.which)
+	if(!pJoystick || pJoystick->GetInstanceId() != Event.which)
 		return;
 	if(Event.button >= NUM_JOYSTICK_BUTTONS)
 		return;
@@ -481,7 +475,7 @@ void CInput::HandleJoystickHatMotionEvent(const SDL_JoyHatEvent &Event)
 	if(!g_Config.m_InpControllerEnable)
 		return;
 	CJoystick *pJoystick = GetActiveJoystick();
-	if(!pJoystick || pJoystick->GetInstanceID() != Event.which)
+	if(!pJoystick || pJoystick->GetInstanceId() != Event.which)
 		return;
 	if(Event.hat >= NUM_JOYSTICK_HATS)
 		return;
@@ -519,7 +513,7 @@ void CInput::HandleJoystickAddedEvent(const SDL_JoyDeviceEvent &Event)
 
 void CInput::HandleJoystickRemovedEvent(const SDL_JoyDeviceEvent &Event)
 {
-	auto RemovedJoystick = std::find_if(m_vJoysticks.begin(), m_vJoysticks.end(), [Event](const CJoystick &Joystick) -> bool { return Joystick.GetInstanceID() == Event.which; });
+	auto RemovedJoystick = std::find_if(m_vJoysticks.begin(), m_vJoysticks.end(), [Event](const CJoystick &Joystick) -> bool { return Joystick.GetInstanceId() == Event.which; });
 	if(RemovedJoystick != m_vJoysticks.end())
 	{
 		dbg_msg("joystick", "Closed joystick %d '%s'", (*RemovedJoystick).GetIndex(), (*RemovedJoystick).GetName());
@@ -556,6 +550,9 @@ int CInput::Update()
 
 	// keep the counter between 1..0xFFFF, 0 means not pressed
 	m_InputCounter = (m_InputCounter % 0xFFFF) + 1;
+
+	// Ensure that we have the latest keyboard, mouse and joystick state
+	SDL_PumpEvents();
 
 	int NumKeyStates;
 	const Uint8 *pState = SDL_GetKeyboardState(&NumKeyStates);
@@ -802,7 +799,7 @@ void CInput::ProcessSystemMessage(SDL_SysWMmsg *pMsg)
 				for(DWORD i = pCandidateList->dwPageStart; i < pCandidateList->dwCount && (int)m_vCandidates.size() < (int)pCandidateList->dwPageSize; i++)
 				{
 					LPCWSTR pCandidate = (LPCWSTR)((DWORD_PTR)pCandidateList + pCandidateList->dwOffset[i]);
-					m_vCandidates.push_back(std::move(windows_wide_to_utf8(pCandidate)));
+					m_vCandidates.push_back(std::move(windows_wide_to_utf8(pCandidate).value_or("<invalid candidate>")));
 				}
 				m_CandidateSelectedIndex = pCandidateList->dwSelection - pCandidateList->dwPageStart;
 			}

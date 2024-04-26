@@ -3,7 +3,7 @@
 #ifndef ENGINE_SHARED_MAP_H
 #define ENGINE_SHARED_MAP_H
 
-#include <base/system.h>
+#include <base/types.h>
 
 #include "datafile.h"
 #include <engine/map.h>
@@ -17,16 +17,18 @@ public:
 
 	CDataFileReader *GetReader() { return &m_DataFile; }
 
-	void *GetData(int Index) override;
 	int GetDataSize(int Index) const override;
+	void *GetData(int Index) override;
 	void *GetDataSwapped(int Index) override;
+	const char *GetDataString(int Index) override;
 	void UnloadData(int Index) override;
 	int NumData() const override;
 
-	void *GetItem(int Index, int *pType = nullptr, int *pID = nullptr) override;
 	int GetItemSize(int Index) override;
+	void *GetItem(int Index, int *pType = nullptr, int *pId = nullptr) override;
 	void GetType(int Type, int *pStart, int *pNum) override;
-	void *FindItem(int Type, int ID) override;
+	int FindItemIndex(int Type, int Id) override;
+	void *FindItem(int Type, int Id) override;
 	int NumItems() const override;
 
 	bool Load(const char *pMapName) override;

@@ -3,11 +3,13 @@
 
 #include <vector>
 
-class CAutoMapper
+#include "component.h"
+
+class CAutoMapper : public CEditorComponent
 {
 	struct CIndexInfo
 	{
-		int m_ID;
+		int m_Id;
 		int m_Flag;
 		bool m_TestFlag;
 	};
@@ -29,7 +31,7 @@ class CAutoMapper
 
 	struct CIndexRule
 	{
-		int m_ID;
+		int m_Id;
 		std::vector<CPosRule> m_vRules;
 		int m_Flag;
 		float m_RandomProbability;
@@ -55,11 +57,11 @@ class CAutoMapper
 	};
 
 public:
-	CAutoMapper(class CEditor *pEditor);
+	explicit CAutoMapper(CEditor *pEditor);
 
 	void Load(const char *pTileName);
-	void ProceedLocalized(class CLayerTiles *pLayer, int ConfigID, int Seed = 0, int X = 0, int Y = 0, int Width = -1, int Height = -1);
-	void Proceed(class CLayerTiles *pLayer, int ConfigID, int Seed = 0, int SeedOffsetX = 0, int SeedOffsetY = 0);
+	void ProceedLocalized(class CLayerTiles *pLayer, int ConfigId, int Seed = 0, int X = 0, int Y = 0, int Width = -1, int Height = -1);
+	void Proceed(class CLayerTiles *pLayer, int ConfigId, int Seed = 0, int SeedOffsetX = 0, int SeedOffsetY = 0);
 
 	int ConfigNamesNum() const { return m_vConfigs.size(); }
 	const char *GetConfigName(int Index);
@@ -67,9 +69,8 @@ public:
 	bool IsLoaded() const { return m_FileLoaded; }
 
 private:
-	std::vector<CConfiguration> m_vConfigs;
-	class CEditor *m_pEditor;
-	bool m_FileLoaded;
+	std::vector<CConfiguration> m_vConfigs = {};
+	bool m_FileLoaded = false;
 };
 
 #endif

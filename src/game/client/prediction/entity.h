@@ -3,45 +3,35 @@
 #ifndef GAME_CLIENT_PREDICTION_ENTITY_H
 #define GAME_CLIENT_PREDICTION_ENTITY_H
 
-#include "gameworld.h"
 #include <base/vmath.h>
 
-#define MACRO_ALLOC_HEAP() \
-public: \
-	void *operator new(size_t Size) \
-	{ \
-		void *p = malloc(Size); \
-		mem_zero(p, Size); \
-		return p; \
-	} \
-	void operator delete(void *pPtr) \
-	{ \
-		free(pPtr); \
-	} \
-\
-private:
+#include <game/alloc.h>
+
+#include "gameworld.h"
 
 class CEntity
 {
 	MACRO_ALLOC_HEAP()
-	friend class CGameWorld; // entity list handling
+
+private:
+	friend CGameWorld; // entity list handling
 	CEntity *m_pPrevTypeEntity;
 	CEntity *m_pNextTypeEntity;
 
 protected:
-	class CGameWorld *m_pGameWorld;
+	CGameWorld *m_pGameWorld;
 	bool m_MarkedForDestroy;
-	int m_ID;
+	int m_Id;
 	int m_ObjType;
 
 public:
-	int GetID() const { return m_ID; }
+	int GetId() const { return m_Id; }
 
 	CEntity(CGameWorld *pGameWorld, int Objtype, vec2 Pos = vec2(0, 0), int ProximityRadius = 0);
 	virtual ~CEntity();
 
 	std::vector<SSwitchers> &Switchers() { return m_pGameWorld->Switchers(); }
-	class CGameWorld *GameWorld() { return m_pGameWorld; }
+	CGameWorld *GameWorld() { return m_pGameWorld; }
 	CTuningParams *Tuning() { return GameWorld()->Tuning(); }
 	CTuningParams *TuningList() { return GameWorld()->TuningList(); }
 	CTuningParams *GetTuning(int i) { return GameWorld()->GetTuning(i); }
@@ -76,7 +66,7 @@ public:
 
 	CEntity()
 	{
-		m_ID = -1;
+		m_Id = -1;
 		m_pGameWorld = 0;
 	}
 };

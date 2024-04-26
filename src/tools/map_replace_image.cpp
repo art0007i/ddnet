@@ -17,19 +17,24 @@
 CDataFileReader g_DataReader;
 
 // global new image data (set by ReplaceImageItem)
-int g_NewNameID = -1;
+int g_NewNameId = -1;
 char g_aNewName[128];
-int g_NewDataID = -1;
+int g_NewDataId = -1;
 int g_NewDataSize = 0;
 void *g_pNewData = nullptr;
 
-int LoadPNG(CImageInfo *pImg, const char *pFilename)
+bool LoadPng(CImageInfo *pImg, const char *pFilename)
 {
 	IOHANDLE File = io_open(pFilename, IOFLAG_READ);
 	if(File)
 	{
 		io_seek(File, 0, IOSEEK_END);
-		unsigned int FileSize = io_tell(File);
+		long int FileSize = io_tell(File);
+		if(FileSize <= 0)
+		{
+			io_close(File);
+			return false;
+		}
 		io_seek(File, 0, IOSEEK_START);
 		TImageByteBuffer ByteBuffer;
 		SImageByteBuffer ImageByteBuffer(&ByteBuffer);
@@ -42,34 +47,39 @@ int LoadPNG(CImageInfo *pImg, const char *pFilename)
 		uint8_t *pImgBuffer = NULL;
 		EImageFormat ImageFormat;
 		int PngliteIncompatible;
-		if(LoadPNG(ImageByteBuffer, pFilename, PngliteIncompatible, pImg->m_Width, pImg->m_Height, pImgBuffer, ImageFormat))
+		if(LoadPng(ImageByteBuffer, pFilename, PngliteIncompatible, pImg->m_Width, pImg->m_Height, pImgBuffer, ImageFormat))
 		{
 			if((ImageFormat == IMAGE_FORMAT_RGBA || ImageFormat == IMAGE_FORMAT_RGB) && pImg->m_Width <= (2 << 13) && pImg->m_Height <= (2 << 13))
 			{
 				pImg->m_pData = pImgBuffer;
 
-				if(ImageFormat == IMAGE_FORMAT_RGB) // ignore_convention
+				if(ImageFormat == IMAGE_FORMAT_RGB)
 					pImg->m_Format = CImageInfo::FORMAT_RGB;
-				else if(ImageFormat == IMAGE_FORMAT_RGBA) // ignore_convention
+				else if(ImageFormat == IMAGE_FORMAT_RGBA)
 					pImg->m_Format = CImageInfo::FORMAT_RGBA;
 				else
 				{
 					free(pImgBuffer);
-					return 0;
+					return false;
 				}
 			}
 		}
 		else
-			return 0;
+			return false;
 	}
 	else
-		return 0;
-	return 1;
+		return false;
+	return true;
 }
 
-void *ReplaceImageItem(CMapItemImage *pImgItem, const char *pImgName, const char *pImgFile, CMapItemImage *pNewImgItem)
+void *ReplaceImageItem(int Index, CMapItemImage *pImgItem, const char *pImgName, const char *pImgFile, CMapItemImage *pNewImgItem)
 {
-	char *pName = (char *)g_DataReader.GetData(pImgItem->m_ImageName);
+	const char *pName = g_DataReader.GetDataString(pImgItem->m_ImageName);
+	if(pName == nullptr || pName[0] == '\0')
+	{
+		dbg_msg("map_replace_image", "failed to load name of image %d", Index);
+		return pImgItem;
+	}
 
 	if(str_comp(pImgName, pName) != 0)
 		return pImgItem;
@@ -77,7 +87,7 @@ void *ReplaceImageItem(CMapItemImage *pImgItem, const char *pImgName, const char
 	dbg_msg("map_replace_image", "found image '%s'", pImgName);
 
 	CImageInfo ImgInfo;
-	if(!LoadPNG(&ImgInfo, pImgFile))
+	if(!LoadPng(&ImgInfo, pImgFile))
 		return 0;
 
 	if(ImgInfo.m_Format != CImageInfo::FORMAT_RGBA)
@@ -91,11 +101,11 @@ void *ReplaceImageItem(CMapItemImage *pImgItem, const char *pImgName, const char
 	pNewImgItem->m_Width = ImgInfo.m_Width;
 	pNewImgItem->m_Height = ImgInfo.m_Height;
 
-	g_NewNameID = pImgItem->m_ImageName;
+	g_NewNameId = pImgItem->m_ImageName;
 	IStorage::StripPathAndExtension(pImgFile, g_aNewName, sizeof(g_aNewName));
-	g_NewDataID = pImgItem->m_ImageData;
+	g_NewDataId = pImgItem->m_ImageData;
 	g_pNewData = ImgInfo.m_pData;
-	g_NewDataSize = ImgInfo.m_Width * ImgInfo.m_Height * 4;
+	g_NewDataSize = ImgInfo.DataSize();
 
 	return (void *)pNewImgItem;
 }
@@ -142,29 +152,32 @@ int main(int argc, const char **argv)
 	// add all items
 	for(int Index = 0; Index < g_DataReader.NumItems(); Index++)
 	{
-		int Type, ID;
-		void *pItem = g_DataReader.GetItem(Index, &Type, &ID);
+		int Type, Id;
+		CUuid Uuid;
+		void *pItem = g_DataReader.GetItem(Index, &Type, &Id, &Uuid);
 
-		// filter ITEMTYPE_EX items, they will be automatically added again
+		// Filter ITEMTYPE_EX items, they will be automatically added again.
 		if(Type == ITEMTYPE_EX)
+		{
 			continue;
+		}
 
 		int Size = g_DataReader.GetItemSize(Index);
 
 		CMapItemImage NewImageItem;
 		if(Type == MAPITEMTYPE_IMAGE)
 		{
-			pItem = ReplaceImageItem((CMapItemImage *)pItem, pImageName, pImageFile, &NewImageItem);
+			pItem = ReplaceImageItem(Index, (CMapItemImage *)pItem, pImageName, pImageFile, &NewImageItem);
 			if(!pItem)
 				return -1;
 			Size = sizeof(CMapItemImage);
 			NewImageItem.m_Version = CMapItemImage::CURRENT_VERSION;
 		}
 
-		Writer.AddItem(Type, ID, Size, pItem);
+		Writer.AddItem(Type, Id, Size, pItem, &Uuid);
 	}
 
-	if(g_NewDataID == -1)
+	if(g_NewDataId == -1)
 	{
 		dbg_msg("map_replace_image", "image '%s' not found on source map '%s'.", pImageName, pSourceFileName);
 		return -1;
@@ -175,12 +188,12 @@ int main(int argc, const char **argv)
 	{
 		void *pData;
 		int Size;
-		if(Index == g_NewDataID)
+		if(Index == g_NewDataId)
 		{
 			pData = g_pNewData;
 			Size = g_NewDataSize;
 		}
-		else if(Index == g_NewNameID)
+		else if(Index == g_NewNameId)
 		{
 			pData = (void *)g_aNewName;
 			Size = str_length(g_aNewName) + 1;

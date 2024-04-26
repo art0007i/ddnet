@@ -3,30 +3,35 @@
 
 #include "component.h"
 
+#include <game/client/ui.h>
+
 class CMapGrid : public CEditorComponent
 {
 public:
 	void OnReset() override;
 	void OnRender(CUIRect View) override;
 
-	void SnapToGrid(float &x, float &y);
+	void SnapToGrid(float &x, float &y) const;
 	int GridLineDistance() const;
 
 	/**
-	 * Returns wether the grid is rendered.
+	 * Returns whether the grid is rendered.
 	 */
 	bool IsEnabled() const;
 
 	void Toggle();
 
-	bool Factor() const;
-	void ResetFactor();
-	void IncreaseFactor();
-	void DecreaseFactor();
+	int Factor() const;
+	void SetFactor(int Factor);
+
+	void DoSettingsPopup(vec2 Position);
 
 private:
 	bool m_GridActive;
 	int m_GridFactor;
+
+	SPopupMenuId m_PopupGridSettingsId;
+	static CUi::EPopupMenuFunctionResult PopupGridSettings(void *pContext, CUIRect View, bool Active);
 };
 
 #endif

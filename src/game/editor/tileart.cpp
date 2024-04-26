@@ -1,4 +1,7 @@
 #include "editor.h"
+#include "editor_actions.h"
+
+#include <game/editor/mapitems/image.h>
 
 #include <array>
 
@@ -14,27 +17,14 @@ bool operator<(const ColorRGBA &Left, const ColorRGBA &Right)
 		return Left.a < Right.a;
 }
 
-static int GetNumColorChannels(const CImageInfo &Image)
+static ColorRGBA GetPixelColor(const CImageInfo &Image, size_t x, size_t y)
 {
-	switch(Image.m_Format)
-	{
-	case CImageInfo::FORMAT_RGB:
-		return 3;
-	case CImageInfo::FORMAT_SINGLE_COMPONENT:
-		return 1;
-	default:
-		return 4;
-	}
-}
-
-static ColorRGBA GetPixelColor(const CImageInfo &Image, int x, int y)
-{
-	uint8_t *pData = static_cast<uint8_t *>(Image.m_pData);
-	int NumColorChannels = GetNumColorChannels(Image);
-	int PixelStartIndex = x * NumColorChannels + (Image.m_Width * NumColorChannels * y);
+	uint8_t *pData = Image.m_pData;
+	const size_t PixelSize = Image.PixelSize();
+	const size_t PixelStartIndex = x * PixelSize + (Image.m_Width * PixelSize * y);
 
 	ColorRGBA Color = {255, 255, 255, 255};
-	if(NumColorChannels == 1)
+	if(PixelSize == 1)
 	{
 		Color.a = pData[PixelStartIndex];
 	}
@@ -44,20 +34,20 @@ static ColorRGBA GetPixelColor(const CImageInfo &Image, int x, int y)
 		Color.g = pData[PixelStartIndex + 1];
 		Color.b = pData[PixelStartIndex + 2];
 
-		if(NumColorChannels == 4)
+		if(PixelSize == 4)
 			Color.a = pData[PixelStartIndex + 3];
 	}
 
 	return Color;
 }
 
-static void SetPixelColor(CImageInfo *pImage, int x, int y, ColorRGBA Color)
+static void SetPixelColor(CImageInfo *pImage, size_t x, size_t y, ColorRGBA Color)
 {
-	uint8_t *pData = static_cast<uint8_t *>(pImage->m_pData);
-	int NumColorChannels = GetNumColorChannels(*pImage);
-	int PixelStartIndex = x * NumColorChannels + (pImage->m_Width * NumColorChannels * y);
+	uint8_t *pData = pImage->m_pData;
+	const size_t PixelSize = pImage->PixelSize();
+	const size_t PixelStartIndex = x * PixelSize + (pImage->m_Width * PixelSize * y);
 
-	if(NumColorChannels == 1)
+	if(PixelSize == 1)
 	{
 		pData[PixelStartIndex] = Color.a;
 	}
@@ -67,7 +57,7 @@ static void SetPixelColor(CImageInfo *pImage, int x, int y, ColorRGBA Color)
 		pData[PixelStartIndex + 1] = Color.g;
 		pData[PixelStartIndex + 2] = Color.b;
 
-		if(NumColorChannels == 4)
+		if(PixelSize == 4)
 			pData[PixelStartIndex + 3] = Color.a;
 	}
 }
@@ -131,9 +121,7 @@ static CImageInfo ColorGroupToImage(const std::array<ColorRGBA, NumTiles> &aColo
 	Image.m_Width = NumTilesRow * TileSize;
 	Image.m_Height = NumTilesColumn * TileSize;
 	Image.m_Format = CImageInfo::FORMAT_RGBA;
-
-	uint8_t *pData = static_cast<uint8_t *>(malloc(static_cast<size_t>(Image.m_Width) * Image.m_Height * 4 * sizeof(uint8_t)));
-	Image.m_pData = pData;
+	Image.m_pData = static_cast<uint8_t *>(malloc(Image.DataSize()));
 
 	for(int y = 0; y < NumTilesColumn; y++)
 	{
@@ -165,8 +153,8 @@ static std::shared_ptr<CEditorImage> ImageInfoToEditorImage(CEditor *pEditor, co
 	pEditorImage->m_Format = Image.m_Format;
 	pEditorImage->m_pData = Image.m_pData;
 
-	int TextureLoadFlag = pEditor->Graphics()->HasTextureArrays() ? IGraphics::TEXLOAD_TO_2D_ARRAY_TEXTURE : IGraphics::TEXLOAD_TO_3D_TEXTURE;
-	pEditorImage->m_Texture = pEditor->Graphics()->LoadTextureRaw(Image.m_Width, Image.m_Height, Image.m_Format, Image.m_pData, CImageInfo::FORMAT_AUTO, TextureLoadFlag, pName);
+	int TextureLoadFlag = pEditor->Graphics()->Uses2DTextureArrays() ? IGraphics::TEXLOAD_TO_2D_ARRAY_TEXTURE : IGraphics::TEXLOAD_TO_3D_TEXTURE;
+	pEditorImage->m_Texture = pEditor->Graphics()->LoadTextureRaw(Image, TextureLoadFlag, pName);
 	pEditorImage->m_External = 0;
 	str_copy(pEditorImage->m_aName, pName);
 
@@ -178,9 +166,8 @@ static std::shared_ptr<CLayerTiles> AddLayerWithImage(CEditor *pEditor, const st
 	std::shared_ptr<CEditorImage> pEditorImage = ImageInfoToEditorImage(pEditor, Image, pName);
 	pEditor->m_Map.m_vpImages.push_back(pEditorImage);
 
-	std::shared_ptr<CLayerTiles> pLayer = std::make_shared<CLayerTiles>(Width, Height);
+	std::shared_ptr<CLayerTiles> pLayer = std::make_shared<CLayerTiles>(pEditor, Width, Height);
 	str_copy(pLayer->m_aName, pName);
-	pLayer->m_pEditor = pEditor;
 	pLayer->m_Image = pEditor->m_Map.m_vpImages.size() - 1;
 	pGroup->AddLayer(pLayer);
 
@@ -196,10 +183,15 @@ static void SetTilelayerIndices(const std::shared_ptr<CLayerTiles> &pLayer, cons
 	}
 }
 
-void CEditor::AddTileart()
+void CEditor::AddTileart(bool IgnoreHistory)
 {
+	char aTileArtFileName[IO_MAX_PATH_LENGTH];
+	IStorage::StripPathAndExtension(m_aTileartFilename, aTileArtFileName, sizeof(aTileArtFileName));
+
 	std::shared_ptr<CLayerGroup> pGroup = m_Map.NewGroup();
-	str_copy(pGroup->m_aName, m_aTileartFilename);
+	str_copy(pGroup->m_aName, aTileArtFileName);
+
+	int ImageCount = m_Map.m_vpImages.size();
 
 	auto vUniqueColors = GetUniqueColors(m_TileartImageInfo);
 	auto vaColorGroups = GroupColors(vUniqueColors);
@@ -207,14 +199,18 @@ void CEditor::AddTileart()
 	char aImageName[IO_MAX_PATH_LENGTH];
 	for(size_t i = 0; i < vColorImages.size(); i++)
 	{
-		str_format(aImageName, sizeof(aImageName), "%s %" PRIzu, m_aTileartFilename, i + 1);
+		str_format(aImageName, sizeof(aImageName), "%s %" PRIzu, aTileArtFileName, i + 1);
 		std::shared_ptr<CLayerTiles> pLayer = AddLayerWithImage(this, pGroup, m_TileartImageInfo.m_Width, m_TileartImageInfo.m_Height, vColorImages[i], aImageName);
 		SetTilelayerIndices(pLayer, vaColorGroups[i], m_TileartImageInfo);
 	}
-	SortImages();
+	auto IndexMap = SortImages();
 
-	free(m_TileartImageInfo.m_pData);
-	m_TileartImageInfo.m_pData = nullptr;
+	if(!IgnoreHistory)
+	{
+		m_EditorHistory.RecordAction(std::make_shared<CEditorActionTileArt>(this, ImageCount, m_aTileartFilename, IndexMap));
+	}
+
+	m_TileartImageInfo.Free();
 	m_Map.OnModify();
 	m_Dialog = DIALOG_NONE;
 }
@@ -227,8 +223,7 @@ void CEditor::TileartCheckColors()
 	{
 		m_PopupEventType = CEditor::POPEVENT_PIXELART_TOO_MANY_COLORS;
 		m_PopupEventActivated = true;
-		free(m_TileartImageInfo.m_pData);
-		m_TileartImageInfo.m_pData = nullptr;
+		m_TileartImageInfo.Free();
 	}
 	else if(NumColorGroups > 1)
 	{
@@ -243,13 +238,13 @@ bool CEditor::CallbackAddTileart(const char *pFilepath, int StorageType, void *p
 {
 	CEditor *pEditor = (CEditor *)pUser;
 
-	if(!pEditor->Graphics()->LoadPNG(&pEditor->m_TileartImageInfo, pFilepath, StorageType))
+	if(!pEditor->Graphics()->LoadPng(pEditor->m_TileartImageInfo, pFilepath, StorageType))
 	{
 		pEditor->ShowFileDialogError("Failed to load image from file '%s'.", pFilepath);
 		return false;
 	}
 
-	IStorage::StripPathAndExtension(pFilepath, pEditor->m_aTileartFilename, sizeof(pEditor->m_aTileartFilename));
+	str_copy(pEditor->m_aTileartFilename, pFilepath);
 	if(pEditor->m_TileartImageInfo.m_Width * pEditor->m_TileartImageInfo.m_Height > 10'000)
 	{
 		pEditor->m_PopupEventType = CEditor::POPEVENT_PIXELART_BIG_IMAGE;

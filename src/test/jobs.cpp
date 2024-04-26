@@ -2,7 +2,8 @@
 #include <gtest/gtest.h>
 
 #include <base/system.h>
-#include <engine/engine.h>
+
+#include <engine/shared/host_lookup.h>
 #include <engine/shared/jobs.h>
 
 #include <functional>
@@ -14,18 +15,19 @@ class Jobs : public ::testing::Test
 protected:
 	CJobPool m_Pool;
 
-	Jobs()
+	void SetUp() override
 	{
 		m_Pool.Init(TEST_NUM_THREADS);
+	}
+
+	void TearDown() override
+	{
+		m_Pool.Shutdown();
 	}
 
 	void Add(std::shared_ptr<IJob> pJob)
 	{
 		m_Pool.Add(std::move(pJob));
-	}
-	void RunBlocking(IJob *pJob)
-	{
-		CJobPool::RunBlocking(pJob);
 	}
 };
 
@@ -37,6 +39,11 @@ class CJob : public IJob
 public:
 	CJob(std::function<void()> &&JobFunction) :
 		m_JobFunction(JobFunction) {}
+
+	void Abortable(bool Abortable)
+	{
+		IJob::Abortable(Abortable);
+	}
 };
 
 TEST_F(Jobs, Constructor)
@@ -48,15 +55,6 @@ TEST_F(Jobs, Simple)
 	Add(std::make_shared<CJob>([] {}));
 }
 
-TEST_F(Jobs, RunBlocking)
-{
-	int Result = 0;
-	CJob Job([&] { Result = 1; });
-	EXPECT_EQ(Result, 0);
-	RunBlocking(&Job);
-	EXPECT_EQ(Result, 1);
-}
-
 TEST_F(Jobs, Wait)
 {
 	SEMAPHORE sphore;
@@ -66,27 +64,47 @@ TEST_F(Jobs, Wait)
 	sphore_destroy(&sphore);
 }
 
+TEST_F(Jobs, AbortAbortable)
+{
+	auto pJob = std::make_shared<CJob>([&] {});
+	pJob->Abortable(true);
+	EXPECT_TRUE(pJob->IsAbortable());
+	Add(pJob);
+	EXPECT_TRUE(pJob->Abort());
+	EXPECT_EQ(pJob->State(), IJob::STATE_ABORTED);
+}
+
+TEST_F(Jobs, AbortUnabortable)
+{
+	auto pJob = std::make_shared<CJob>([&] {});
+	pJob->Abortable(false);
+	EXPECT_FALSE(pJob->IsAbortable());
+	Add(pJob);
+	EXPECT_FALSE(pJob->Abort());
+	EXPECT_NE(pJob->State(), IJob::STATE_ABORTED);
+}
+
 TEST_F(Jobs, LookupHost)
 {
 	static const char *HOST = "example.com";
 	static const int NETTYPE = NETTYPE_ALL;
 	auto pJob = std::make_shared<CHostLookup>(HOST, NETTYPE);
 
-	EXPECT_STREQ(pJob->m_aHostname, HOST);
-	EXPECT_EQ(pJob->m_Nettype, NETTYPE);
+	EXPECT_STREQ(pJob->Hostname(), HOST);
+	EXPECT_EQ(pJob->Nettype(), NETTYPE);
 
 	Add(pJob);
-	while(pJob->Status() != IJob::STATE_DONE)
+	while(pJob->State() != IJob::STATE_DONE)
 	{
 		// yay, busy loop...
 		thread_yield();
 	}
 
-	EXPECT_STREQ(pJob->m_aHostname, HOST);
-	EXPECT_EQ(pJob->m_Nettype, NETTYPE);
-	if(pJob->m_Result == 0)
+	EXPECT_STREQ(pJob->Hostname(), HOST);
+	EXPECT_EQ(pJob->Nettype(), NETTYPE);
+	if(pJob->Result() == 0)
 	{
-		EXPECT_EQ(pJob->m_Addr.type & NETTYPE, pJob->m_Addr.type);
+		EXPECT_EQ(pJob->Addr().type & NETTYPE, pJob->Addr().type);
 	}
 }
 
@@ -96,21 +114,21 @@ TEST_F(Jobs, LookupHostWebsocket)
 	static const int NETTYPE = NETTYPE_ALL;
 	auto pJob = std::make_shared<CHostLookup>(HOST, NETTYPE);
 
-	EXPECT_STREQ(pJob->m_aHostname, HOST);
-	EXPECT_EQ(pJob->m_Nettype, NETTYPE);
+	EXPECT_STREQ(pJob->Hostname(), HOST);
+	EXPECT_EQ(pJob->Nettype(), NETTYPE);
 
 	Add(pJob);
-	while(pJob->Status() != IJob::STATE_DONE)
+	while(pJob->State() != IJob::STATE_DONE)
 	{
 		// yay, busy loop...
 		thread_yield();
 	}
 
-	EXPECT_STREQ(pJob->m_aHostname, HOST);
-	EXPECT_EQ(pJob->m_Nettype, NETTYPE);
-	if(pJob->m_Result == 0)
+	EXPECT_STREQ(pJob->Hostname(), HOST);
+	EXPECT_EQ(pJob->Nettype(), NETTYPE);
+	if(pJob->Result() == 0)
 	{
-		EXPECT_EQ(pJob->m_Addr.type & NETTYPE_WEBSOCKET_IPV4, pJob->m_Addr.type);
+		EXPECT_EQ(pJob->Addr().type & NETTYPE_WEBSOCKET_IPV4, pJob->Addr().type);
 	}
 }
 
@@ -129,7 +147,7 @@ TEST_F(Jobs, Many)
 				sphore_signal(&sphore);
 			}
 		});
-		EXPECT_EQ(pJob->Status(), IJob::STATE_PENDING);
+		EXPECT_EQ(pJob->State(), IJob::STATE_QUEUED);
 		vpJobs.push_back(pJob);
 	}
 	for(auto &pJob : vpJobs)
@@ -138,10 +156,10 @@ TEST_F(Jobs, Many)
 	}
 	sphore_wait(&sphore);
 	sphore_destroy(&sphore);
-	m_Pool.~CJobPool();
+	TearDown();
 	for(auto &pJob : vpJobs)
 	{
-		EXPECT_EQ(pJob->Status(), IJob::STATE_DONE);
+		EXPECT_EQ(pJob->State(), IJob::STATE_DONE);
 	}
-	new(&m_Pool) CJobPool();
+	SetUp();
 }

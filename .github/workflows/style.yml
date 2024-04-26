@@ -11,8 +11,10 @@ on:
 jobs:
   check-style:
     runs-on: ubuntu-20.04
+    env:
+      CARGO_HTTP_MULTIPLEXING: false
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Prepare
@@ -71,12 +73,11 @@ jobs:
       run: |
         pylint --version
         find . -type f -name "*.py" -not -path './ddnet-libs/*' -not -path './googletest-src/*' -print0 | xargs -0 pylint
-    - name: Unused headers
-      run: |
-        find src -name '*.h' | while read -r i; do grep -r -q "$(basename "$i")" || (echo "Header file $i is unused" && exit 1); done
+    - name: Unused header files
+      run: scripts/check_unused_header_files.py
     - name: Check maps
       run: |
-        findings=$(find data -type f -name '*.map' -print0 | xargs -0 ~/.cargo/bin/twmap-check-ddnet 2>&1 | \
+        findings=$(find data -type f -name '*.map' ! -wholename 'data/maps/coverage.map' -print0 | xargs -0 ~/.cargo/bin/twmap-check-ddnet 2>&1 | \
           grep -v -E "\"data/maps/(ctf|dm).*\.map\": Time cps are missing on the map" | \
           grep -v -E "\"data/themes/.*\.map\": Time cps are missing on the map" | \
           grep -v -E "\"data/maps/ctf4\.map\": Map - In Image at index 3 -> Image 'jungle_doodads_old' is not a valid external image for DDNet06" | \

@@ -44,9 +44,6 @@
 %s wins!
 == ¡%s gana!
 
--Page %d-
-== -Página %d-
-
 Abort
 == Cancelar
 
@@ -122,9 +119,6 @@ Delete
 Delete demo
 == Borrar demo
 
-Demo details
-== Detalles de la demo
-
 Demofile: %s
 == Archivo: %s
 
@@ -164,9 +158,6 @@ Favorites
 Feet
 == Pies
 
-Filter
-== Filtro
-
 Fire
 == Disparar
 
@@ -178,9 +169,6 @@ Force vote
 
 Free-View
 == Vista libre
-
-Friends
-== Amigos
 
 Fullscreen
 == Pantalla completa
@@ -287,11 +275,8 @@ No servers match your filter criteria
 Ok
 == Aceptar
 
-Open
-== Abrir
-
 Parent Folder
-== Directorio padre
+== Carpeta principal
 
 Password
 == Contraseña
@@ -304,10 +289,6 @@ Ping
 
 Pistol
 == Pistola
-
-[Demo browser]
-Play
-== Reproducir
 
 Play background music
 == Reproducir música de fondo
@@ -342,9 +323,6 @@ Red team
 Red team wins!
 == ¡El equipo rojo gana!
 
-Refresh
-== Actualizar
-
 Remote console
 == Consola remota
 
@@ -353,9 +331,6 @@ Remove
 
 Remove friend
 == Eliminar amigo
-
-Rename
-== Renombrar
 
 Rename demo
 == Renombrar demo
@@ -377,12 +352,6 @@ Screenshot
 
 Server address:
 == IP del servidor:
-
-Server details
-== Detalles del servidor
-
-Server filter
-== Filtro del servidor
 
 Server info
 == Servidor
@@ -452,9 +421,6 @@ The audio device couldn't be initialised.
 
 The server is running a non-standard tuning on a pure game type.
 == El servidor está ejecutando una configuración no estándar en un tipo de juego puro.
-
-There's an unsaved map in the editor, you might want to save it before you quit the game.
-== Tienes un mapa sin guardar en el editor, quizá quieras guardarlo antes de salir.
 
 Time limit
 == Tiempo límite
@@ -539,26 +505,11 @@ FSAA samples
 Sound volume
 == Volumen del sonido
 
-Created:
-== Creado:
-
 Max Screenshots
 == Número máximo de capturas
 
-Length:
-== Longitud:
-
 Laser
 == Láser
-
-Netversion:
-== Versión Net:
-
-Map:
-== Mapa:
-
-Info
-== Información
 
 Hue
 == Matiz
@@ -569,17 +520,8 @@ Record demo
 Your skin
 == Tu skin
 
-Size:
-== Tamaño:
-
 Reset to defaults
 == Resetear por defecto
-
-Quit anyway?
-== ¿Salir de todos modos?
-
-Version:
-== Versión:
 
 Round
 == Ronda
@@ -590,9 +532,6 @@ Lht.
 UI Color
 == Color de menú
 
-Crc:
-== Crc:
-
 Alpha
 == Transp.
 
@@ -601,9 +540,6 @@ LAN
 
 Name plates size
 == Tamaño de la fuente de los apodos
-
-Type:
-== Tipo:
 
 Successfully saved the replay!
 == ¡Repetición guardada con éxito!
@@ -710,14 +646,8 @@ Update now
 Restart
 == Reiniciar
 
-Please use a different name
-== Por favor usa un nombre diferente
-
 Remove chat
 == Eliminar chat
-
-Markers:
-== Marcadores:
 
 %.2f MiB
 == %.2f MiB
@@ -732,16 +662,13 @@ Markers
 == Marcadores
 
 Length
-== Longitud
+== Duración
 
 Date
 == Fecha
 
 Fetch Info
 == Obtener info.
-
-Render
-== Renderizar
 
 Connecting dummy
 == Conectando dummy
@@ -781,9 +708,6 @@ Automatically create statboard csv
 
 Max CSVs
 == CSV máx
-
-Dummy settings
-== Config. del Dummy
 
 Vanilla skins only
 == Solo skins Vanilla
@@ -930,7 +854,7 @@ Save the best demo of each race
 == Guardar la mejor demo de cada carrera
 
 Default length
-== Longitud predeterminada
+== Duración predeterminada
 
 Enable replays
 == Habilitar repeticiones
@@ -1036,9 +960,6 @@ Grabs
 
 9+ new mentions
 == 9+ nuevas menciones
-
-Saving ddnet-settings.cfg failed
-== Error al guardar ddnet-settings.cfg
 
 Warning
 == Advertencia
@@ -1218,12 +1139,6 @@ Preview
 Background
 == Fondo
 
-Entities Background color
-== Color de fondo de entidades
-
-Regular Background Color
-== Color de fondo regular
-
 Discord
 == Discord
 
@@ -1232,9 +1147,6 @@ https://ddnet.org/discord
 
 Are you sure that you want to disconnect and switch to a different server?
 == ¿Seguro que quieres desconectarte y cambiar de servidor?
-
-Kill Messages
-== Mensajes de Muerte
 
 Show local player's key presses
 == Mostrar las teclas presionadas por el jugador local
@@ -1280,9 +1192,6 @@ Tutorial
 
 Can't find a Tutorial server
 == No se pudo encontrar un servidor Tutorial
-
-Toggle to edit your dummy settings
-== Actívalo para editar la configuración de tu dummy
 
 Choose default eyes when joining a server
 == Escoge los ojos predeterminados al unirte a un servidor
@@ -1386,7 +1295,7 @@ Show player speed
 == Mostrar la velocidad del jugador
 
 Show player target angle
-== Mostrar el ángulo del objetivo del jugador
+== Mostrar el ángulo de la mira del jugador
 
 Adjust the opacity of entities belonging to other teams, such as tees and nameplates
 == Ajusta la opacidad de entidades pertenecientes a otros equipos, como los tees y los nombres.
@@ -1495,9 +1404,6 @@ Show DDRace HUD
 
 Show jumps indicator
 == Mostrar indicador de saltos
-
-Show hook strength indicator
-== Mostrar indicador de fuerza del gancho
 
 Hook collision line
 == Línea de colisión del gancho
@@ -1763,3 +1669,198 @@ Unable to delete the folder '%s'. Make sure it's empty first.
 
 Moved ingame
 == Movido dentro del juego
+
+Go back the specified duration
+== Retroceder el tiempo especificado
+
+[Demo player duration]
+%d min.
+== %d min.
+
+[Demo player duration]
+%d sec.
+== %d seg.
+
+Change the skip duration
+== Cambiar duración del salto
+
+Go forward the specified duration
+== Adelantar el tiempo especificado
+
+Render cut to video
+== Renderizar corte a vídeo
+
+Error playing demo
+== Error al reproducir la demo
+
+Some map images could not be loaded. Check the local console for details.
+== Algunas imágenes de mapas no se pudieron cargar. Revisa la consola local para más detalles.
+
+Some map sounds could not be loaded. Check the local console for details.
+== Algunos sonidos de mapas no se pudieron cargar. Revisa la consola local para más detalles.
+
+Loading menu themes
+== Cargando temas del menú
+
+Render complete
+== Renderización completada
+
+Videos directory
+== Carpeta de videos
+
+Video was saved to '%s'
+== El video guardó en '%s'
+
+No demo selected
+== Ninguna demo seleccionada
+
+Created
+== Creado
+
+Netversion
+== Netversion
+
+[Demo details]
+map not included
+== mapa no incluido
+
+Ghosts directory
+== Carpeta de Fantasmas
+
+Activate all
+== Activar todo
+
+Deactivate all
+== Desactivar todo
+
+Enable ghost
+== Habilitar fantasma
+
+Only save improvements
+== Solo guardar las mejoras
+
+Regular background color
+== Color del fondo normal
+
+Entities background color
+== Color del fondo de entidades
+
+Saving settings to '%s' failed
+== No se pudo guardar la configuración en '%s'
+
+Searching
+== Buscando
+
+Enter Username
+== Ingresa tu usuario
+
+Enter Password
+== Ingresa tu contraseña
+
+NOT CONNECTED
+== SIN CONECTAR
+
+Match %d of %d
+== Coincidencia %d de %d
+
+No results
+== Sin resultados
+
+Lines %d - %d (%s)
+== Líneas %d - %d (%s)
+
+Locked
+== Bloqueado
+
+Following
+== Siguiendo
+
+Press a key…
+== Presiona una tecla…
+
+Are you sure that you want to restart?
+== ¿Estás seguro de que quieres reiniciar?
+
+There's an unsaved map in the editor, you might want to save it.
+== Hay un mapa sin guardar en el editor, quizás quieras guardarlo antes.
+
+Continue anyway?
+== ¿Continuar de todos modos?
+
+Communities
+== Comunidades
+
+Please use a different filename
+== Por favor, usa un nombre de archivo diferente.
+
+Info Messages
+== Mensajes de información
+
+Show local time always
+== Mostrar la hora local siempre
+
+Chat font size
+== Tamaño de la fuente del chat
+
+Chat width
+== Ancho del chat
+
+Authed name color in scoreboard
+== Color de usuario autorizado en la tabla de puntuación
+
+Same clan color in scoreboard
+== Color de tu clan en la tabla de puntuación
+
+Show finish messages
+== Mostrar mensajes de llegada de meta
+
+Failed saving the replay!
+== ¡No se pudo guardar la repetición!
+
+Error saving settings
+== Error al guardar los ajustes
+
+Loading commands…
+== Cargando comandos…
+
+Main menu
+== Menú principal
+
+Server filter
+== Filtro de servidor
+
+Friends
+== Amigos
+
+Loading…
+== Cargando…
+
+Loading demo file from storage
+== Cargando archivo de demo desde el almacenamiento
+
+No login required
+== No requiere login
+
+Player info change cooldown
+== Tiempo para cambiar la información del jugador
+
+Always show chat
+== Siempre mostrar chat
+
+Show friend mark (♥) in name plates
+== Mostrar marca de amigos (♥) en los nombres
+
+Show hook strength icon indicator
+== Mostrar indicador de fuerza del gancho
+
+Show hook strength number indicator
+== Mostrar número indicador de fuerza del gancho
+
+Show own player's hook collision line
+== Mostrar la línea de colisión del gancho del jugador local
+
+Always show own player's hook collision line
+== Siempre mostrar la línea de colisión del gancho del jugador local
+
+Always show other players' hook collision lines
+== Siempre mostrar la línea de colisión del gancho de otros jugadores

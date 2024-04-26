@@ -27,9 +27,6 @@
 %s wins!
 == %s nyert!
 
--Page %d-
-== -oldal %d-
-
 Abort
 == Mégse
 
@@ -105,9 +102,6 @@ Delete
 Delete demo
 == Demó törlése
 
-Demo details
-== Információk a demóról
-
 Demos
 == Demók
 
@@ -144,9 +138,6 @@ Favorites
 Feet
 == Láb
 
-Filter
-== Szűrő
-
 Fire
 == Tűz
 
@@ -158,9 +149,6 @@ Force vote
 
 Free-View
 == Szabad nézet
-
-Friends
-== Barátok
 
 Fullscreen
 == Teljesképernyő
@@ -264,9 +252,6 @@ No servers match your filter criteria
 Ok
 == Oké
 
-Open
-== Megnyit
-
 Parent Folder
 == Főmappa
 
@@ -281,10 +266,6 @@ Ping
 
 Pistol
 == Pisztoly
-
-[Demo browser]
-Play
-== Lejátszás
 
 Player
 == Játékos
@@ -313,9 +294,6 @@ Red team
 Red team wins!
 == A piros csapat nyert!
 
-Refresh
-== Újratöltés
-
 Remote console
 == Távoli konzol
 
@@ -324,9 +302,6 @@ Remove
 
 Remove friend
 == Barát eltávolítása
-
-Rename
-== Átnevezés
 
 Rename demo
 == Demó átnevezése
@@ -348,12 +323,6 @@ Screenshot
 
 Server address:
 == Szerver címe:
-
-Server details
-== Szerver részletei
-
-Server filter
-== Szerver szűrő
 
 Server info
 == Szerver infó
@@ -411,9 +380,6 @@ The audio device couldn't be initialised.
 
 The server is running a non-standard tuning on a pure game type.
 == A szerver egy nem szabványos hangolást futtat a tiszta játék típuson.
-
-There's an unsaved map in the editor, you might want to save it before you quit the game.
-== Van egy mentett térkép a szerkesztőben, talán elakarod menteni, mielőtt kilépnél a játékból.
 
 Time limit
 == Időhatár
@@ -493,26 +459,11 @@ FSAA samples
 Sound volume
 == Hangerő
 
-Created:
-== Készült:
-
 Max Screenshots
 == Maximum Fotók
 
-Length:
-== Hossza:
-
 Laser
 == Lézer
-
-Netversion:
-== Netes verzió:
-
-Map:
-== Pálya:
-
-Info
-== Infó
 
 Miscellaneous
 == Egyéb
@@ -523,17 +474,8 @@ Record demo
 Your skin
 == Te Karaktered
 
-Size:
-== Méret:
-
 Reset to defaults
 == Visszaállítás alapértelmezettre
-
-Quit anyway?
-== Mindenképpen kilép?
-
-Version:
-== Verzió:
 
 Round
 == Menet
@@ -547,9 +489,6 @@ UI Color
 Hue
 == Színárnyalat
 
-Crc:
-== Crc:
-
 Alpha
 == Alpha
 
@@ -558,12 +497,6 @@ LAN
 
 Name plates size
 == Névtáblák mérete
-
-Type:
-== Típus:
-
-Dummy settings
-== Másolat beállításai
 
 AntiPing
 == Antiping
@@ -630,9 +563,6 @@ Enable game sounds
 
 DDNet Client needs to be restarted to complete update!
 == Újra kell indítani a DDNet Klienst a frissítés befejezéséhez!
-
-Please use a different name
-== Kérlek, válassz másik nevet
 
 Show others
 == Játékosok mutatása
@@ -922,9 +852,6 @@ Zoom in
 Show text entities
 == Textúrázott entitások
 
-Render
-== Render
-
 Show all
 == Mutasson mindent
 
@@ -970,9 +897,6 @@ Size
 Server best:
 == Szerver legjobb:
 
-Markers:
-== Jelölések
-
 1 new mention
 == 1 új értesítés
 
@@ -1011,9 +935,6 @@ Length
 
 Are you sure that you want to disconnect your dummy?
 == Biztos vagy benne, hogy a másolatod lecsatlakozzon?
-
-Saving ddnet-settings.cfg failed
-== Nem sikerült elmenteni a ddnet-settings.cfg fájlt
 
 Warning
 == Figyelmeztetés
@@ -1175,12 +1096,6 @@ Preview
 Background
 == Háttér
 
-Entities Background color
-== Entitás háttérkép színe
-
-Regular Background Color
-== Alap háttérkép színe
-
 Are you sure that you want to disconnect and switch to a different server?
 == Biztos, hogy kilépsz és váltasz egy másik szerverre?
 
@@ -1204,9 +1119,6 @@ SA
 
 CHN
 == KíNA
-
-Kill Messages
-== Halálüzenetek
 
 Show local player's key presses
 == Saját mozgásod nyilakkal mutatása
@@ -1243,9 +1155,6 @@ Run on join
 
 Chat command (e.g. showall 1)
 == Chat parancs (például: "showall 1")
-
-Toggle to edit your dummy settings
-== Átváltát a másolatod beállításaira.
 
 Choose default eyes when joining a server
 == Alapértelmezett szemek kiválasztása, amikor egy szerverre csatlakozol.
@@ -1450,9 +1359,6 @@ Show freeze bars
 Opacity of freeze bars inside freeze
 == Láthatósága a töltő csíknak, mikor levan fagyaztva a Tee
 
-Show hook strength indicator
-== Horog erősségi indikátor mutatása
-
 Hook collision line
 == Horog érintkező vonal indikátora
 
@@ -1651,16 +1557,88 @@ Unregister protocol and file extensions
 Open the directory to add custom assets
 == Megnyitni az egyedi Képek helyét
 
+Error playing demo
+== 
+
+Failed saving the replay!
+== 
+
+Saving settings to '%s' failed
+== 
+
+Error saving settings
+== 
+
+Loading demo file from storage
+== 
+
 Quitting. Please wait…
 == 
 
 Restarting. Please wait…
 == 
 
+Searching
+== 
+
+Enter Username
+== 
+
+Enter Password
+== 
+
+NOT CONNECTED
+== 
+
+Match %d of %d
+== 
+
+No results
+== 
+
+Lines %d - %d (%s)
+== 
+
+Locked
+== 
+
+Following
+== 
+
+Loading commands…
+== 
+
 Multi-View
 == 
 
+Some map images could not be loaded. Check the local console for details.
+== 
+
+Some map sounds could not be loaded. Check the local console for details.
+== 
+
+Loading menu themes
+== 
+
+Press a key…
+== 
+
+Main menu
+== 
+
 Rename folder
+== 
+
+Render complete
+== 
+
+Are you sure that you want to restart?
+== 
+
+There's an unsaved map in the editor, you might want to save it.
+== 
+
+Continue anyway?
 == 
 
 A demo with this name already exists
@@ -1673,6 +1651,18 @@ Unable to rename the folder
 == 
 
 (paused)
+== 
+
+Videos directory
+== 
+
+Video was saved to '%s'
+== 
+
+No login required
+== 
+
+Communities
 == 
 
 No server selected
@@ -1703,6 +1693,29 @@ None
 Add Clan
 == 
 
+Server filter
+== 
+
+Friends
+== 
+
+Go back the specified duration
+== 
+
+[Demo player duration]
+%d min.
+== 
+
+[Demo player duration]
+%d sec.
+== 
+
+Change the skip duration
+== 
+
+Go forward the specified duration
+== 
+
 Mark the beginning of a cut (right click to reset)
 == 
 
@@ -1721,10 +1734,29 @@ Cut interval
 Cut length
 == 
 
+Render cut to video
+== 
+
+Please use a different filename
+== 
+
 All combined
 == 
 
+No demo selected
+== 
+
 Folder Link
+== 
+
+Created
+== 
+
+Netversion
+== 
+
+[Demo details]
+map not included
 == 
 
 Are you sure that you want to delete the folder '%s'?
@@ -1736,10 +1768,79 @@ Delete folder
 Unable to delete the folder '%s'. Make sure it's empty first.
 == 
 
+Loading…
+== 
+
+Ghosts directory
+== 
+
+Activate all
+== 
+
+Deactivate all
+== 
+
+Player info change cooldown
+== 
+
 Axis
 == 
 
 Graphics card
+== 
+
+Info Messages
+== 
+
+Show local time always
+== 
+
+Always show chat
+== 
+
+Chat font size
+== 
+
+Chat width
+== 
+
+Show friend mark (♥) in name plates
+== 
+
+Show hook strength icon indicator
+== 
+
+Show hook strength number indicator
+== 
+
+Authed name color in scoreboard
+== 
+
+Same clan color in scoreboard
+== 
+
+Show own player's hook collision line
+== 
+
+Always show own player's hook collision line
+== 
+
+Always show other players' hook collision lines
+== 
+
+Show finish messages
+== 
+
+Enable ghost
+== 
+
+Only save improvements
+== 
+
+Regular background color
+== 
+
+Entities background color
 == 
 
 Moved ingame

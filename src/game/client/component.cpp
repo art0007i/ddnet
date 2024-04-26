@@ -8,9 +8,10 @@ class IGraphics *CComponent::Graphics() const { return m_pClient->Graphics(); }
 class ITextRender *CComponent::TextRender() const { return m_pClient->TextRender(); }
 class IInput *CComponent::Input() const { return m_pClient->Input(); }
 class IStorage *CComponent::Storage() const { return m_pClient->Storage(); }
-class CUI *CComponent::UI() const { return m_pClient->UI(); }
+class CUi *CComponent::Ui() const { return m_pClient->Ui(); }
 class ISound *CComponent::Sound() const { return m_pClient->Sound(); }
 class CRenderTools *CComponent::RenderTools() const { return m_pClient->RenderTools(); }
+class IConfigManager *CComponent::ConfigManager() const { return m_pClient->ConfigManager(); }
 class CConfig *CComponent::Config() const { return m_pClient->Config(); }
 class IConsole *CComponent::Console() const { return m_pClient->Console(); }
 class IDemoPlayer *CComponent::DemoPlayer() const { return m_pClient->DemoPlayer(); }
@@ -39,3 +40,5 @@ class IClient *CComponent::Client() const
 {
 	return m_pClient->Client();
 }
+
+class IHttp *CComponent::Http() const { return m_pClient->Http(); }

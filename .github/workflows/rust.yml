@@ -10,8 +10,10 @@ on:
 jobs:
   rustdoc:
     runs-on: ubuntu-latest
+    env:
+      CARGO_HTTP_MULTIPLEXING: false
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Cache Rust dependencies
       uses: Swatinem/rust-cache@v2
     - name: Run Rustdoc
@@ -21,13 +23,15 @@ jobs:
   rustfmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Run Rustfmt
       run:
         cargo fmt -- --check
 
   cargo-deny:
     runs-on: ubuntu-latest
+    env:
+      CARGO_HTTP_MULTIPLEXING: false
     strategy:
       matrix:
         checks:
@@ -37,7 +41,7 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Cache Rust dependencies
       uses: Swatinem/rust-cache@v2
     - uses: EmbarkStudios/cargo-deny-action@v1
