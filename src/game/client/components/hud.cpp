@@ -746,6 +746,7 @@ void CHud::PreparePlayerStateQuads()
 	m_LiveFrozenOffset = RenderTools()->QuadContainerAddSprite(m_HudQuadContainerIndex, 0.f, 0.f, 12.f, 12.f);
 
 	// Quads for displaying dummy actions
+	m_DummyResetOnSwitchOffset = RenderTools()->QuadContainerAddSprite(m_HudQuadContainerIndex, 0.f, 0.f, 12.f, 12.f);
 	m_DummyHammerOffset = RenderTools()->QuadContainerAddSprite(m_HudQuadContainerIndex, 0.f, 0.f, 12.f, 12.f);
 	m_DummyCopyOffset = RenderTools()->QuadContainerAddSprite(m_HudQuadContainerIndex, 0.f, 0.f, 12.f, 12.f);
 
@@ -1180,7 +1181,7 @@ void CHud::RenderDummyActions()
 		return;
 	}
 	// render small dummy actions hud
-	const float BoxHeight = 29.0f;
+	const float BoxHeight = 42.0f;
 	const float BoxWidth = 16.0f;
 
 	float StartX = m_Width - BoxWidth;
@@ -1200,6 +1201,14 @@ void CHud::RenderDummyActions()
 
 	float y = StartY + 2;
 	float x = StartX + 2;
+	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.4f);
+	if(g_Config.m_ClDummyResetOnSwitch)
+	{
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+	Graphics()->TextureSet(m_pClient->m_HudSkin.m_SpriteHudHookHitDisabled);
+	Graphics()->RenderQuadContainerAsSprite(m_HudQuadContainerIndex, m_DummyResetOnSwitchOffset, x, y);
+	y += 13;
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.4f);
 	if(g_Config.m_ClDummyHammer)
 	{

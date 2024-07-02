@@ -244,8 +244,8 @@ void CNamePlates::RenderNameplatePos(vec2 Position, const CNetObj_PlayerInfo *pP
 		if(g_Config.m_ClNameplatesSkin)
 		{
 			YOffset -= FontSizeClan;
-			if(m_aNamePlates[ClientID].m_SkinNameTextContainerIndex.Valid())
-				TextRender()->RenderTextContainer(m_aNamePlates[ClientID].m_SkinNameTextContainerIndex, TColor, TOutlineColor, Position.x - m_aNamePlates[ClientID].m_SkinNameTextWidth / 2.0f, YOffset);
+			if(m_aNamePlates[ClientId].m_SkinNameTextContainerIndex.Valid())
+				TextRender()->RenderTextContainer(m_aNamePlates[ClientId].m_SkinNameTextContainerIndex, TColor, TOutlineColor, Position.x - m_aNamePlates[ClientId].m_SkinNameTextWidth / 2.0f, YOffset);
 		}
 	}
 
