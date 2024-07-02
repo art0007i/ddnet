@@ -251,9 +251,9 @@ bool mem_has_null(const void *block, size_t size)
 	return false;
 }
 
-IOHANDLE io_open_impl(const char *filename, int flags)
+IOHANDLE io_open(const char *filename, int flags)
 {
-	dbg_assert(flags == (IOFLAG_READ | IOFLAG_SKIP_BOM) || flags == IOFLAG_READ || flags == IOFLAG_WRITE || flags == IOFLAG_APPEND, "flags must be read, read+skipbom, write or append");
+	dbg_assert(flags == IOFLAG_READ || flags == IOFLAG_WRITE || flags == IOFLAG_APPEND, "flags must be read, write or append");
 #if defined(CONF_FAMILY_WINDOWS)
 	const std::wstring wide_filename = windows_utf8_to_wide(filename);
 	DWORD desired_access;
@@ -311,21 +311,6 @@ IOHANDLE io_open_impl(const char *filename, int flags)
 	}
 	return fopen(filename, open_mode);
 #endif
-}
-
-IOHANDLE io_open(const char *filename, int flags)
-{
-	IOHANDLE result = io_open_impl(filename, flags);
-	unsigned char buf[3];
-	if((flags & IOFLAG_SKIP_BOM) == 0 || !result)
-	{
-		return result;
-	}
-	if(io_read(result, buf, sizeof(buf)) != 3 || buf[0] != 0xef || buf[1] != 0xbb || buf[2] != 0xbf)
-	{
-		io_seek(result, 0, IOSEEK_START);
-	}
-	return result;
 }
 
 unsigned io_read(IOHANDLE io, void *buffer, unsigned size)
@@ -1237,7 +1222,7 @@ static int parse_int(int *out, const char **str)
 {
 	int i = 0;
 	*out = 0;
-	if(**str < '0' || **str > '9')
+	if(!str_isnum(**str))
 		return -1;
 
 	i = **str - '0';
@@ -1245,7 +1230,7 @@ static int parse_int(int *out, const char **str)
 
 	while(true)
 	{
-		if(**str < '0' || **str > '9')
+		if(!str_isnum(**str))
 		{
 			*out = i;
 			return 0;
@@ -1846,7 +1831,7 @@ NETSOCKET net_tcp_create(NETADDR bindaddr)
 	NETSOCKET sock = (NETSOCKET_INTERNAL *)malloc(sizeof(*sock));
 	*sock = invalid_socket;
 	NETADDR tmpbindaddr = bindaddr;
-	int socket = -1;
+	int socket4 = -1;
 
 	if(bindaddr.type & NETTYPE_IPV4)
 	{
@@ -1855,14 +1840,15 @@ NETSOCKET net_tcp_create(NETADDR bindaddr)
 		/* bind, we should check for error */
 		tmpbindaddr.type = NETTYPE_IPV4;
 		netaddr_to_sockaddr_in(&tmpbindaddr, &addr);
-		socket = priv_net_create_socket(AF_INET, SOCK_STREAM, (struct sockaddr *)&addr, sizeof(addr));
-		if(socket >= 0)
+		socket4 = priv_net_create_socket(AF_INET, SOCK_STREAM, (struct sockaddr *)&addr, sizeof(addr));
+		if(socket4 >= 0)
 		{
 			sock->type |= NETTYPE_IPV4;
-			sock->ipv4sock = socket;
+			sock->ipv4sock = socket4;
 		}
 	}
 
+	int socket6 = -1;
 	if(bindaddr.type & NETTYPE_IPV6)
 	{
 		struct sockaddr_in6 addr;
@@ -1870,15 +1856,15 @@ NETSOCKET net_tcp_create(NETADDR bindaddr)
 		/* bind, we should check for error */
 		tmpbindaddr.type = NETTYPE_IPV6;
 		netaddr_to_sockaddr_in6(&tmpbindaddr, &addr);
-		socket = priv_net_create_socket(AF_INET6, SOCK_STREAM, (struct sockaddr *)&addr, sizeof(addr));
-		if(socket >= 0)
+		socket6 = priv_net_create_socket(AF_INET6, SOCK_STREAM, (struct sockaddr *)&addr, sizeof(addr));
+		if(socket6 >= 0)
 		{
 			sock->type |= NETTYPE_IPV6;
-			sock->ipv6sock = socket;
+			sock->ipv6sock = socket6;
 		}
 	}
 
-	if(socket < 0)
+	if(socket4 < 0 && socket6 < 0)
 	{
 		free(sock);
 		sock = nullptr;
@@ -1986,6 +1972,8 @@ int net_tcp_connect(NETSOCKET sock, const NETADDR *a)
 	{
 		struct sockaddr_in addr;
 		netaddr_to_sockaddr_in(a, &addr);
+		if(sock->ipv4sock < 0)
+			return -2;
 		return connect(sock->ipv4sock, (struct sockaddr *)&addr, sizeof(addr));
 	}
 
@@ -1993,6 +1981,8 @@ int net_tcp_connect(NETSOCKET sock, const NETADDR *a)
 	{
 		struct sockaddr_in6 addr;
 		netaddr_to_sockaddr_in6(a, &addr);
+		if(sock->ipv6sock < 0)
+			return -2;
 		return connect(sock->ipv6sock, (struct sockaddr *)&addr, sizeof(addr));
 	}
 
@@ -2389,17 +2379,12 @@ int fs_is_relative_path(const char *path)
 
 int fs_chdir(const char *path)
 {
-	if(fs_is_dir(path))
-	{
 #if defined(CONF_FAMILY_WINDOWS)
-		const std::wstring wide_path = windows_utf8_to_wide(path);
-		return SetCurrentDirectoryW(wide_path.c_str()) != 0 ? 0 : 1;
+	const std::wstring wide_path = windows_utf8_to_wide(path);
+	return SetCurrentDirectoryW(wide_path.c_str()) != 0 ? 0 : 1;
 #else
-		return chdir(path) ? 1 : 0;
+	return chdir(path) ? 1 : 0;
 #endif
-	}
-	else
-		return 1;
 }
 
 char *fs_getcwd(char *buffer, int buffer_size)
@@ -2407,15 +2392,7 @@ char *fs_getcwd(char *buffer, int buffer_size)
 #if defined(CONF_FAMILY_WINDOWS)
 	const DWORD size_needed = GetCurrentDirectoryW(0, nullptr);
 	std::wstring wide_current_dir(size_needed, L'0');
-	DWORD result = GetCurrentDirectoryW(size_needed, wide_current_dir.data());
-	if(result == 0)
-	{
-		const DWORD LastError = GetLastError();
-		const std::string ErrorMsg = windows_format_system_message(LastError);
-		dbg_msg("filesystem", "GetCurrentDirectoryW failed: %ld %s", LastError, ErrorMsg.c_str());
-		buffer[0] = '\0';
-		return nullptr;
-	}
+	dbg_assert(GetCurrentDirectoryW(size_needed, wide_current_dir.data()) == size_needed - 1, "GetCurrentDirectoryW failure");
 	const std::optional<std::string> current_dir = windows_wide_to_utf8(wide_current_dir.c_str());
 	if(!current_dir.has_value())
 	{
@@ -2613,7 +2590,7 @@ int net_socket_read_wait(NETSOCKET sock, int time)
 	return 0;
 }
 
-int time_timestamp()
+int64_t time_timestamp()
 {
 	return time(0);
 }
@@ -2784,6 +2761,15 @@ int str_format_v(char *buffer, int buffer_size, const char *format, va_list args
 	return str_utf8_fix_truncation(buffer);
 }
 
+int str_format_int(char *buffer, size_t buffer_size, int value)
+{
+	buffer[0] = '\0'; // Fix false positive clang-analyzer-core.UndefinedBinaryOperatorResult when using result
+	auto result = std::to_chars(buffer, buffer + buffer_size - 1, value);
+	result.ptr[0] = '\0';
+	return result.ptr - buffer;
+}
+
+#undef str_format
 int str_format(char *buffer, int buffer_size, const char *format, ...)
 {
 	va_list args;
@@ -2792,6 +2778,9 @@ int str_format(char *buffer, int buffer_size, const char *format, ...)
 	va_end(args);
 	return length;
 }
+#if !defined(CONF_DEBUG)
+#define str_format str_format_opt
+#endif
 
 const char *str_trim_words(const char *str, int words)
 {
@@ -2950,7 +2939,7 @@ int str_comp_filenames(const char *a, const char *b)
 
 	for(; *a && *b; ++a, ++b)
 	{
-		if(*a >= '0' && *a <= '9' && *b >= '0' && *b <= '9')
+		if(str_isnum(*a) && str_isnum(*b))
 		{
 			result = 0;
 			do
@@ -2959,11 +2948,11 @@ int str_comp_filenames(const char *a, const char *b)
 					result = *a - *b;
 				++a;
 				++b;
-			} while(*a >= '0' && *a <= '9' && *b >= '0' && *b <= '9');
+			} while(str_isnum(*a) && str_isnum(*b));
 
-			if(*a >= '0' && *a <= '9')
+			if(str_isnum(*a))
 				return 1;
-			else if(*b >= '0' && *b <= '9')
+			else if(str_isnum(*b))
 				return -1;
 			else if(result || *a == '\0' || *b == '\0')
 				return result;
@@ -3563,11 +3552,16 @@ char str_uppercase(char c)
 	return c;
 }
 
+bool str_isnum(char c)
+{
+	return c >= '0' && c <= '9';
+}
+
 int str_isallnum(const char *str)
 {
 	while(*str)
 	{
-		if(!(*str >= '0' && *str <= '9'))
+		if(!str_isnum(*str))
 			return 0;
 		str++;
 	}
@@ -3578,7 +3572,7 @@ int str_isallnum_hex(const char *str)
 {
 	while(*str)
 	{
-		if(!(*str >= '0' && *str <= '9') && !(*str >= 'a' && *str <= 'f') && !(*str >= 'A' && *str <= 'F'))
+		if(!str_isnum(*str) && !(*str >= 'a' && *str <= 'f') && !(*str >= 'A' && *str <= 'F'))
 			return 0;
 		str++;
 	}
@@ -3632,13 +3626,6 @@ bool str_tofloat(const char *str, float *out)
 	if(out != nullptr)
 		*out = value;
 	return true;
-}
-
-void str_from_int(int value, char *buffer, size_t buffer_size)
-{
-	buffer[0] = '\0'; // Fix false positive clang-analyzer-core.UndefinedBinaryOperatorResult when using result
-	auto result = std::to_chars(buffer, buffer + buffer_size - 1, value);
-	result.ptr[0] = '\0';
 }
 
 int str_utf8_comp_nocase(const char *a, const char *b)
@@ -4546,7 +4533,7 @@ void os_locale_str(char *locale, size_t length)
 		{
 			locale[i] = '-';
 		}
-		else if(locale[i] != '-' && !(locale[i] >= 'a' && locale[i] <= 'z') && !(locale[i] >= 'A' && locale[i] <= 'Z') && !(locale[i] >= '0' && locale[i] <= '9'))
+		else if(locale[i] != '-' && !(locale[i] >= 'a' && locale[i] <= 'z') && !(locale[i] >= 'A' && locale[i] <= 'Z') && !(str_isnum(locale[i])))
 		{
 			locale[i] = '\0';
 			break;

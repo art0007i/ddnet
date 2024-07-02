@@ -493,15 +493,15 @@ CDemoPlayer::EReadChunkHeaderResult CDemoPlayer::ReadChunkHeader(int *pType, int
 	if(Chunk & CHUNKTYPEFLAG_TICKMARKER)
 	{
 		// decode tick marker
-		int Tickdelta_legacy = Chunk & CHUNKMASK_TICK_LEGACY; // compatibility
+		int TickdeltaLegacy = Chunk & CHUNKMASK_TICK_LEGACY; // compatibility
 		*pType = Chunk & (CHUNKTYPEFLAG_TICKMARKER | CHUNKTICKFLAG_KEYFRAME);
 
 		int NewTick;
-		if(m_Info.m_Header.m_Version < gs_VersionTickCompression && Tickdelta_legacy != 0)
+		if(m_Info.m_Header.m_Version < gs_VersionTickCompression && TickdeltaLegacy != 0)
 		{
 			if(*pTick < 0) // initial tick not initialized before a tick delta
 				return CHUNKHEADER_ERROR;
-			NewTick = *pTick + Tickdelta_legacy;
+			NewTick = *pTick + TickdeltaLegacy;
 		}
 		else if(Chunk & CHUNKTICKFLAG_TICK_COMPRESSED)
 		{
@@ -665,7 +665,7 @@ void CDemoPlayer::DoTick()
 				break;
 			}
 
-			DataSize = CVariableInt::Decompress(m_aDecompressedSnapshotData, DataSize, m_aCurrentSnapshotData, sizeof(m_aCurrentSnapshotData));
+			DataSize = CVariableInt::Decompress(m_aDecompressedSnapshotData, DataSize, m_aChunkData, sizeof(m_aChunkData));
 			if(DataSize < 0)
 			{
 				Stop("Error during intpack decompression");
@@ -676,8 +676,8 @@ void CDemoPlayer::DoTick()
 		if(ChunkType == CHUNKTYPE_DELTA)
 		{
 			// process delta snapshot
-			CSnapshot *pNewsnap = (CSnapshot *)m_aDeltaSnapshotData;
-			DataSize = m_pSnapshotDelta->UnpackDelta((CSnapshot *)m_aLastSnapshotData, pNewsnap, m_aCurrentSnapshotData, DataSize);
+			CSnapshot *pNewsnap = (CSnapshot *)m_aSnapshot;
+			DataSize = m_pSnapshotDelta->UnpackDelta((CSnapshot *)m_aLastSnapshotData, pNewsnap, m_aChunkData, DataSize);
 
 			if(DataSize < 0)
 			{
@@ -700,17 +700,17 @@ void CDemoPlayer::DoTick()
 			else
 			{
 				if(m_pListener)
-					m_pListener->OnDemoPlayerSnapshot(m_aDeltaSnapshotData, DataSize);
+					m_pListener->OnDemoPlayerSnapshot(m_aSnapshot, DataSize);
 
 				m_LastSnapshotDataSize = DataSize;
-				mem_copy(m_aLastSnapshotData, m_aDeltaSnapshotData, DataSize);
+				mem_copy(m_aLastSnapshotData, m_aSnapshot, DataSize);
 				GotSnapshot = true;
 			}
 		}
 		else if(ChunkType == CHUNKTYPE_SNAPSHOT)
 		{
 			// process full snapshot
-			CSnapshot *pSnap = (CSnapshot *)m_aCurrentSnapshotData;
+			CSnapshot *pSnap = (CSnapshot *)m_aChunkData;
 			if(!pSnap->IsValid(DataSize))
 			{
 				if(m_pConsole)
@@ -725,9 +725,9 @@ void CDemoPlayer::DoTick()
 				GotSnapshot = true;
 
 				m_LastSnapshotDataSize = DataSize;
-				mem_copy(m_aLastSnapshotData, m_aCurrentSnapshotData, DataSize);
+				mem_copy(m_aLastSnapshotData, m_aChunkData, DataSize);
 				if(m_pListener)
-					m_pListener->OnDemoPlayerSnapshot(m_aCurrentSnapshotData, DataSize);
+					m_pListener->OnDemoPlayerSnapshot(m_aChunkData, DataSize);
 			}
 		}
 		else
@@ -748,7 +748,7 @@ void CDemoPlayer::DoTick()
 			else if(ChunkType == CHUNKTYPE_MESSAGE)
 			{
 				if(m_pListener)
-					m_pListener->OnDemoPlayerMessage(m_aCurrentSnapshotData, DataSize);
+					m_pListener->OnDemoPlayerMessage(m_aChunkData, DataSize);
 			}
 		}
 	}

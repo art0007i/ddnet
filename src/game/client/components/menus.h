@@ -36,6 +36,7 @@ struct CServerProcess
 class CMenusKeyBinder : public CComponent
 {
 public:
+	const void *m_pKeyReaderId;
 	bool m_TakeKey;
 	bool m_GotKey;
 	IInput::CEvent m_Key;
@@ -169,6 +170,7 @@ protected:
 
 	bool m_JoinTutorial = false;
 	bool m_CreateDefaultFavoriteCommunities = false;
+	bool m_ForceRefreshLanPage = false;
 
 	char m_aNextServer[256];
 
@@ -184,8 +186,14 @@ protected:
 	const CMenuImage *FindMenuImage(const char *pName);
 
 	// loading
-	int m_LoadCurrent;
-	int m_LoadTotal;
+	class CLoadingState
+	{
+	public:
+		std::chrono::nanoseconds m_LastRender{0};
+		int m_Current;
+		int m_Total;
+	};
+	CLoadingState m_LoadingState;
 
 	//
 	char m_aMessageTopic[512];
@@ -402,8 +410,8 @@ protected:
 
 		bool operator<(const CFriendItem &Other) const
 		{
-			const int Result = str_comp(m_aName, Other.m_aName);
-			return Result < 0 || (Result == 0 && str_comp(m_aClan, Other.m_aClan) < 0);
+			const int Result = str_comp_nocase(m_aName, Other.m_aName);
+			return Result < 0 || (Result == 0 && str_comp_nocase(m_aClan, Other.m_aClan) < 0);
 		}
 	};
 

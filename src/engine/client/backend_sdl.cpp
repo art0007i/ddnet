@@ -423,7 +423,7 @@ const SGfxErrorContainer &CCommandProcessor_SDL_GL::GetError() const
 
 void CCommandProcessor_SDL_GL::ErroneousCleanup()
 {
-	return m_pGLBackend->ErroneousCleanup();
+	m_pGLBackend->ErroneousCleanup();
 }
 
 const SGfxWarningContainer &CCommandProcessor_SDL_GL::GetWarning() const
@@ -1539,6 +1539,7 @@ bool CGraphicsBackend_SDL_GL::UpdateDisplayMode(int Index)
 		return false;
 	}
 
+	g_Config.m_GfxScreen = Index;
 	g_Config.m_GfxDesktopWidth = DisplayMode.w;
 	g_Config.m_GfxDesktopHeight = DisplayMode.h;
 

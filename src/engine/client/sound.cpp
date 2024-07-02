@@ -207,6 +207,18 @@ int CSound::Init()
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
 	m_pStorage = Kernel()->RequestInterface<IStorage>();
 
+	// Initialize sample indices. We always need them to load sounds in
+	// the editor even if sound is disabled or failed to be enabled.
+	m_FirstFreeSampleIndex = 0;
+	for(size_t i = 0; i < std::size(m_aSamples) - 1; ++i)
+	{
+		m_aSamples[i].m_Index = i;
+		m_aSamples[i].m_NextFreeSampleIndex = i + 1;
+		m_aSamples[i].m_pData = nullptr;
+	}
+	m_aSamples[std::size(m_aSamples) - 1].m_Index = std::size(m_aSamples) - 1;
+	m_aSamples[std::size(m_aSamples) - 1].m_NextFreeSampleIndex = SAMPLE_INDEX_FULL;
+
 	if(!g_Config.m_SndEnable)
 		return 0;
 
@@ -228,7 +240,6 @@ int CSound::Init()
 
 	// Open the audio device and start playing sound!
 	m_Device = SDL_OpenAudioDevice(nullptr, 0, &Format, &FormatOut, 0);
-
 	if(m_Device == 0)
 	{
 		dbg_msg("sound", "unable to open audio: %s", SDL_GetError());
@@ -242,15 +253,6 @@ int CSound::Init()
 	m_MaxFrames = maximum<uint32_t>(m_MaxFrames, 1024 * 2); // make the buffer bigger just in case
 #endif
 	m_pMixBuffer = (int *)calloc(m_MaxFrames * 2, sizeof(int));
-
-	m_FirstFreeSampleIndex = 0;
-	for(size_t i = 0; i < std::size(m_aSamples) - 1; ++i)
-	{
-		m_aSamples[i].m_Index = i;
-		m_aSamples[i].m_NextFreeSampleIndex = i + 1;
-	}
-	m_aSamples[std::size(m_aSamples) - 1].m_Index = std::size(m_aSamples) - 1;
-	m_aSamples[std::size(m_aSamples) - 1].m_NextFreeSampleIndex = SAMPLE_INDEX_FULL;
 
 	SDL_PauseAudioDevice(m_Device, 0);
 
@@ -292,14 +294,15 @@ CSample *CSound::AllocSample()
 		return nullptr;
 
 	CSample *pSample = &m_aSamples[m_FirstFreeSampleIndex];
-	m_FirstFreeSampleIndex = pSample->m_NextFreeSampleIndex;
-	pSample->m_NextFreeSampleIndex = SAMPLE_INDEX_USED;
-	if(pSample->m_pData != nullptr)
+	if(pSample->m_pData != nullptr || pSample->m_NextFreeSampleIndex == SAMPLE_INDEX_USED)
 	{
-		char aError[64];
-		str_format(aError, sizeof(aError), "Sample was not unloaded (index=%d, duration=%f)", pSample->m_Index, pSample->TotalTime());
+		char aError[128];
+		str_format(aError, sizeof(aError), "Sample was not unloaded (index=%d, next=%d, duration=%f, data=%p)",
+			pSample->m_Index, pSample->m_NextFreeSampleIndex, pSample->TotalTime(), pSample->m_pData);
 		dbg_assert(false, aError);
 	}
+	m_FirstFreeSampleIndex = pSample->m_NextFreeSampleIndex;
+	pSample->m_NextFreeSampleIndex = SAMPLE_INDEX_USED;
 	return pSample;
 }
 
@@ -341,29 +344,36 @@ void CSound::RateConvert(CSample &Sample) const
 
 bool CSound::DecodeOpus(CSample &Sample, const void *pData, unsigned DataSize) const
 {
-	OggOpusFile *pOpusFile = op_open_memory((const unsigned char *)pData, DataSize, nullptr);
+	int OpusError = 0;
+	OggOpusFile *pOpusFile = op_open_memory((const unsigned char *)pData, DataSize, &OpusError);
 	if(pOpusFile)
 	{
 		const int NumChannels = op_channel_count(pOpusFile, -1);
-		const int NumSamples = op_pcm_total(pOpusFile, -1); // per channel!
-
-		Sample.m_Channels = NumChannels;
-
-		if(Sample.m_Channels > 2)
+		if(NumChannels > 2)
 		{
+			op_free(pOpusFile);
 			dbg_msg("sound/opus", "file is not mono or stereo.");
 			return false;
 		}
 
-		Sample.m_pData = (short *)calloc((size_t)NumSamples * NumChannels, sizeof(short));
+		const int NumSamples = op_pcm_total(pOpusFile, -1); // per channel!
+		if(NumSamples < 0)
+		{
+			op_free(pOpusFile);
+			dbg_msg("sound/opus", "failed to get number of samples, error %d", NumSamples);
+			return false;
+		}
+
+		short *pSampleData = (short *)calloc((size_t)NumSamples * NumChannels, sizeof(short));
 
 		int Pos = 0;
 		while(Pos < NumSamples)
 		{
-			const int Read = op_read(pOpusFile, Sample.m_pData + Pos * NumChannels, NumSamples * NumChannels, nullptr);
+			const int Read = op_read(pOpusFile, pSampleData + Pos * NumChannels, (NumSamples - Pos) * NumChannels, nullptr);
 			if(Read < 0)
 			{
-				free(Sample.m_pData);
+				free(pSampleData);
+				op_free(pOpusFile);
 				dbg_msg("sound/opus", "op_read error %d at %d", Read, Pos);
 				return false;
 			}
@@ -372,15 +382,19 @@ bool CSound::DecodeOpus(CSample &Sample, const void *pData, unsigned DataSize) c
 			Pos += Read;
 		}
 
+		op_free(pOpusFile);
+
+		Sample.m_pData = pSampleData;
 		Sample.m_NumFrames = Pos;
 		Sample.m_Rate = 48000;
+		Sample.m_Channels = NumChannels;
 		Sample.m_LoopStart = -1;
 		Sample.m_LoopEnd = -1;
 		Sample.m_PausedAt = 0;
 	}
 	else
 	{
-		dbg_msg("sound/opus", "failed to decode sample");
+		dbg_msg("sound/opus", "failed to decode sample, error %d", OpusError);
 		return false;
 	}
 
@@ -459,10 +473,7 @@ bool CSound::DecodeWV(CSample &Sample, const void *pData, unsigned DataSize) con
 		const unsigned int SampleRate = WavpackGetSampleRate(pContext);
 		const int NumChannels = WavpackGetNumChannels(pContext);
 
-		Sample.m_Channels = NumChannels;
-		Sample.m_Rate = SampleRate;
-
-		if(Sample.m_Channels > 2)
+		if(NumChannels > 2)
 		{
 			dbg_msg("sound/wv", "file is not mono or stereo.");
 			s_pWVBuffer = nullptr;
@@ -498,6 +509,8 @@ bool CSound::DecodeWV(CSample &Sample, const void *pData, unsigned DataSize) con
 #endif
 
 		Sample.m_NumFrames = NumSamples;
+		Sample.m_Rate = SampleRate;
+		Sample.m_Channels = NumChannels;
 		Sample.m_LoopStart = -1;
 		Sample.m_LoopEnd = -1;
 		Sample.m_PausedAt = 0;

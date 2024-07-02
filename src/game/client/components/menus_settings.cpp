@@ -1,5 +1,6 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include <base/log.h>
 #include <base/math.h>
 #include <base/system.h>
 
@@ -44,9 +45,10 @@ CMenusKeyBinder CMenus::m_Binder;
 
 CMenusKeyBinder::CMenusKeyBinder()
 {
+	m_pKeyReaderId = nullptr;
 	m_TakeKey = false;
 	m_GotKey = false;
-	m_ModifierCombination = 0;
+	m_ModifierCombination = CBinds::MODIFIER_NONE;
 }
 
 bool CMenusKeyBinder::OnInput(const IInput::CEvent &Event)
@@ -63,7 +65,7 @@ bool CMenusKeyBinder::OnInput(const IInput::CEvent &Event)
 			m_ModifierCombination = CBinds::GetModifierMask(Input());
 			if(m_ModifierCombination == CBinds::GetModifierMaskOfKey(Event.m_Key))
 			{
-				m_ModifierCombination = 0;
+				m_ModifierCombination = CBinds::MODIFIER_NONE;
 			}
 		}
 		return true;
@@ -394,8 +396,8 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 	TextRender()->SetRenderFlags(0);
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 
-	float wSearch = TextRender()->TextWidth(14.0f, FONT_ICON_MAGNIFYING_GLASS, -1, -1.0f);
-	QuickSearch.VSplitLeft(wSearch - 1.5f, nullptr, &QuickSearch);
+	float SearchWidth = TextRender()->TextWidth(14.0f, FONT_ICON_MAGNIFYING_GLASS, -1, -1.0f);
+	QuickSearch.VSplitLeft(SearchWidth - 1.5f, nullptr, &QuickSearch);
 	QuickSearch.VSplitLeft(5.0f, nullptr, &QuickSearch);
 	QuickSearch.VSplitLeft(QuickSearch.w - 10.0f, &QuickSearch, &QuickSearchClearButton);
 
@@ -480,9 +482,8 @@ void CMenus::Con_AddFavoriteSkin(IConsole::IResult *pResult, void *pUserData)
 	const char *pStr = pResult->GetString(0);
 	if(!CSkin::IsValidName(pStr))
 	{
-		char aError[IConsole::CMDLINE_LENGTH + 64];
-		str_format(aError, sizeof(aError), "Favorite skin name '%s' is not valid", pStr);
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "menus/settings", aError);
+		log_error("menus/settings", "Favorite skin name '%s' is not valid", pStr);
+		log_error("menus/settings", "%s", CSkin::m_aSkinNameRestrictions);
 		return;
 	}
 	pSelf->m_SkinFavorites.emplace(pStr);
@@ -919,10 +920,10 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
 		Ui()->DoLabel(&QuickSearch, FONT_ICON_MAGNIFYING_GLASS, 14.0f, TEXTALIGN_ML);
-		float wSearch = TextRender()->TextWidth(14.0f, FONT_ICON_MAGNIFYING_GLASS, -1, -1.0f);
+		float SearchWidth = TextRender()->TextWidth(14.0f, FONT_ICON_MAGNIFYING_GLASS, -1, -1.0f);
 		TextRender()->SetRenderFlags(0);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
-		QuickSearch.VSplitLeft(wSearch + 5.0f, nullptr, &QuickSearch);
+		QuickSearch.VSplitLeft(SearchWidth + 5.0f, nullptr, &QuickSearch);
 		static CLineInput s_SkinFilterInput(g_Config.m_ClSkinFilterString, sizeof(g_Config.m_ClSkinFilterString));
 		if(Input()->KeyPress(KEY_F) && Input()->ModifierIsPressed())
 		{
@@ -1066,12 +1067,9 @@ float CMenus::RenderSettingsControlsJoystick(CUIRect View)
 	int NumOptions = 1; // expandable header
 	if(JoystickEnabled)
 	{
-		if(NumJoysticks == 0)
-			NumOptions++; // message
-		else
+		NumOptions++; // message or joystick name/selection
+		if(NumJoysticks > 0)
 		{
-			if(NumJoysticks > 1)
-				NumOptions++; // joystick selection
 			NumOptions += 3; // mode, ui sens, tolerance
 			if(!g_Config.m_InpControllerAbsolute)
 				NumOptions++; // ingame sens
@@ -1225,7 +1223,7 @@ void CMenus::DoJoystickAxisPicker(CUIRect View)
 
 		// Axis label
 		char aBuf[16];
-		str_from_int(i + 1, aBuf);
+		str_format(aBuf, sizeof(aBuf), "%d", i + 1);
 		if(Active)
 			TextRender()->TextColor(TextRender()->DefaultTextColor());
 		else
@@ -1567,7 +1565,7 @@ void CMenus::RenderSettingsGraphics(CUIRect MainView)
 		g_Config.m_GfxScreenWidth = s_aModes[NewSelected].m_WindowWidth;
 		g_Config.m_GfxScreenHeight = s_aModes[NewSelected].m_WindowHeight;
 		g_Config.m_GfxScreenRefreshRate = s_aModes[NewSelected].m_RefreshRate;
-		Graphics()->Resize(g_Config.m_GfxScreenWidth, g_Config.m_GfxScreenHeight, g_Config.m_GfxScreenRefreshRate);
+		Graphics()->ResizeToScreen();
 	}
 
 	// switches
@@ -1635,16 +1633,16 @@ void CMenus::RenderSettingsGraphics(CUIRect MainView)
 	bool MultiSamplingChanged = false;
 	MainView.HSplitTop(20.0f, &Button, &MainView);
 	str_format(aBuf, sizeof(aBuf), "%s (%s)", Localize("FSAA samples"), Localize("may cause delay"));
-	int GfxFsaaSamples_MouseButton = DoButton_CheckBox_Number(&g_Config.m_GfxFsaaSamples, aBuf, g_Config.m_GfxFsaaSamples, &Button);
+	int GfxFsaaSamplesMouseButton = DoButton_CheckBox_Number(&g_Config.m_GfxFsaaSamples, aBuf, g_Config.m_GfxFsaaSamples, &Button);
 	int CurFSAA = g_Config.m_GfxFsaaSamples == 0 ? 1 : g_Config.m_GfxFsaaSamples;
-	if(GfxFsaaSamples_MouseButton == 1) // inc
+	if(GfxFsaaSamplesMouseButton == 1) // inc
 	{
 		g_Config.m_GfxFsaaSamples = std::pow(2, (int)std::log2(CurFSAA) + 1);
 		if(g_Config.m_GfxFsaaSamples > 64)
 			g_Config.m_GfxFsaaSamples = 0;
 		MultiSamplingChanged = true;
 	}
-	else if(GfxFsaaSamples_MouseButton == 2) // dec
+	else if(GfxFsaaSamplesMouseButton == 2) // dec
 	{
 		if(CurFSAA == 1)
 			g_Config.m_GfxFsaaSamples = 64;
@@ -1662,7 +1660,7 @@ void CMenus::RenderSettingsGraphics(CUIRect MainView)
 		{
 			// try again with 0 if mouse click was increasing multi sampling
 			// else just accept the current value as is
-			if((uint32_t)g_Config.m_GfxFsaaSamples > MultiSamplingCountBackend && GfxFsaaSamples_MouseButton == 1)
+			if((uint32_t)g_Config.m_GfxFsaaSamples > MultiSamplingCountBackend && GfxFsaaSamplesMouseButton == 1)
 				Graphics()->SetMultiSampling(0, MultiSamplingCountBackend);
 			g_Config.m_GfxFsaaSamples = (int)MultiSamplingCountBackend;
 		}
@@ -2039,7 +2037,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 		Localize("Language"),
 		Localize("General"),
 		Localize("Player"),
-		"Tee",
+		Localize("Tee"),
 		Localize("Appearance"),
 		Localize("Controls"),
 		Localize("Graphics"),
@@ -2558,7 +2556,6 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 		RightView.HSplitTop(MarginSmall, nullptr, &RightView);
 
 		// Switches of various DDRace HUD elements
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClDDRaceScoreBoard, Localize("Use DDRace Scoreboard"), &g_Config.m_ClDDRaceScoreBoard, &RightView, LineSize);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClShowIds, Localize("Show client IDs in scoreboard"), &g_Config.m_ClShowIds, &RightView, LineSize);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClShowhudDDRace, Localize("Show DDRace HUD"), &g_Config.m_ClShowhudDDRace, &RightView, LineSize);
 		if(g_Config.m_ClShowhudDDRace)
@@ -2615,6 +2612,7 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClChatTeamColors, Localize("Show names in chat in team colors"), &g_Config.m_ClChatTeamColors, &LeftView, LineSize);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClShowChatFriends, Localize("Show only chat messages from friends"), &g_Config.m_ClShowChatFriends, &LeftView, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClShowChatTeamMembersOnly, Localize("Show only chat messages from team members"), &g_Config.m_ClShowChatTeamMembersOnly, &LeftView, LineSize);
 
 		if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClChatOld, Localize("Use old chat style"), &g_Config.m_ClChatOld, &LeftView, LineSize))
 			GameClient()->m_Chat.RebuildChat();
@@ -2892,13 +2890,15 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 
 			if(!g_Config.m_ClShowChatFriends)
 			{
-				TempY += RenderMessageBackground(PREVIEW_HIGHLIGHT);
+				if(!g_Config.m_ClShowChatTeamMembersOnly)
+					TempY += RenderMessageBackground(PREVIEW_HIGHLIGHT);
 				TempY += RenderMessageBackground(PREVIEW_TEAM);
 			}
 
-			TempY += RenderMessageBackground(PREVIEW_FRIEND);
+			if(!g_Config.m_ClShowChatTeamMembersOnly)
+				TempY += RenderMessageBackground(PREVIEW_FRIEND);
 
-			if(!g_Config.m_ClShowChatFriends)
+			if(!g_Config.m_ClShowChatFriends && !g_Config.m_ClShowChatTeamMembersOnly)
 			{
 				TempY += RenderMessageBackground(PREVIEW_SPAMMER);
 			}
@@ -2917,9 +2917,10 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 		if(!g_Config.m_ClShowChatFriends)
 		{
 			// Highlighted
-			if(!g_Config.m_ClChatOld)
+			if(!g_Config.m_ClChatOld && !g_Config.m_ClShowChatTeamMembersOnly)
 				RenderTools()->RenderTee(pIdleState, &s_vLines[PREVIEW_HIGHLIGHT].m_RenderInfo, EMOTE_NORMAL, vec2(1, 0.1f), vec2(X + RealTeeSizeHalved, Y + OffsetTeeY + FullHeightMinusTee / 2.0f + TWSkinUnreliableOffset));
-			Y += RenderPreview(PREVIEW_HIGHLIGHT, X, Y).y;
+			if(!g_Config.m_ClShowChatTeamMembersOnly)
+				Y += RenderPreview(PREVIEW_HIGHLIGHT, X, Y).y;
 
 			// Team
 			if(!g_Config.m_ClChatOld)
@@ -2928,12 +2929,13 @@ void CMenus::RenderSettingsAppearance(CUIRect MainView)
 		}
 
 		// Friend
-		if(!g_Config.m_ClChatOld)
+		if(!g_Config.m_ClChatOld && !g_Config.m_ClShowChatTeamMembersOnly)
 			RenderTools()->RenderTee(pIdleState, &s_vLines[PREVIEW_FRIEND].m_RenderInfo, EMOTE_NORMAL, vec2(1, 0.1f), vec2(X + RealTeeSizeHalved, Y + OffsetTeeY + FullHeightMinusTee / 2.0f + TWSkinUnreliableOffset));
-		Y += RenderPreview(PREVIEW_FRIEND, X, Y).y;
+		if(!g_Config.m_ClShowChatTeamMembersOnly)
+			Y += RenderPreview(PREVIEW_FRIEND, X, Y).y;
 
 		// Normal
-		if(!g_Config.m_ClShowChatFriends)
+		if(!g_Config.m_ClShowChatFriends && !g_Config.m_ClShowChatTeamMembersOnly)
 		{
 			if(!g_Config.m_ClChatOld)
 				RenderTools()->RenderTee(pIdleState, &s_vLines[PREVIEW_SPAMMER].m_RenderInfo, EMOTE_NORMAL, vec2(1, 0.1f), vec2(X + RealTeeSizeHalved, Y + OffsetTeeY + FullHeightMinusTee / 2.0f + TWSkinUnreliableOffset));
@@ -3400,7 +3402,7 @@ void CMenus::RenderSettingsDDNet(CUIRect MainView)
 #if defined(CONF_AUTOUPDATE)
 	{
 		bool NeedUpdate = str_comp(Client()->LatestVersion(), "0");
-		int State = Updater()->GetCurrentState();
+		IUpdater::EUpdaterState State = Updater()->GetCurrentState();
 
 		// Update Button
 		char aBuf[256];
@@ -3416,7 +3418,7 @@ void CMenus::RenderSettingsDDNet(CUIRect MainView)
 			}
 		}
 		else if(State >= IUpdater::GETTING_MANIFEST && State < IUpdater::NEED_RESTART)
-			str_format(aBuf, sizeof(aBuf), Localize("Updating..."));
+			str_format(aBuf, sizeof(aBuf), Localize("Updating…"));
 		else if(State == IUpdater::NEED_RESTART)
 		{
 			str_format(aBuf, sizeof(aBuf), Localize("DDNet Client updated!"));

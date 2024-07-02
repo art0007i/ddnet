@@ -38,28 +38,19 @@ vec2 ClampVel(int MoveRestriction, vec2 Vel)
 
 CCollision::CCollision()
 {
-	m_pTiles = 0;
-	m_Width = 0;
-	m_Height = 0;
-	m_pLayers = 0;
-
-	m_pTele = 0;
-	m_pSpeedup = 0;
-	m_pFront = 0;
-	m_pSwitch = 0;
-	m_pDoor = 0;
-	m_pTune = 0;
+	m_pDoor = nullptr;
+	Unload();
 }
 
 CCollision::~CCollision()
 {
-	Dest();
+	Unload();
 }
 
 void CCollision::Init(class CLayers *pLayers)
 {
-	Dest();
-	m_HighestSwitchNumber = 0;
+	Unload();
+
 	m_pLayers = pLayers;
 	m_Width = m_pLayers->GameLayer()->m_Width;
 	m_Height = m_pLayers->GameLayer()->m_Height;
@@ -87,10 +78,6 @@ void CCollision::Init(class CLayers *pLayers)
 
 		m_pDoor = new CDoorTile[m_Width * m_Height];
 		mem_zero(m_pDoor, (size_t)m_Width * m_Height * sizeof(CDoorTile));
-	}
-	else
-	{
-		m_pDoor = 0;
 	}
 
 	if(m_pLayers->TuneLayer())
@@ -132,9 +119,6 @@ void CCollision::Init(class CLayers *pLayers)
 		}
 	}
 
-	m_TeleIns.clear();
-	m_TeleOuts.clear();
-	m_TeleCheckOuts.clear();
 	if(m_pTele)
 	{
 		for(int i = 0; i < m_Width * m_Height; i++)
@@ -155,9 +139,36 @@ void CCollision::Init(class CLayers *pLayers)
 				{
 					m_TeleCheckOuts[Number - 1].emplace_back(i % m_Width * 32.0f + 16.0f, i / m_Width * 32.0f + 16.0f);
 				}
+				else if(Type)
+				{
+					m_TeleOthers[Number - 1].emplace_back(i % m_Width * 32.0f + 16.0f, i / m_Width * 32.0f + 16.0f);
+				}
 			}
 		}
 	}
+}
+
+void CCollision::Unload()
+{
+	m_pTiles = nullptr;
+	m_Width = 0;
+	m_Height = 0;
+	m_pLayers = nullptr;
+
+	m_HighestSwitchNumber = 0;
+
+	m_TeleIns.clear();
+	m_TeleOuts.clear();
+	m_TeleCheckOuts.clear();
+	m_TeleOthers.clear();
+
+	m_pTele = nullptr;
+	m_pSpeedup = nullptr;
+	m_pFront = nullptr;
+	m_pSwitch = nullptr;
+	m_pTune = nullptr;
+	delete[] m_pDoor;
+	m_pDoor = nullptr;
 }
 
 void CCollision::FillAntibot(CAntibotMapData *pMapData)
@@ -584,21 +595,6 @@ void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, vec2 Elast
 }
 
 // DDRace
-
-void CCollision::Dest()
-{
-	delete[] m_pDoor;
-	m_pTiles = 0;
-	m_Width = 0;
-	m_Height = 0;
-	m_pLayers = 0;
-	m_pTele = 0;
-	m_pSpeedup = 0;
-	m_pFront = 0;
-	m_pSwitch = 0;
-	m_pTune = 0;
-	m_pDoor = 0;
-}
 
 int CCollision::IsSolid(int x, int y) const
 {
@@ -1164,7 +1160,7 @@ int CCollision::IntersectNoLaser(vec2 Pos0, vec2 Pos1, vec2 *pOutCollision, vec2
 
 	for(int i = 0, id = std::ceil(d); i < id; i++)
 	{
-		float a = (int)i / d;
+		float a = i / d;
 		vec2 Pos = mix(Pos0, Pos1, a);
 		int Nx = clamp(round_to_int(Pos.x) / 32, 0, m_Width - 1);
 		int Ny = clamp(round_to_int(Pos.y) / 32, 0, m_Height - 1);
@@ -1268,4 +1264,49 @@ int CCollision::IsFTimeCheckpoint(int Index) const
 	if(z >= TILE_TIME_CHECKPOINT_FIRST && z <= TILE_TIME_CHECKPOINT_LAST)
 		return z - TILE_TIME_CHECKPOINT_FIRST;
 	return -1;
+}
+
+vec2 CCollision::TeleAllGet(int Number, size_t Offset)
+{
+	if(m_TeleIns.count(Number) > 0)
+	{
+		if(m_TeleIns[Number].size() > Offset)
+			return m_TeleIns[Number][Offset];
+		else
+			Offset -= m_TeleIns[Number].size();
+	}
+	if(m_TeleOuts.count(Number) > 0)
+	{
+		if(m_TeleOuts[Number].size() > Offset)
+			return m_TeleOuts[Number][Offset];
+		else
+			Offset -= m_TeleOuts[Number].size();
+	}
+	if(m_TeleCheckOuts.count(Number) > 0)
+	{
+		if(m_TeleCheckOuts[Number].size() > Offset)
+			return m_TeleCheckOuts[Number][Offset];
+		else
+			Offset -= m_TeleCheckOuts[Number].size();
+	}
+	if(m_TeleOthers.count(Number) > 0)
+	{
+		if(m_TeleOthers[Number].size() > Offset)
+			return m_TeleOthers[Number][Offset];
+	}
+	return vec2(-1, -1);
+}
+
+size_t CCollision::TeleAllSize(int Number)
+{
+	size_t Total = 0;
+	if(m_TeleIns.count(Number) > 0)
+		Total += m_TeleIns[Number].size();
+	if(m_TeleOuts.count(Number) > 0)
+		Total += m_TeleOuts[Number].size();
+	if(m_TeleCheckOuts.count(Number) > 0)
+		Total += m_TeleCheckOuts[Number].size();
+	if(m_TeleOthers.count(Number) > 0)
+		Total += m_TeleOthers[Number].size();
+	return Total;
 }

@@ -4,11 +4,6 @@
 #include "network.h"
 #include <base/system.h>
 
-SECURITY_TOKEN ToSecurityToken(unsigned char *pData)
-{
-	return (int)pData[0] | (pData[1] << 8) | (pData[2] << 16) | (pData[3] << 24);
-}
-
 void CNetConnection::ResetStats()
 {
 	mem_zero(&m_Stats, sizeof(m_Stats));
@@ -326,10 +321,10 @@ int CNetConnection::Feed(CNetPacketConstruct *pPacket, NETADDR *pAddr, SECURITY_
 				m_State = NET_CONNSTATE_ERROR;
 				m_RemoteClosed = 1;
 
-				char aStr[128] = {0};
+				char aStr[256] = {0};
 				if(pPacket->m_DataSize > 1)
 				{
-					// make sure to sanitize the error string form the other party
+					// make sure to sanitize the error string from the other party
 					str_copy(aStr, (char *)&pPacket->m_aChunkData[1], minimum(pPacket->m_DataSize, (int)sizeof(aStr)));
 					str_sanitize_cc(aStr);
 				}
@@ -460,7 +455,7 @@ int CNetConnection::Update()
 		if(Now - pResend->m_FirstSendTime > time_freq() * g_Config.m_ConnTimeout)
 		{
 			m_State = NET_CONNSTATE_ERROR;
-			char aBuf[512];
+			char aBuf[128];
 			str_format(aBuf, sizeof(aBuf), "Too weak connection (not acked for %d seconds)", g_Config.m_ConnTimeout);
 			SetError(aBuf);
 			m_TimeoutSituation = true;
