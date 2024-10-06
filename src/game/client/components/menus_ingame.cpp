@@ -419,7 +419,15 @@ void CMenus::RenderServerInfo(CUIRect MainView)
 		if(DoButton_Menu(&s_CopyButton, Localize("Copy info"), 0, &Button))
 		{
 			char aInfo[256];
-			CurrentServerInfo.InfoToString(aInfo, sizeof(aInfo));
+			str_format(
+				aInfo,
+				sizeof(aInfo),
+				"%s\n"
+				"Address: ddnet://%s\n"
+				"My IGN: %s\n",
+				CurrentServerInfo.m_aName,
+				CurrentServerInfo.m_aAddress,
+				Client()->PlayerName());
 			Input()->SetClipboardText(aInfo);
 		}
 	}
@@ -1158,10 +1166,7 @@ void CMenus::RenderGhost(CUIRect MainView)
 		char aBuf[IO_MAX_PATH_LENGTH];
 		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "ghosts", aBuf, sizeof(aBuf));
 		Storage()->CreateFolder("ghosts", IStorage::TYPE_SAVE);
-		if(!open_file(aBuf))
-		{
-			dbg_msg("menus", "couldn't open file '%s'", aBuf);
-		}
+		Client()->ViewFile(aBuf);
 	}
 
 	Status.VSplitLeft(5.0f, &Button, &Status);

@@ -2285,7 +2285,11 @@ void CServer::FillAntibot(CAntibotRoundData *pData)
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		CAntibotPlayerData *pPlayer = &pData->m_aPlayers[i];
-		net_addr_str(m_NetServer.ClientAddr(i), pPlayer->m_aAddress, sizeof(pPlayer->m_aAddress), true);
+		// No need for expensive str_copy since we don't truncate and the string is
+		// ASCII anyway
+		static_assert(std::size((CAntibotPlayerData{}).m_aAddress) >= NETADDR_MAXSTRSIZE);
+		static_assert(sizeof(*(CNetServer{}).ClientAddrString(i)) == NETADDR_MAXSTRSIZE);
+		mem_copy(pPlayer->m_aAddress, m_NetServer.ClientAddrString(i), NETADDR_MAXSTRSIZE);
 	}
 }
 
@@ -2971,14 +2975,21 @@ int CServer::Run()
 			if(!NonActive)
 				PumpNetwork(PacketWaiting);
 
-			NonActive = true;
-
 			for(int i = 0; i < MAX_CLIENTS; ++i)
 			{
 				if(m_aClients[i].m_State == CClient::STATE_REDIRECTED)
+				{
 					if(time_get() > m_aClients[i].m_RedirectDropTime)
+					{
 						m_NetServer.Drop(i, "redirected");
-				if(m_aClients[i].m_State != CClient::STATE_EMPTY)
+					}
+				}
+			}
+
+			NonActive = true;
+			for(const auto &Client : m_aClients)
+			{
+				if(Client.m_State != CClient::STATE_EMPTY)
 				{
 					NonActive = false;
 					break;
