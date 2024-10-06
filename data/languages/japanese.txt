@@ -274,9 +274,6 @@ Player
 Player country:
 == 所在地:
 
-Player options
-== プレイヤー設定
-
 Players
 == プレーヤー
 
@@ -458,9 +455,6 @@ Max demos
 
 Internet
 == オンライン
-
-Round
-== ラウンド
 
 News
 == ニュース
@@ -686,9 +680,6 @@ Kill
 
 Pause
 == 観察
-
-Reload
-== 更新
 
 Deactivate
 == 無効にする
@@ -1138,7 +1129,16 @@ Could not initialize the given graphics backend, reverting to the default backen
 Could not initialize the given graphics backend, this is probably because you didn't install the driver of the integrated graphics card.
 == 
 
+Could not resolve connect address '%s'. See local console for details.
+== 
+
+Connect address error
+== 
+
 Could not save downloaded map. Try manually deleting this file: %s
+== 
+
+Could not connect dummy
 == 
 
 Error playing demo
@@ -1168,10 +1168,10 @@ Loading map file from storage
 Loading demo file from storage
 == 
 
-Why are you slowmo replaying to read this?
+Initializing components
 == 
 
-Initializing components
+Why are you slowmo replaying to read this?
 == 
 
 Initializing assets
@@ -1234,6 +1234,10 @@ Angle:
 Multi-View
 == 
 
+[Spectating]
+Following %s
+== 
+
 Team %d
 == 
 
@@ -1262,6 +1266,12 @@ Render complete
 == 
 
 Are you sure that you want to restart?
+== 
+
+Save skin
+== 
+
+Are you sure you want to save your skin? If a skin with this name already exists, it will be replaced.
 == 
 
 There's an unsaved map in the editor, you might want to save it.
@@ -1295,6 +1305,12 @@ Join Tutorial Server
 == 
 
 Skip Tutorial
+== 
+
+Unable to save the skin
+== 
+
+Unable to save the skin with a reserved name
 == 
 
 Trying to determine UDP connectivity…
@@ -1340,6 +1356,12 @@ SA
 == 
 
 CHN
+== 
+
+No local servers found (ports %d-%d)
+== 
+
+Example of usage
 == 
 
 Are you sure that you want to disconnect and switch to a different server?
@@ -1508,6 +1530,12 @@ Unable to delete the demo '%s'
 Unable to delete the folder '%s'. Make sure it's empty first.
 == 
 
+Dummy is not allowed on this server
+== 
+
+Please wait…
+== 
+
 Loading…
 == 
 
@@ -1524,6 +1552,10 @@ Deactivate all
 == 
 
 Menu opened. Press Esc key again to close menu.
+== 
+
+[Hertz]
+Hz
 == 
 
 Save power by lowering refresh rate (higher input latency)
@@ -1660,7 +1692,7 @@ Show local time always
 DDRace HUD
 == 
 
-Show client IDs in scoreboard
+Show client IDs (scoreboard, chat, spectator)
 == 
 
 Show DDRace HUD
@@ -1825,6 +1857,21 @@ Chat command (e.g. showall 1)
 Unregister protocol and file extensions
 == 
 
+Basic
+== 
+
+Custom
+== 
+
+Are you sure that you want to delete '%s'?
+== 
+
+Delete skin
+== 
+
+Unable to delete skin
+== 
+
 Extras
 == 
 
@@ -1843,11 +1890,52 @@ Can't find a Tutorial server
 Loading race demo files
 == 
 
+Round %d/%d
+== 
+
+[Spectators]
+%d others…
+== 
+
 Super
+== 
+
+[Team and size]
+%d\n(%d/%d)
+== 
+
+Team %d (%d/%d)
+== 
+
+[skins]
+Body
+== 
+
+[skins]
+Marking
+== 
+
+[skins]
+Decoration
+== 
+
+[skins]
+Hands
+== 
+
+[skins]
+Feet
+== 
+
+[skins]
+Eyes
 == 
 
 Loading sound files
 == 
 
 Moved ingame
+== 
+
+https://wiki.ddnet.org/wiki/Mapping
 == 

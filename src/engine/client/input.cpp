@@ -68,9 +68,6 @@ CInput::CInput()
 
 	m_MouseFocus = true;
 
-	m_pClipboardText = nullptr;
-
-	m_CompositionLength = COMP_LENGTH_INACTIVE;
 	m_CompositionCursor = 0;
 	m_CandidateSelectedIndex = -1;
 
@@ -83,6 +80,7 @@ void CInput::Init()
 
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
 	m_pConsole = Kernel()->RequestInterface<IConsole>();
+	m_pConfigManager = Kernel()->RequestInterface<IConfigManager>();
 
 	MouseModeRelative();
 
@@ -91,7 +89,6 @@ void CInput::Init()
 
 void CInput::Shutdown()
 {
-	SDL_free(m_pClipboardText);
 	CloseJoysticks();
 }
 
@@ -263,14 +260,7 @@ bool CInput::MouseRelative(float *pX, float *pY)
 		return false;
 
 	ivec2 Relative;
-#if defined(CONF_PLATFORM_ANDROID) // No relative mouse on Android
-	ivec2 CurrentPos;
-	SDL_GetMouseState(&CurrentPos.x, &CurrentPos.y);
-	Relative = CurrentPos - m_LastMousePos;
-	m_LastMousePos = CurrentPos;
-#else
 	SDL_GetRelativeMouseState(&Relative.x, &Relative.y);
-#endif
 
 	*pX = Relative.x;
 	*pY = Relative.y;
@@ -287,30 +277,36 @@ void CInput::MouseModeAbsolute()
 void CInput::MouseModeRelative()
 {
 	m_InputGrabbed = true;
-#if !defined(CONF_PLATFORM_ANDROID) // No relative mouse on Android
 	SDL_SetRelativeMouseMode(SDL_TRUE);
-#endif
 	Graphics()->SetWindowGrab(true);
 	// Clear pending relative mouse motion
 	SDL_GetRelativeMouseState(nullptr, nullptr);
 }
 
-void CInput::NativeMousePos(int *pX, int *pY) const
+vec2 CInput::NativeMousePos() const
 {
-	SDL_GetMouseState(pX, pY);
+	ivec2 Position;
+	SDL_GetMouseState(&Position.x, &Position.y);
+	return vec2(Position.x, Position.y);
 }
 
-bool CInput::NativeMousePressed(int Index)
+bool CInput::NativeMousePressed(int Index) const
 {
 	int i = SDL_GetMouseState(nullptr, nullptr);
 	return (i & SDL_BUTTON(Index)) != 0;
 }
 
-const char *CInput::GetClipboardText()
+const std::vector<IInput::CTouchFingerState> &CInput::TouchFingerStates() const
 {
-	SDL_free(m_pClipboardText);
-	m_pClipboardText = SDL_GetClipboardText();
-	return m_pClipboardText;
+	return m_vTouchFingerStates;
+}
+
+std::string CInput::GetClipboardText()
+{
+	char *pClipboardText = SDL_GetClipboardText();
+	std::string ClipboardText = pClipboardText;
+	SDL_free(pClipboardText);
+	return ClipboardText;
 }
 
 void CInput::SetClipboardText(const char *pText)
@@ -330,9 +326,8 @@ void CInput::StopTextInput()
 	SDL_StopTextInput();
 	// disable system messages for performance
 	SDL_EventState(SDL_SYSWMEVENT, SDL_DISABLE);
-	m_CompositionLength = COMP_LENGTH_INACTIVE;
+	m_CompositionString = "";
 	m_CompositionCursor = 0;
-	m_aComposition[0] = '\0';
 	m_vCandidates.clear();
 }
 
@@ -353,6 +348,10 @@ void CInput::Clear()
 	mem_zero(m_aInputState, sizeof(m_aInputState));
 	mem_zero(m_aInputCount, sizeof(m_aInputCount));
 	m_vInputEvents.clear();
+	for(CTouchFingerState &TouchFingerState : m_vTouchFingerStates)
+	{
+		TouchFingerState.m_Delta = vec2(0.0f, 0.0f);
+	}
 }
 
 float CInput::GetUpdateTime() const
@@ -365,6 +364,26 @@ bool CInput::KeyState(int Key) const
 	if(Key < KEY_FIRST || Key >= KEY_LAST)
 		return false;
 	return m_aInputState[Key];
+}
+
+int CInput::FindKeyByName(const char *pKeyName) const
+{
+	// check for numeric
+	if(pKeyName[0] == '&')
+	{
+		int Key = str_toint(pKeyName + 1);
+		if(Key > KEY_FIRST && Key < KEY_LAST)
+			return Key; // numeric
+	}
+
+	// search for key
+	for(int Key = KEY_FIRST; Key < KEY_LAST; Key++)
+	{
+		if(str_comp_nocase(pKeyName, KeyName(Key)) == 0)
+			return Key;
+	}
+
+	return KEY_UNKNOWN;
 }
 
 void CInput::UpdateMouseState()
@@ -539,6 +558,59 @@ void CInput::HandleJoystickRemovedEvent(const SDL_JoyDeviceEvent &Event)
 	}
 }
 
+void CInput::HandleTouchDownEvent(const SDL_TouchFingerEvent &Event)
+{
+	CTouchFingerState TouchFingerState;
+	TouchFingerState.m_Finger.m_DeviceId = Event.touchId;
+	TouchFingerState.m_Finger.m_FingerId = Event.fingerId;
+	TouchFingerState.m_Position = vec2(Event.x, Event.y);
+	TouchFingerState.m_Delta = vec2(Event.dx, Event.dy);
+	m_vTouchFingerStates.emplace_back(TouchFingerState);
+}
+
+void CInput::HandleTouchUpEvent(const SDL_TouchFingerEvent &Event)
+{
+	auto FoundState = std::find_if(m_vTouchFingerStates.begin(), m_vTouchFingerStates.end(), [Event](const CTouchFingerState &State) {
+		return State.m_Finger.m_DeviceId == Event.touchId && State.m_Finger.m_FingerId == Event.fingerId;
+	});
+	if(FoundState != m_vTouchFingerStates.end())
+	{
+		m_vTouchFingerStates.erase(FoundState);
+	}
+}
+
+void CInput::HandleTouchMotionEvent(const SDL_TouchFingerEvent &Event)
+{
+	auto FoundState = std::find_if(m_vTouchFingerStates.begin(), m_vTouchFingerStates.end(), [Event](const CTouchFingerState &State) {
+		return State.m_Finger.m_DeviceId == Event.touchId && State.m_Finger.m_FingerId == Event.fingerId;
+	});
+	if(FoundState != m_vTouchFingerStates.end())
+	{
+		FoundState->m_Position = vec2(Event.x, Event.y);
+		FoundState->m_Delta += vec2(Event.dx, Event.dy);
+	}
+}
+
+void CInput::HandleTextEditingEvent(const char *pText, int Start, int Length)
+{
+	if(pText[0] != '\0')
+	{
+		m_CompositionString = pText;
+		m_CompositionCursor = 0;
+		for(int i = 0; i < Start; i++)
+		{
+			m_CompositionCursor = str_utf8_forward(m_CompositionString.c_str(), m_CompositionCursor);
+		}
+		// Length is currently unused on Windows and will always be 0, so we don't support selecting composition text
+		AddTextEvent("");
+	}
+	else
+	{
+		m_CompositionString = "";
+		m_CompositionCursor = 0;
+	}
+}
+
 void CInput::SetCompositionWindowPosition(float X, float Y, float H)
 {
 	SDL_Rect Rect;
@@ -623,64 +695,27 @@ int CInput::Update()
 			break;
 
 		case SDL_TEXTEDITING:
-		{
-			m_CompositionLength = str_length(Event.edit.text);
-			if(m_CompositionLength)
-			{
-				str_copy(m_aComposition, Event.edit.text);
-				m_CompositionCursor = 0;
-				for(int i = 0; i < Event.edit.start; i++)
-					m_CompositionCursor = str_utf8_forward(m_aComposition, m_CompositionCursor);
-				// Event.edit.length is currently unused on Windows and will always be 0, so we don't support selecting composition text
-				AddTextEvent("");
-			}
-			else
-			{
-				m_aComposition[0] = '\0';
-				m_CompositionLength = 0;
-				m_CompositionCursor = 0;
-			}
+			HandleTextEditingEvent(Event.edit.text, Event.edit.start, Event.edit.length);
 			break;
-		}
+
+#if SDL_VERSION_ATLEAST(2, 0, 22)
+		case SDL_TEXTEDITING_EXT:
+			HandleTextEditingEvent(Event.editExt.text, Event.editExt.start, Event.editExt.length);
+			SDL_free(Event.editExt.text);
+			break;
+#endif
 
 		case SDL_TEXTINPUT:
-			m_aComposition[0] = '\0';
-			m_CompositionLength = COMP_LENGTH_INACTIVE;
+			m_CompositionString = "";
 			m_CompositionCursor = 0;
 			AddTextEvent(Event.text.text);
 			break;
 
 		// handle keys
 		case SDL_KEYDOWN:
-#if defined(CONF_PLATFORM_ANDROID)
-			if(Event.key.keysym.scancode == KEY_AC_BACK && m_BackButtonReleased)
-			{
-				if(m_LastBackPress == -1 || (Now - m_LastBackPress) / (float)time_freq() > 1.0f)
-				{
-					m_NumBackPresses = 1;
-					m_LastBackPress = Now;
-				}
-				else
-				{
-					m_NumBackPresses++;
-					if(m_NumBackPresses >= 3)
-					{
-						// Quit if the Android back-button was pressed 3 times within 1 second
-						return 1;
-					}
-				}
-				m_BackButtonReleased = false;
-			}
-#endif
 			Scancode = TranslateScancode(Event.key);
 			break;
 		case SDL_KEYUP:
-#if defined(CONF_PLATFORM_ANDROID)
-			if(Event.key.keysym.scancode == KEY_AC_BACK && !m_BackButtonReleased)
-			{
-				m_BackButtonReleased = true;
-			}
-#endif
 			Action = IInput::FLAG_RELEASE;
 			Scancode = TranslateScancode(Event.key);
 			break;
@@ -745,6 +780,18 @@ int CInput::Update()
 			Action |= IInput::FLAG_RELEASE;
 			break;
 
+		case SDL_FINGERDOWN:
+			HandleTouchDownEvent(Event.tfinger);
+			break;
+
+		case SDL_FINGERUP:
+			HandleTouchUpEvent(Event.tfinger);
+			break;
+
+		case SDL_FINGERMOTION:
+			HandleTouchMotionEvent(Event.tfinger);
+			break;
+
 		case SDL_WINDOWEVENT:
 			// Ignore keys following a focus gain as they may be part of global
 			// shortcuts
@@ -778,6 +825,9 @@ int CInput::Update()
 				}
 				break;
 			case SDL_WINDOWEVENT_MINIMIZED:
+#if defined(CONF_PLATFORM_ANDROID) // Save the config when minimized on Android.
+				m_pConfigManager->Save();
+#endif
 				Graphics()->WindowDestroyNtf(Event.window.windowID);
 				break;
 
@@ -813,9 +863,6 @@ int CInput::Update()
 			AddKeyEvent(Scancode, Action);
 		}
 	}
-
-	if(m_CompositionLength == 0)
-		m_CompositionLength = COMP_LENGTH_INACTIVE;
 
 	return 0;
 }

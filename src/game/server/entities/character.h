@@ -51,6 +51,7 @@ public:
 	void SetJumps(int Jumps);
 	void SetSolo(bool Solo);
 	void SetSuper(bool Super);
+	void SetInvincible(bool Invincible);
 	void SetLiveFrozen(bool Active);
 	void SetDeepFrozen(bool Active);
 	void HandleWeaponSwitch();
@@ -263,6 +264,7 @@ public:
 	bool IsSuper() const { return m_Core.m_Super; }
 
 	CSaveTee &GetLastRescueTeeRef(int Mode = RESCUEMODE_AUTO) { return m_RescueTee[Mode]; }
+	CTuningParams *GetTuning(int Zone) { return Zone ? &TuningList()[Zone] : Tuning(); }
 };
 
 enum

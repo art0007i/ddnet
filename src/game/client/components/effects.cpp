@@ -53,11 +53,6 @@ void CEffects::DamageIndicator(vec2 Pos, vec2 Dir, float Alpha)
 	m_pClient->m_DamageInd.Create(Pos, Dir, Alpha);
 }
 
-void CEffects::ResetDamageIndicator()
-{
-	m_pClient->m_DamageInd.Reset();
-}
-
 void CEffects::PowerupShine(vec2 Pos, vec2 Size, float Alpha)
 {
 	if(!m_Add50hz)
@@ -106,6 +101,26 @@ void CEffects::FreezingFlakes(vec2 Pos, vec2 Size, float Alpha)
 	p.m_Color.a = Alpha;
 	p.m_StartAlpha = Alpha;
 	m_pClient->m_Particles.Add(CParticles::GROUP_EXTRA, &p);
+}
+
+void CEffects::SparkleTrail(vec2 Pos, float Alpha)
+{
+	if(!m_Add50hz)
+		return;
+
+	CParticle p;
+	p.SetDefault();
+	p.m_Spr = SPRITE_PART_SPARKLE;
+	p.m_Pos = Pos + random_direction() * random_float(40.0f);
+	p.m_Vel = vec2(0, 0);
+	p.m_LifeSpan = 0.5f;
+	p.m_StartSize = 0.0f;
+	p.m_EndSize = random_float(20.0f, 30.0f);
+	p.m_UseAlphaFading = true;
+	p.m_StartAlpha = Alpha;
+	p.m_EndAlpha = std::min(0.2f, Alpha);
+	p.m_Collides = false;
+	m_pClient->m_Particles.Add(CParticles::GROUP_TRAIL_EXTRA, &p);
 }
 
 void CEffects::SmokeTrail(vec2 Pos, vec2 Vel, float Alpha, float TimePassed)
@@ -231,7 +246,7 @@ void CEffects::PlayerDeath(vec2 Pos, int ClientId, float Alpha)
 	}
 }
 
-void CEffects::FinishConfetti(vec2 Pos, float Alpha)
+void CEffects::Confetti(vec2 Pos, float Alpha)
 {
 	ColorRGBA Red(1.0f, 0.4f, 0.4f);
 	ColorRGBA Green(0.4f, 1.0f, 0.4f);

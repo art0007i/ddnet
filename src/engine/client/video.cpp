@@ -283,6 +283,7 @@ void CVideo::Pause(bool Pause)
 void CVideo::Stop()
 {
 	dbg_assert(!m_Stopped, "Already stopped");
+	m_Stopped = true;
 
 	m_pGraphics->WaitForIdle();
 
@@ -341,8 +342,6 @@ void CVideo::Stop()
 	pSound->PauseAudioDevice();
 	delete ms_pCurrentVideo;
 	pSound->UnpauseAudioDevice();
-
-	m_Stopped = true;
 }
 
 void CVideo::NextVideoFrameThread()
@@ -826,7 +825,11 @@ bool CVideo::OpenAudio()
 		}
 
 		/* set options */
-		dbg_assert(av_opt_set_int(m_AudioStream.m_vpSwrContexts[i], "in_channel_count", 2, 0) == 0, "invalid option");
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(59, 24, 100)
+		dbg_assert(av_opt_set_chlayout(m_AudioStream.m_vpSwrContexts[i], "in_chlayout", &pContext->ch_layout, 0) == 0, "invalid option");
+#else
+		dbg_assert(av_opt_set_int(m_AudioStream.m_vpSwrContexts[i], "in_channel_count", pContext->channels, 0) == 0, "invalid option");
+#endif
 		if(av_opt_set_int(m_AudioStream.m_vpSwrContexts[i], "in_sample_rate", m_pSound->MixingRate(), 0) != 0)
 		{
 			log_error("videorecorder", "Could not set audio sample rate to %d", m_pSound->MixingRate());
@@ -834,7 +837,7 @@ bool CVideo::OpenAudio()
 		}
 		dbg_assert(av_opt_set_sample_fmt(m_AudioStream.m_vpSwrContexts[i], "in_sample_fmt", AV_SAMPLE_FMT_S16, 0) == 0, "invalid option");
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(59, 24, 100)
-		dbg_assert(av_opt_set_int(m_AudioStream.m_vpSwrContexts[i], "out_channel_count", pContext->ch_layout.nb_channels, 0) == 0, "invalid option");
+		dbg_assert(av_opt_set_chlayout(m_AudioStream.m_vpSwrContexts[i], "out_chlayout", &pContext->ch_layout, 0) == 0, "invalid option");
 #else
 		dbg_assert(av_opt_set_int(m_AudioStream.m_vpSwrContexts[i], "out_channel_count", pContext->channels, 0) == 0, "invalid option");
 #endif
@@ -890,13 +893,23 @@ bool CVideo::AddStream(COutputStream *pStream, AVFormatContext *pFormatContext, 
 	switch((*ppCodec)->type)
 	{
 	case AVMEDIA_TYPE_AUDIO:
-		pContext->sample_fmt = (*ppCodec)->sample_fmts ? (*ppCodec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
-		if((*ppCodec)->supported_samplerates)
+	{
+		const AVSampleFormat *pSampleFormats = nullptr;
+		const int *pSampleRates = nullptr;
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(61, 13, 100)
+		avcodec_get_supported_config(pContext, *ppCodec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0, (const void **)&pSampleFormats, nullptr);
+		avcodec_get_supported_config(pContext, *ppCodec, AV_CODEC_CONFIG_SAMPLE_RATE, 0, (const void **)&pSampleRates, nullptr);
+#else
+		pSampleFormats = (*ppCodec)->sample_fmts;
+		pSampleRates = (*ppCodec)->supported_samplerates;
+#endif
+		pContext->sample_fmt = pSampleFormats ? pSampleFormats[0] : AV_SAMPLE_FMT_FLTP;
+		if(pSampleRates)
 		{
-			pContext->sample_rate = (*ppCodec)->supported_samplerates[0];
-			for(int i = 0; (*ppCodec)->supported_samplerates[i]; i++)
+			pContext->sample_rate = pSampleRates[0];
+			for(int i = 0; pSampleRates[i]; i++)
 			{
-				if((*ppCodec)->supported_samplerates[i] == m_pSound->MixingRate())
+				if(pSampleRates[i] == m_pSound->MixingRate())
 				{
 					pContext->sample_rate = m_pSound->MixingRate();
 					break;
@@ -918,6 +931,7 @@ bool CVideo::AddStream(COutputStream *pStream, AVFormatContext *pFormatContext, 
 		pStream->m_pStream->time_base.num = 1;
 		pStream->m_pStream->time_base.den = pContext->sample_rate;
 		break;
+	}
 
 	case AVMEDIA_TYPE_VIDEO:
 		pContext->codec_id = CodecId;

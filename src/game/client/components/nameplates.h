@@ -22,38 +22,29 @@ struct SPlayerNamePlate
 	void Reset()
 	{
 		m_NameTextContainerIndex.Reset();
-		m_ClanNameTextContainerIndex.Reset();
-		m_SkinNameTextContainerIndex.Reset();
-		m_aName[0] = 0;
-		m_aClanName[0] = 0;
-		m_aSkinName[0] = 0;
-		m_NameTextWidth = m_ClanNameTextWidth = m_SkinNameTextWidth = 0.f;
-		m_NameTextFontSize = m_ClanNameTextFontSize = m_SkinNameTextFontSize = 0;
+		m_ClanTextContainerIndex.Reset();
+        m_SkinTextContainerIndex.Reset();
+		m_aName[0] = '\0';
+		m_aClan[0] = '\0';
+		m_aSkin[0] = '\0';
+		m_NameTextFontSize = m_ClanTextFontSize = 0.0f;
 	}
 
 	char m_aName[MAX_NAME_LENGTH];
-	float m_NameTextWidth;
 	STextContainerIndex m_NameTextContainerIndex;
 	float m_NameTextFontSize;
 
-	char m_aClanName[MAX_CLAN_LENGTH];
-	float m_ClanNameTextWidth;
-	STextContainerIndex m_ClanNameTextContainerIndex;
-	float m_ClanNameTextFontSize;
-
-	char m_aSkinName[64];
-	float m_SkinNameTextWidth;
-	STextContainerIndex m_SkinNameTextContainerIndex;
-	float m_SkinNameTextFontSize;
+	char m_aClan[MAX_CLAN_LENGTH];
+	STextContainerIndex m_ClanTextContainerIndex;
+	float m_ClanTextFontSize;
+    
+    char m_aSkin[MAX_SKIN_LENGTH];
+	STextContainerIndex m_SkinTextContainerIndex;
 };
 
 class CNamePlates : public CComponent
 {
-	void RenderNameplate(
-		const CNetObj_Character *pPrevChar,
-		const CNetObj_Character *pPlayerChar,
-		const CNetObj_PlayerInfo *pPlayerInfo);
-	void RenderNameplatePos(vec2 Position, const CNetObj_PlayerInfo *pPlayerInfo, float Alpha, bool ForceAlpha = false);
+	void RenderNameplate(vec2 Position, const CNetObj_PlayerInfo *pPlayerInfo, float Alpha, bool ForceAlpha);
 
 	SPlayerNamePlate m_aNamePlates[MAX_CLIENTS];
 

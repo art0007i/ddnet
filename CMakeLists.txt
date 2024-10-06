@@ -40,7 +40,9 @@ else()
   set(TARGET_BITS "64")
 endif()
 
-if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "arm" OR "${CMAKE_SYSTEM_PROCESSOR}" MATCHES "aarch64")
+if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "arm" 
+  OR "${CMAKE_SYSTEM_PROCESSOR}" MATCHES "aarch64"
+  OR "${CMAKE_SYSTEM_PROCESSOR}" MATCHES "ARM64")
   if(TARGET_BITS STREQUAL "32")
     set(TARGET_CPU_ARCHITECTURE "arm")
   else()
@@ -871,11 +873,11 @@ list(APPEND TARGETS_OWN rust-bridge-shared)
 
 if(TARGET_OS STREQUAL "android")
   set(CARGO_BUILD_DIR "${CARGO_NDK_TARGET}/")
-  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} ndk -t ${CARGO_NDK_TARGET} -p ${CARGO_NDK_API} build)
+  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} ndk --manifest-path "${PROJECT_SOURCE_DIR}/Cargo.toml" -t ${CARGO_NDK_TARGET} -p ${CARGO_NDK_API} build)
   set(CARGO_TEST ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} ${RUST_CARGO} ndk -t ${CARGO_NDK_TARGET} -p ${CARGO_NDK_API} test)
 else()
   set(CARGO_BUILD_DIR "")
-  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} build)
+  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} build --manifest-path "${PROJECT_SOURCE_DIR}/Cargo.toml")
   set(CARGO_TEST ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} ${RUST_CARGO} test)
 endif()
 if(MSVC)
@@ -911,7 +913,6 @@ else()
   endif()
 endif()
 list(APPEND CARGO_BUILD $<$<NOT:$<CONFIG:Debug>>:--release>)
-list(APPEND CARGO_BUILD --manifest-path "${PROJECT_SOURCE_DIR}/Cargo.toml")
 
 if(CMAKE_OSX_ARCHITECTURES)
   set(RUST_OSX_ARCHITECTURES)
@@ -995,6 +996,7 @@ endif()
 ########################################################################
 
 set(EXPECTED_DATA
+  announcement.txt
   arrow.png
   assets/entities/comfort/ddnet.png
   assets/entities/license.txt
@@ -1387,10 +1389,12 @@ set(EXPECTED_DATA
   countryflags/ZW.png
   countryflags/default.png
   countryflags/index.txt
+  deadtee.png
   debug_font.png
   editor/audio_source.png
   editor/automap/basic_freeze.rules
   editor/automap/ddmax_freeze.rules
+  editor/automap/ddnet_grass.rules
   editor/automap/ddnet_tiles.rules
   editor/automap/ddnet_walls.rules
   editor/automap/desert_main.rules
@@ -1399,7 +1403,6 @@ set(EXPECTED_DATA
   editor/automap/generic_unhookable.rules
   editor/automap/generic_unhookable_0.7.rules
   editor/automap/grass_main.rules
-  editor/automap/grass_main_0.7.rules
   editor/automap/jungle_main.rules
   editor/automap/jungle_midground.rules
   editor/automap/round_tiles.rules
@@ -1487,6 +1490,7 @@ set(EXPECTED_DATA
   mapres/bg_cloud2.png
   mapres/bg_cloud3.png
   mapres/ddmax_freeze.png
+  mapres/ddnet_grass.png
   mapres/ddnet_start.png
   mapres/ddnet_tiles.png
   mapres/ddnet_walls.png
@@ -1700,6 +1704,130 @@ set(EXPECTED_DATA
   skins/whis.png
   skins/x_ninja.png
   skins/x_spec.png
+  skins7/beaver.json
+  skins7/bluekitty.json
+  skins7/bluestripe.json
+  skins7/body/bat.png
+  skins7/body/bear.png
+  skins7/body/beaver.png
+  skins7/body/dog.png
+  skins7/body/force.png
+  skins7/body/fox.png
+  skins7/body/greensward.png
+  skins7/body/hippo.png
+  skins7/body/kitty.png
+  skins7/body/koala.png
+  skins7/body/monkey.png
+  skins7/body/mouse.png
+  skins7/body/piglet.png
+  skins7/body/raccoon.png
+  skins7/body/spiky.png
+  skins7/body/standard.png
+  skins7/body/x_ninja.png
+  skins7/bot.png
+  skins7/brownbear.json
+  skins7/bumbler.json
+  skins7/cammo.json
+  skins7/cammostripes.json
+  skins7/cavebat.json
+  skins7/decoration/hair.png
+  skins7/decoration/twinbopp.png
+  skins7/decoration/twinmello.png
+  skins7/decoration/twinpen.png
+  skins7/decoration/unibop.png
+  skins7/decoration/unimelo.png
+  skins7/decoration/unipento.png
+  skins7/default.json
+  skins7/eyes/colorable.png
+  skins7/eyes/negative.png
+  skins7/eyes/standard.png
+  skins7/eyes/standardreal.png
+  skins7/eyes/x_ninja.png
+  skins7/feet/standard.png
+  skins7/force.json
+  skins7/fox.json
+  skins7/greensward.json
+  skins7/greycoon.json
+  skins7/greyfox.json
+  skins7/hands/standard.png
+  skins7/hippo.json
+  skins7/koala.json
+  skins7/limedog.json
+  skins7/limekitty.json
+  skins7/marking/bear.png
+  skins7/marking/belly1.png
+  skins7/marking/belly2.png
+  skins7/marking/blush.png
+  skins7/marking/bug.png
+  skins7/marking/cammo1.png
+  skins7/marking/cammo2.png
+  skins7/marking/cammostripes.png
+  skins7/marking/coonfluff.png
+  skins7/marking/donny.png
+  skins7/marking/downdony.png
+  skins7/marking/duodonny.png
+  skins7/marking/fox.png
+  skins7/marking/hipbel.png
+  skins7/marking/lowcross.png
+  skins7/marking/lowpaint.png
+  skins7/marking/marksman.png
+  skins7/marking/mice.png
+  skins7/marking/mixture1.png
+  skins7/marking/mixture2.png
+  skins7/marking/monkey.png
+  skins7/marking/panda1.png
+  skins7/marking/panda2.png
+  skins7/marking/purelove.png
+  skins7/marking/saddo.png
+  skins7/marking/setisu.png
+  skins7/marking/sidemarks.png
+  skins7/marking/singu.png
+  skins7/marking/stripe.png
+  skins7/marking/striped.png
+  skins7/marking/stripes.png
+  skins7/marking/stripes2.png
+  skins7/marking/thunder.png
+  skins7/marking/tiger1.png
+  skins7/marking/tiger2.png
+  skins7/marking/toptri.png
+  skins7/marking/triangular.png
+  skins7/marking/tricircular.png
+  skins7/marking/tripledon.png
+  skins7/marking/tritri.png
+  skins7/marking/twinbelly.png
+  skins7/marking/twincross.png
+  skins7/marking/twintri.png
+  skins7/marking/uppy.png
+  skins7/marking/warpaint.png
+  skins7/marking/warstripes.png
+  skins7/marking/whisker.png
+  skins7/marking/wildpaint.png
+  skins7/marking/wildpatch.png
+  skins7/marking/yinyang.png
+  skins7/monkey.json
+  skins7/paintgre.json
+  skins7/pandabear.json
+  skins7/panther.json
+  skins7/pento.json
+  skins7/piggy.json
+  skins7/pinky.json
+  skins7/raccoon.json
+  skins7/redbopp.json
+  skins7/redstripe.json
+  skins7/saddo.json
+  skins7/setisu.json
+  skins7/snowti.json
+  skins7/spiky.json
+  skins7/swardy.json
+  skins7/tiger.json
+  skins7/tooxy.json
+  skins7/toptri.json
+  skins7/twinbop.json
+  skins7/twintri.json
+  skins7/warmouse.json
+  skins7/warpaint.json
+  skins7/x_ninja.json
+  skins7/xmas_hat.png
   strong_weak.png
   themes/auto.png
   themes/autumn.png
@@ -1906,6 +2034,7 @@ set_src(ENGINE_INTERFACE GLOB src/engine
   ghost.h
   graphics.h
   http.h
+  image.h
   input.h
   kernel.h
   keys.h
@@ -1987,10 +2116,13 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   protocol_ex.cpp
   protocol_ex.h
   protocol_ex_msgs.h
+  protocolglue.cpp
+  protocolglue.h
   ringbuffer.cpp
   ringbuffer.h
   serverinfo.cpp
   serverinfo.h
+  sixup_translate_snapshot.cpp
   snapshot.cpp
   snapshot.h
   storage.cpp
@@ -1999,6 +2131,8 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   teehistorian_ex.cpp
   teehistorian_ex.h
   teehistorian_ex_chunks.h
+  translation_context.cpp
+  translation_context.h
   uuid_manager.cpp
   uuid_manager.h
   video.cpp
@@ -2007,6 +2141,7 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   websockets.h
 )
 set_src(ENGINE_GFX GLOB src/engine/gfx
+  image.cpp
   image_loader.cpp
   image_loader.h
   image_manipulation.cpp
@@ -2149,6 +2284,7 @@ if(CLIENT)
     demoedit.cpp
     demoedit.h
     discord.cpp
+    enums.h
     favorites.cpp
     friends.cpp
     friends.h
@@ -2170,6 +2306,7 @@ if(CLIENT)
     serverbrowser_http.h
     serverbrowser_ping_cache.cpp
     serverbrowser_ping_cache.h
+    sixup_translate_system.cpp
     smooth_time.cpp
     smooth_time.h
     sound.cpp
@@ -2238,6 +2375,7 @@ if(CLIENT)
     components/menus_demo.cpp
     components/menus_ingame.cpp
     components/menus_settings.cpp
+    components/menus_settings7.cpp
     components/menus_settings_assets.cpp
     components/menus_start.cpp
     components/motd.cpp
@@ -2254,6 +2392,8 @@ if(CLIENT)
     components/scoreboard.h
     components/skins.cpp
     components/skins.h
+    components/skins7.cpp
+    components/skins7.h
     components/sounds.cpp
     components/sounds.h
     components/spectator.cpp
@@ -2293,6 +2433,8 @@ if(CLIENT)
     render.cpp
     render.h
     render_map.cpp
+    sixup_translate_game.cpp
+    sixup_translate_snapshot.cpp
     skin.h
     ui.cpp
     ui.h
@@ -2323,6 +2465,7 @@ if(CLIENT)
     editor_trackers.cpp
     editor_trackers.h
     editor_ui.h
+    enums.h
     explanations.cpp
     layer_selector.cpp
     layer_selector.h
@@ -2361,8 +2504,13 @@ if(CLIENT)
     mapitems/sound.cpp
     mapitems/sound.h
     popups.cpp
+    prompt.cpp
+    prompt.h
     proof_mode.cpp
     proof_mode.h
+    quick_action.h
+    quick_actions.cpp
+    quick_actions.h
     smooth_value.cpp
     smooth_value.h
     tileart.cpp
@@ -2785,6 +2933,7 @@ if(GTEST_FOUND OR DOWNLOAD_GTEST)
     compression.cpp
     csv.cpp
     datafile.cpp
+    editor.cpp
     fs.cpp
     git_revision.cpp
     hash.cpp
@@ -2975,6 +3124,8 @@ set(CPACK_GENERATOR TGZ TXZ)
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 if(TARGET_OS STREQUAL "mac")
   set(CPACK_STRIP_FILES FALSE)
+elseif(TARGET_OS STREQUAL "windows" AND TARGET_CPU_ARCHITECTURE STREQUAL "arm64")
+  set(CPACK_STRIP_FILES FALSE)
 else()
   set(CPACK_STRIP_FILES TRUE)
 endif()
@@ -2988,7 +3139,11 @@ set(CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
 
 if(TARGET_OS AND TARGET_BITS)
   if(TARGET_OS STREQUAL "windows")
-    set(CPACK_SYSTEM_NAME "win${TARGET_BITS}")
+    if (TARGET_CPU_ARCHITECTURE STREQUAL "arm64")
+      set(CPACK_SYSTEM_NAME "win-arm64")
+    else()
+      set(CPACK_SYSTEM_NAME "win${TARGET_BITS}")
+    endif()
     set(CPACK_GENERATOR ZIP)
   elseif(TARGET_OS STREQUAL "linux")
     # Let compiler tell its arch
@@ -3118,10 +3273,16 @@ if(NOT DEV)
     install(TARGETS ${TARGET_ANTIBOT} DESTINATION ${CMAKE_INSTALL_LIBDIR}/ddnet COMPONENT server)
   endif()
   install(TARGETS ${TARGETS_TOOLS} DESTINATION ${CMAKE_INSTALL_LIBDIR}/ddnet COMPONENT tools)
-  install(FILES other/ddnet.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications COMPONENT client)
+  if(TARGET game-client)
+    install(FILES other/ddnet.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications COMPONENT client)
+  endif()
   foreach(SIZE 16 32 48 256)
-    install(FILES other/icons/DDNet_${SIZE}x${SIZE}x32.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/${SIZE}x${SIZE}/apps RENAME ddnet.png COMPONENT client)
-    install(FILES other/icons/DDNet-Server_${SIZE}x${SIZE}x32.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/${SIZE}x${SIZE}/apps RENAME ddnet-server.png COMPONENT server)
+    if(TARGET game-client)
+      install(FILES other/icons/DDNet_${SIZE}x${SIZE}x32.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/${SIZE}x${SIZE}/apps RENAME ddnet.png COMPONENT client)
+    endif()
+    if(TARGET game-server)
+      install(FILES other/icons/DDNet-Server_${SIZE}x${SIZE}x32.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/${SIZE}x${SIZE}/apps RENAME ddnet-server.png COMPONENT server)
+    endif()
   endforeach()
   foreach(file ${VULKAN_SHADER_FILE_LIST})
     install(FILES ${PROJECT_BINARY_DIR}/${file} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/ddnet/data/shader/vulkan COMPONENT client)
@@ -3182,11 +3343,11 @@ if(CLIENT AND DMGBUILD)
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/discord/${LIB_DIR}/discord_game_sdk.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/freetype/${LIB_DIR}/libfreetype.6.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/png/${LIB_DIR}/libpng16.16.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libavcodec.60.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libavformat.60.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libavutil.58.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libswresample.4.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libswscale.7.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libavcodec.61.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libavformat.61.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libavutil.59.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libswresample.5.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/ddnet-libs/ffmpeg/${LIB_DIR}/libswscale.8.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libsteam_api.dylib ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/Frameworks/
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/darwin_strip_rpath.py ${CMAKE_OTOOL} ${CMAKE_INSTALL_NAME_TOOL} ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/MacOS/${CLIENT_EXECUTABLE}
     COMMAND ${CMAKE_INSTALL_NAME_TOOL} -add_rpath @loader_path/../Frameworks ${DMG_TMPDIR}/${CLIENT_EXECUTABLE}.app/Contents/MacOS/${CLIENT_EXECUTABLE}
@@ -3243,7 +3404,7 @@ foreach(ext zip tar.gz tar.xz)
   endforeach()
   foreach(target ${CPACK_TARGETS})
     list(APPEND COPY_TARGET_COMMANDS COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${target}> ${TMPDIR}/)
-    if(NOT TARGET_OS STREQUAL "mac")
+    if(NOT TARGET_OS STREQUAL "mac" AND NOT (TARGET_OS STREQUAL "windows" AND TARGET_CPU_ARCHITECTURE STREQUAL "arm64"))
       list(APPEND STRIP_TARGET_COMMANDS COMMAND strip -s ${TMPDIR}/$<TARGET_FILE_NAME:${target}>)
     endif()
   endforeach()

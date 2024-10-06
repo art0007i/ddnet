@@ -14,6 +14,10 @@
 #   eghwand          2024-03-03 13:24:20
 #   Gokturk          2024-04-23 01:56:10
 #   Gokturk          2024-04-24 03:01:50
+#   Gokturk          2024-06-09 12:00:50
+#   Gokturk          2024-07-17 02:24:00
+#   Gokturk          2024-08-29 23:31:00
+#   Gokturk          2024-09-29 19:23:00
 ##### /authors #####
 
 ##### translated strings #####
@@ -285,9 +289,6 @@ Play background music
 Player
 == Oyuncu
 
-Player options
-== Oyuncu ayarları
-
 Players
 == Oyuncular
 
@@ -504,9 +505,6 @@ Your skin
 Reset to defaults
 == Varsayılanlara getir
 
-Round
-== Yuvarlak
-
 Lht.
 == Parlaklık
 
@@ -665,9 +663,6 @@ Connecting dummy
 
 Connect Dummy
 == Dummy Katıl
-
-Reload
-== Yenile
 
 Deactivate
 == Devre dışı bırak
@@ -1464,9 +1459,6 @@ Show health, shields and ammo
 DDRace HUD
 == DDRace arayüzü
 
-Show client IDs in scoreboard
-== Skor tablosunda ki istemci ID'lerini göster
-
 Show DDRace HUD
 == DDRace arayüzünü göster
 
@@ -1860,3 +1852,103 @@ Tee
 
 Show only chat messages from team members
 == Sadece takım üyelerinin mesajlarını göster
+
+[Spectating]
+Following %s
+== İzleniyor %s
+
+Example of usage
+== Kullanım örneği
+
+Round %d/%d
+== Yuvarlak %d/%d
+
+[Spectators]
+%d others…
+== %d diğerleri…
+
+[Team and size]
+%d\n(%d/%d)
+== %d\n(%d/%d)
+
+Team %d (%d/%d)
+== Takım %d (%d/%d)
+
+https://wiki.ddnet.org/wiki/Mapping
+== https://wiki.ddnet.org/wiki/Mapping/tr
+
+Could not resolve connect address '%s'. See local console for details.
+== '%s' Bağlantı adresi çözümlenemedi. Detaylar için yerel konsola bakın
+
+Connect address error
+== Bağlantı adresi hatası
+
+Could not connect dummy
+== Dummy bağlanamadı
+
+Dummy is not allowed on this server
+== Bu sunucuda dummy izin verilmiyor
+
+Please wait…
+== Lütfen bekleyin…
+
+Show client IDs (scoreboard, chat, spectator)
+== İstemci ID'sini göster (skor tablosu, sohbet, izleyici)
+
+Are you sure that you want to delete '%s'?
+== '%s' bunu silmek istediğine emin misin?
+
+Delete skin
+== Skini sil
+
+Basic
+== Basit
+
+Custom
+== Özel
+
+Unable to delete skin
+== Skin silinemiyor
+
+Save skin
+== Skini kaydet
+
+Are you sure you want to save your skin? If a skin with this name already exists, it will be replaced.
+== Skini kaydetmek istiyor musun? Bu isimde başka bir skin varsa, bu skin varolan skin yerine kaydedilecek.
+
+Unable to save the skin
+== Skin kaydedilemiyor
+
+Unable to save the skin with a reserved name
+== Skin kaydedilemiyor, bu isimde zaten bir skin var.
+
+No local servers found (ports %d-%d)
+== Yerel sunucu bulunamadı (bağlantı noktası %d-%d)
+
+[Hertz]
+Hz
+== Hz
+
+[skins]
+Body
+== Gövde
+
+[skins]
+Marking
+== İşaretleme
+
+[skins]
+Decoration
+== Dekorasyon
+
+[skins]
+Hands
+== El
+
+[skins]
+Feet
+== Ayak
+
+[skins]
+Eyes
+== Göz

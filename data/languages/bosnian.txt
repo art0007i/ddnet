@@ -280,9 +280,6 @@ Player
 Player country:
 == Država
 
-Player options
-== Postavke igrača
-
 Players
 == Igrači
 
@@ -501,9 +498,6 @@ Your skin
 Reset to defaults
 == Vrati na početne postavke
 
-Round
-== Runda
-
 Lht.
 == Svjetl.
 
@@ -653,9 +647,6 @@ Connecting dummy
 
 Connect Dummy
 == Konektuj dummy-a
-
-Reload
-== Reload
 
 Deactivate
 == Deaktiviraj
@@ -954,7 +945,16 @@ Could not initialize the given graphics backend, reverting to the default backen
 Could not initialize the given graphics backend, this is probably because you didn't install the driver of the integrated graphics card.
 == 
 
+Could not resolve connect address '%s'. See local console for details.
+== 
+
+Connect address error
+== 
+
 Could not save downloaded map. Try manually deleting this file: %s
+== 
+
+Could not connect dummy
 == 
 
 Error playing demo
@@ -987,10 +987,10 @@ Loading map file from storage
 Loading demo file from storage
 == 
 
-Why are you slowmo replaying to read this?
+Initializing components
 == 
 
-Initializing components
+Why are you slowmo replaying to read this?
 == 
 
 Initializing assets
@@ -1059,6 +1059,10 @@ Angle:
 Multi-View
 == 
 
+[Spectating]
+Following %s
+== 
+
 Team %d
 == 
 
@@ -1104,6 +1108,12 @@ Your nickname '%s' is already used (%d points). Do you still want to use it?
 Checking for existing player with your name
 == 
 
+Save skin
+== 
+
+Are you sure you want to save your skin? If a skin with this name already exists, it will be replaced.
+== 
+
 There's an unsaved map in the editor, you might want to save it.
 == 
 
@@ -1138,6 +1148,12 @@ Join Tutorial Server
 == 
 
 Skip Tutorial
+== 
+
+Unable to save the skin
+== 
+
+Unable to save the skin with a reserved name
 == 
 
 Trying to determine UDP connectivity…
@@ -1189,6 +1205,12 @@ CHN
 == 
 
 Getting server list from master server
+== 
+
+No local servers found (ports %d-%d)
+== 
+
+Example of usage
 == 
 
 %d of %d servers
@@ -1381,6 +1403,12 @@ Unable to delete the demo '%s'
 Unable to delete the folder '%s'. Make sure it's empty first.
 == 
 
+Dummy is not allowed on this server
+== 
+
+Please wait…
+== 
+
 Loading…
 == 
 
@@ -1403,6 +1431,10 @@ Smooth Dynamic Camera
 == 
 
 Skip the main menu
+== 
+
+[Hertz]
+Hz
 == 
 
 Save power by lowering refresh rate (higher input latency)
@@ -1587,7 +1619,7 @@ Show local time always
 DDRace HUD
 == 
 
-Show client IDs in scoreboard
+Show client IDs (scoreboard, chat, spectator)
 == 
 
 Show DDRace HUD
@@ -1773,6 +1805,21 @@ Chat command (e.g. showall 1)
 Unregister protocol and file extensions
 == 
 
+Basic
+== 
+
+Custom
+== 
+
+Are you sure that you want to delete '%s'?
+== 
+
+Delete skin
+== 
+
+Unable to delete skin
+== 
+
 Emoticons
 == 
 
@@ -1825,7 +1872,21 @@ Play
 Loading race demo files
 == 
 
+Round %d/%d
+== 
+
+[Spectators]
+%d others…
+== 
+
 Super
+== 
+
+[Team and size]
+%d\n(%d/%d)
+== 
+
+Team %d (%d/%d)
 == 
 
 Manual
@@ -1838,6 +1899,30 @@ Auto
 == 
 
 Replay
+== 
+
+[skins]
+Body
+== 
+
+[skins]
+Marking
+== 
+
+[skins]
+Decoration
+== 
+
+[skins]
+Hands
+== 
+
+[skins]
+Feet
+== 
+
+[skins]
+Eyes
 == 
 
 Loading sound files
@@ -1853,4 +1938,7 @@ Grabs
 == 
 
 Moved ingame
+== 
+
+https://wiki.ddnet.org/wiki/Mapping
 == 

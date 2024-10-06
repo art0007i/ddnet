@@ -280,9 +280,6 @@ Player
 Player country:
 == Χώρα παίκτη:
 
-Player options
-== Επιλογές παίκτη
-
 Players
 == Παίκτες
 
@@ -504,9 +501,6 @@ Your skin
 Reset to defaults
 == Επαναφορά προεπιλογών
 
-Round
-== Γύρος
-
 Lht.
 == Φωτεινότ.
 
@@ -558,7 +552,16 @@ Could not initialize the given graphics backend, reverting to the default backen
 Could not initialize the given graphics backend, this is probably because you didn't install the driver of the integrated graphics card.
 == 
 
+Could not resolve connect address '%s'. See local console for details.
+== 
+
+Connect address error
+== 
+
 Could not save downloaded map. Try manually deleting this file: %s
+== 
+
+Could not connect dummy
 == 
 
 Error playing demo
@@ -600,10 +603,10 @@ Loading demo file from storage
 Loading DDNet Client
 == 
 
-Why are you slowmo replaying to read this?
+Initializing components
 == 
 
-Initializing components
+Why are you slowmo replaying to read this?
 == 
 
 Initializing assets
@@ -625,6 +628,9 @@ Restarting. Please wait…
 == 
 
 Loading skin files
+== 
+
+Search
 == 
 
 Searching
@@ -670,6 +676,10 @@ Angle:
 == 
 
 Multi-View
+== 
+
+[Spectating]
+Following %s
 == 
 
 Server best:
@@ -756,6 +766,12 @@ Your nickname '%s' is already used (%d points). Do you still want to use it?
 Checking for existing player with your name
 == 
 
+Save skin
+== 
+
+Are you sure you want to save your skin? If a skin with this name already exists, it will be replaced.
+== 
+
 There's an unsaved map in the editor, you might want to save it.
 == 
 
@@ -802,6 +818,12 @@ Show DDNet map finishes in server browser
 == 
 
 transmits your player name to info.ddnet.org
+== 
+
+Unable to save the skin
+== 
+
+Unable to save the skin with a reserved name
 == 
 
 Trying to determine UDP connectivity…
@@ -855,7 +877,10 @@ CHN
 Getting server list from master server
 == 
 
-Search
+No local servers found (ports %d-%d)
+== 
+
+Example of usage
 == 
 
 Exclude
@@ -1096,6 +1121,12 @@ Are you sure that you want to disconnect?
 Connect Dummy
 == 
 
+Dummy is not allowed on this server
+== 
+
+Please wait…
+== 
+
 Connecting dummy
 == 
 
@@ -1148,6 +1179,10 @@ Switch weapon when out of ammo
 == 
 
 Skip the main menu
+== 
+
+[Hertz]
+Hz
 == 
 
 Refresh Rate
@@ -1440,7 +1475,7 @@ Show votes window after voting
 DDRace HUD
 == 
 
-Show client IDs in scoreboard
+Show client IDs (scoreboard, chat, spectator)
 == 
 
 Show DDRace HUD
@@ -1689,9 +1724,6 @@ Regular background color
 Entities background color
 == 
 
-Reload
-== 
-
 Use current map as background
 == 
 
@@ -1726,6 +1758,21 @@ No updates available
 == 
 
 Check now
+== 
+
+Basic
+== 
+
+Custom
+== 
+
+Are you sure that you want to delete '%s'?
+== 
+
+Delete skin
+== 
+
+Unable to delete skin
 == 
 
 Emoticons
@@ -1792,7 +1839,21 @@ Update failed! Check log…
 Loading race demo files
 == 
 
+Round %d/%d
+== 
+
+[Spectators]
+%d others…
+== 
+
 Super
+== 
+
+[Team and size]
+%d\n(%d/%d)
+== 
+
+Team %d (%d/%d)
 == 
 
 Manual
@@ -1805,6 +1866,30 @@ Auto
 == 
 
 Replay
+== 
+
+[skins]
+Body
+== 
+
+[skins]
+Marking
+== 
+
+[skins]
+Decoration
+== 
+
+[skins]
+Hands
+== 
+
+[skins]
+Feet
+== 
+
+[skins]
+Eyes
 == 
 
 Loading sound files
@@ -1850,4 +1935,7 @@ Grabs
 == 
 
 Moved ingame
+== 
+
+https://wiki.ddnet.org/wiki/Mapping
 == 

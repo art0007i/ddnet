@@ -25,6 +25,20 @@ class CCamera : public CComponent
 	vec2 m_aLastPos[NUM_DUMMIES];
 	vec2 m_PrevCenter;
 
+	int m_PrevSpecId;
+	bool m_WasSpectating;
+
+	bool m_CameraSmoothing;
+	vec2 m_CameraSmoothingCenter;
+	vec2 m_CameraSmoothingTarget;
+	CCubicBezier m_CameraSmoothingBezierX;
+	CCubicBezier m_CameraSmoothingBezierY;
+	float m_CameraSmoothingStart;
+	float m_CameraSmoothingEnd;
+	vec2 m_CenterBeforeSmoothing;
+
+	float CameraSmoothingProgress(float CurrentTime) const;
+
 	CCubicBezier m_ZoomSmoothing;
 	float m_ZoomSmoothingStart;
 	float m_ZoomSmoothingEnd;
@@ -54,10 +68,12 @@ public:
 	virtual void OnConsoleInit() override;
 	virtual void OnReset() override;
 
-	void SetZoom(float Target, int Smoothness);
 	void SetView(ivec2 Pos, bool Relative = false);
 	void GotoSwitch(int Number, int Offset = -1);
 	void GotoTele(int Number, int Offset = -1);
+
+	void SetZoom(float Target, int Smoothness);
+	bool ZoomAllowed() const;
 
 private:
 	static void ConZoomPlus(IConsole::IResult *pResult, void *pUserData);
