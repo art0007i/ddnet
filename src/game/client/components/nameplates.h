@@ -27,7 +27,7 @@ struct SPlayerNamePlate
 		m_aName[0] = '\0';
 		m_aClan[0] = '\0';
 		m_aSkin[0] = '\0';
-		m_NameTextFontSize = m_ClanTextFontSize = 0.0f;
+		m_NameTextFontSize = m_ClanTextFontSize = m_SkinTextFontSize = 0.0f;
 	}
 
 	char m_aName[MAX_NAME_LENGTH];
@@ -40,6 +40,7 @@ struct SPlayerNamePlate
     
     char m_aSkin[MAX_SKIN_LENGTH];
 	STextContainerIndex m_SkinTextContainerIndex;
+	float m_SkinTextFontSize;
 };
 
 class CNamePlates : public CComponent

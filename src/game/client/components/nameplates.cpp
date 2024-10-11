@@ -136,31 +136,22 @@ void CNamePlates::RenderNameplate(vec2 Position, const CNetObj_PlayerInfo *pPlay
 
 		if(g_Config.m_ClNameplatesSkin)
 		{
-			const char *pSkin = m_pClient->m_aClients[ClientId].m_aSkinName;
-			if(str_comp(pSkin, m_aNamePlates[ClientId].m_aSkinName) != 0 || FontSizeClan != m_aNamePlates[ClientId].m_SkinNameTextFontSize)
+			if(str_comp(ClientData.m_aSkinName, NamePlate.m_aSkin) != 0 || FontSizeClan != NamePlate.m_SkinTextFontSize)
 			{
-				mem_copy(m_aNamePlates[ClientId].m_aSkinName, pSkin, sizeof(m_aNamePlates[ClientId].m_aSkinName));
-				m_aNamePlates[ClientId].m_SkinNameTextFontSize = FontSizeClan;
+				str_copy(NamePlate.m_aSkin, ClientData.m_aSkinName);
+				NamePlate.m_SkinTextFontSize = FontSizeClan;
 
 				CTextCursor Cursor;
 				TextRender()->SetCursor(&Cursor, 0, 0, FontSizeClan, TEXTFLAG_RENDER);
-				Cursor.m_LineWidth = -1;
 
 				// create nameplates at standard zoom
 				float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 				Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
 				RenderTools()->MapScreenToInterface(m_pClient->m_Camera.m_Center.x, m_pClient->m_Camera.m_Center.y);
-
-				m_aNamePlates[ClientId].m_SkinNameTextWidth = TextRender()->TextWidth(FontSizeClan, pSkin, -1, -1.0f);
-
-				TextRender()->RecreateTextContainer(m_aNamePlates[ClientId].m_SkinNameTextContainerIndex, &Cursor, pSkin);
+				TextRender()->RecreateTextContainer(NamePlate.m_SkinTextContainerIndex, &Cursor, ClientData.m_aSkinName);
 				Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 			}
 		}
-
-		float tw = m_aNamePlates[ClientId].m_NameTextWidth;
-		if(g_Config.m_ClNameplatesTeamcolors && m_pClient->m_Teams.Team(ClientId))
-			rgb = m_pClient->GetDDTeamColor(m_pClient->m_Teams.Team(ClientId), 0.75f);
 
 		if(g_Config.m_ClNameplatesTeamcolors)
 		{
@@ -367,12 +358,8 @@ void CNamePlates::ResetNamePlates()
 	for(auto &NamePlate : m_aNamePlates)
 	{
 		TextRender()->DeleteTextContainer(NamePlate.m_NameTextContainerIndex);
-<<<<<<< HEAD
-		TextRender()->DeleteTextContainer(NamePlate.m_ClanNameTextContainerIndex);
-		TextRender()->DeleteTextContainer(NamePlate.m_SkinNameTextContainerIndex);
-=======
 		TextRender()->DeleteTextContainer(NamePlate.m_ClanTextContainerIndex);
->>>>>>> upstream/master
+		TextRender()->DeleteTextContainer(NamePlate.m_SkinTextContainerIndex);
 
 		NamePlate.Reset();
 	}
