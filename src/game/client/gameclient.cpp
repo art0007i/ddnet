@@ -532,7 +532,7 @@ void CGameClient::OnConnected()
 	const char *pLoadMapContent = Localize("Initializing map logic");
 	// render loading before skip is calculated
 	m_Menus.RenderLoading(pConnectCaption, pLoadMapContent, 0, false);
-	m_Layers.Init(Kernel());
+	m_Layers.Init(Kernel()->RequestInterface<IMap>(), false);
 	m_Collision.Init(Layers());
 	m_GameWorld.m_Core.InitSwitchers(m_Collision.m_HighestSwitchNumber);
 	m_RaceHelper.Init(this);
@@ -572,6 +572,7 @@ void CGameClient::OnReset()
 	std::fill(std::begin(m_aLastNewPredictedTick), std::end(m_aLastNewPredictedTick), -1);
 
 	m_LastRoundStartTick = -1;
+	m_LastRaceTick = -1;
 	m_LastFlagCarrierRed = -4;
 	m_LastFlagCarrierBlue = -4;
 
@@ -844,9 +845,18 @@ void CGameClient::OnDummyDisconnect()
 	m_PredictedDummyId = -1;
 }
 
-int CGameClient::GetLastRaceTick() const
+int CGameClient::LastRaceTick() const
 {
-	return m_Ghost.GetLastRaceTick();
+	return m_LastRaceTick;
+}
+
+int CGameClient::CurrentRaceTime() const
+{
+	if(m_LastRaceTick < 0)
+	{
+		return 0;
+	}
+	return (Client()->GameTick(g_Config.m_ClDummy) - m_LastRaceTick) / Client()->GameTickSpeed();
 }
 
 bool CGameClient::Predict() const
@@ -1542,30 +1552,21 @@ void CGameClient::OnNewSnapshot()
 					}
 					IntsToStr(&pInfo->m_Clan0, 3, pClient->m_aClan, std::size(pClient->m_aClan));
 					pClient->m_Country = pInfo->m_Country;
+
 					IntsToStr(&pInfo->m_Skin0, 6, pClient->m_aSkinName, std::size(pClient->m_aSkinName));
+					if(pClient->m_aSkinName[0] == '\0' ||
+						(!m_GameInfo.m_AllowXSkins && (pClient->m_aSkinName[0] == 'x' && pClient->m_aSkinName[1] == '_')))
+					{
+						str_copy(pClient->m_aSkinName, "default");
+					}
 
 					pClient->m_UseCustomColor = pInfo->m_UseCustomColor;
 					pClient->m_ColorBody = pInfo->m_ColorBody;
 					pClient->m_ColorFeet = pInfo->m_ColorFeet;
 
-					// prepare the info
-					if(!m_GameInfo.m_AllowXSkins && (pClient->m_aSkinName[0] == 'x' && pClient->m_aSkinName[1] == '_'))
-						str_copy(pClient->m_aSkinName, "default");
-
-					pClient->m_SkinInfo.m_ColorBody = color_cast<ColorRGBA>(ColorHSLA(pClient->m_ColorBody).UnclampLighting(ColorHSLA::DARKEST_LGT));
-					pClient->m_SkinInfo.m_ColorFeet = color_cast<ColorRGBA>(ColorHSLA(pClient->m_ColorFeet).UnclampLighting(ColorHSLA::DARKEST_LGT));
 					pClient->m_SkinInfo.m_Size = 64;
-
-					// find new skin
 					pClient->m_SkinInfo.Apply(m_Skins.Find(pClient->m_aSkinName));
-					pClient->m_SkinInfo.m_CustomColoredSkin = pClient->m_UseCustomColor;
-
-					if(!pClient->m_UseCustomColor)
-					{
-						pClient->m_SkinInfo.m_ColorBody = ColorRGBA(1, 1, 1);
-						pClient->m_SkinInfo.m_ColorFeet = ColorRGBA(1, 1, 1);
-					}
-
+					pClient->m_SkinInfo.ApplyColors(pClient->m_UseCustomColor, pClient->m_ColorBody, pClient->m_ColorFeet);
 					pClient->UpdateRenderInfo(IsTeamPlay());
 				}
 			}
@@ -2097,6 +2098,19 @@ void CGameClient::OnNewSnapshot()
 			}
 		}
 	}
+
+	// Record m_LastRaceTick for g_Config.m_ClConfirmDisconnect/QuitTime
+	if(m_GameInfo.m_Race &&
+		Client()->State() == IClient::STATE_ONLINE &&
+		m_Snap.m_pGameInfoObj &&
+		!m_Snap.m_SpecInfo.m_Active &&
+		m_Snap.m_pLocalCharacter &&
+		m_Snap.m_pLocalPrevCharacter)
+	{
+		const bool RaceFlag = m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_RACETIME;
+		m_LastRaceTick = RaceFlag ? -m_Snap.m_pGameInfoObj->m_WarmupTimer : -1;
+	}
+
 	if(m_Snap.m_LocalClientId != m_PrevLocalId)
 		m_PredictedDummyId = m_PrevLocalId;
 	m_PrevLocalId = m_Snap.m_LocalClientId;
@@ -3745,7 +3759,7 @@ void CGameClient::LoadExtrasSkin(const char *pPath, bool AsDir)
 void CGameClient::RefreshSkins()
 {
 	const auto SkinStartLoadTime = time_get_nanoseconds();
-	m_Skins.Refresh([&](int) {
+	m_Skins.Refresh([&]() {
 		// if skin refreshing takes to long, swap to a loading screen
 		if(time_get_nanoseconds() - SkinStartLoadTime > 500ms)
 		{
@@ -3755,15 +3769,7 @@ void CGameClient::RefreshSkins()
 
 	for(auto &Client : m_aClients)
 	{
-		if(Client.m_aSkinName[0] != '\0')
-		{
-			Client.m_SkinInfo.Apply(m_Skins.Find(Client.m_aSkinName));
-		}
-		else
-		{
-			Client.m_SkinInfo.m_OriginalRenderSkin.Reset();
-			Client.m_SkinInfo.m_ColorableRenderSkin.Reset();
-		}
+		Client.m_SkinInfo.Apply(m_Skins.Find(Client.m_aSkinName));
 		Client.UpdateRenderInfo(IsTeamPlay());
 	}
 
