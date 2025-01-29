@@ -57,6 +57,24 @@ public:
 		char m_aClan[MAX_CLAN_LENGTH];
 		float m_FontSize;
 	};
+	class CNamePlateSkin
+	{
+	public:
+		CNamePlateSkin()
+		{
+			Reset();
+		}
+		void Reset()
+		{
+			m_TextContainerIndex.Reset();
+			m_aSkin[0] = '\0';
+			m_FontSize = -INFINITY;
+		}
+		void Update(CNamePlates &This, const char *pSkin, float FontSize);
+		STextContainerIndex m_TextContainerIndex;
+		char m_aSkin[MAX_SKIN_LENGTH];
+		float m_FontSize;
+	};
 	class CNamePlateHookWeakStrongId
 	{
 	public:
@@ -83,16 +101,19 @@ public:
 	{
 		m_Name.Reset();
 		m_Clan.Reset();
+		m_Skin.Reset();
 		m_WeakStrongId.Reset();
 	}
 	void DeleteTextContainers(ITextRender &TextRender)
 	{
 		TextRender.DeleteTextContainer(m_Name.m_TextContainerIndex);
 		TextRender.DeleteTextContainer(m_Clan.m_TextContainerIndex);
+		TextRender.DeleteTextContainer(m_Skin.m_TextContainerIndex);
 		TextRender.DeleteTextContainer(m_WeakStrongId.m_TextContainerIndex);
 	}
 	CNamePlateName m_Name;
 	CNamePlateClan m_Clan;
+	CNamePlateSkin m_Skin;
 	CNamePlateHookWeakStrongId m_WeakStrongId;
 };
 
@@ -100,6 +121,7 @@ class CNamePlates : public CComponent
 {
 	friend class CNamePlate::CNamePlateName;
 	friend class CNamePlate::CNamePlateClan;
+	friend class CNamePlate::CNamePlateSkin;
 	friend class CNamePlate::CNamePlateHookWeakStrongId;
 
 	CNamePlate m_aNamePlates[MAX_CLIENTS];
@@ -119,6 +141,7 @@ class CNamePlates : public CComponent
 		int m_ClientId;
 		float m_FontSize;
 		const char *m_pClan;
+		const char *m_pSkin;
 		float m_FontSizeClan;
 		bool m_ShowDirection;
 		bool m_DirLeft;

@@ -76,6 +76,26 @@ void CNamePlate::CNamePlateClan::Update(CNamePlates &This, const char *pClan, fl
 	This.Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 }
 
+void CNamePlate::CNamePlateSkin::Update(CNamePlates &This, const char *pSkin, float FontSize)
+{
+	if(str_comp(m_aSkin, pSkin) == 0 &&
+		m_FontSize == FontSize)
+		return;
+	str_copy(m_aSkin, pSkin);
+	m_FontSize = FontSize;
+
+	// create namePlates at standard zoom
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	This.Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	This.RenderTools()->MapScreenToInterface(This.m_pClient->m_Camera.m_Center.x, This.m_pClient->m_Camera.m_Center.y);
+
+	CTextCursor Cursor;
+	This.TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, FontSize, TEXTFLAG_RENDER);
+	This.TextRender()->RecreateTextContainer(m_TextContainerIndex, &Cursor, m_aSkin);
+
+	This.Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
+}
+
 void CNamePlate::CNamePlateHookWeakStrongId::Update(CNamePlates &This, int Id, float FontSize)
 {
 	if(Id == m_Id && m_FontSize == FontSize)
@@ -147,6 +167,13 @@ void CNamePlates::RenderNamePlate(CNamePlate &NamePlate, const CRenderNamePlateD
 		NamePlate.m_Clan.Update(*this, Data.m_pClan, Data.m_FontSizeClan);
 		if(NamePlate.m_Clan.m_TextContainerIndex.Valid())
 			TextRender()->RenderTextContainer(NamePlate.m_Clan.m_TextContainerIndex, Color, OutlineColor, Data.m_Position.x - TextRender()->GetBoundingBoxTextContainer(NamePlate.m_Clan.m_TextContainerIndex).m_W / 2.0f, YOffset);
+	}
+	if(Data.m_pSkin && Data.m_pSkin[0] != '\0')
+	{
+		YOffset -= Data.m_FontSizeClan;
+		NamePlate.m_Skin.Update(*this, Data.m_pSkin, Data.m_FontSizeClan);
+		if(NamePlate.m_Skin.m_TextContainerIndex.Valid())
+			TextRender()->RenderTextContainer(NamePlate.m_Skin.m_TextContainerIndex, Color, OutlineColor, Data.m_Position.x - TextRender()->GetBoundingBoxTextContainer(NamePlate.m_Skin.m_TextContainerIndex).m_W / 2.0f, YOffset);
 	}
 
 	if(Data.m_ShowHookWeakStrongId || (Data.m_ShowHookWeakStrong && Data.m_HookWeakStrong != TRISTATE::SOME)) // Don't show hook icon if there's no ID or hook strength to show
@@ -228,6 +255,8 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 
 	Data.m_pClan = ShowNamePlate && g_Config.m_ClNamePlatesClan ? m_pClient->m_aClients[pPlayerInfo->m_ClientId].m_aClan : nullptr;
 	Data.m_FontSizeClan = 18.0f + 20.0f * g_Config.m_ClNamePlatesClanSize / 100.0f;
+
+	Data.m_pSkin = ShowNamePlate && g_Config.m_ClNamePlatesSkin ? m_pClient->m_aClients[pPlayerInfo->m_ClientId].m_aSkinName : nullptr;
 
 	Data.m_FontSizeHookWeakStrong = 18.0f + 20.0f * g_Config.m_ClNamePlatesStrongSize / 100.0f;
 	Data.m_FontSizeDirection = 18.0f + 20.0f * g_Config.m_ClDirectionSize / 100.0f;
@@ -357,6 +386,7 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position)
 	Data.m_FontSize = FontSize;
 	Data.m_pClan = g_Config.m_ClNamePlates && g_Config.m_ClNamePlatesClan ? g_Config.m_PlayerClan : nullptr;
 	Data.m_FontSizeClan = FontSizeClan;
+	Data.m_pSkin = g_Config.m_ClNamePlates && g_Config.m_ClNamePlatesSkin ? g_Config.m_ClPlayerSkin : nullptr;
 
 	Data.m_ShowDirection = g_Config.m_ClShowDirection != 0 ? true : false;
 	Data.m_DirLeft = Data.m_DirJump = Data.m_DirRight = true;

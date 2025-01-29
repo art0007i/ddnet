@@ -35,6 +35,7 @@ MACRO_CONFIG_INT(ClNamePlatesTeamcolors, cl_nameplates_teamcolors, 1, 0, 1, CFGF
 MACRO_CONFIG_INT(ClNamePlatesSize, cl_nameplates_size, 50, -50, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the name plates")
 MACRO_CONFIG_INT(ClNamePlatesClan, cl_nameplates_clan, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show clan in name plates")
 MACRO_CONFIG_INT(ClNamePlatesClanSize, cl_nameplates_clan_size, 30, -50, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the clan plates")
+MACRO_CONFIG_INT(ClNamePlatesSkin, cl_nameplates_skin, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show skin in name plates")
 MACRO_CONFIG_INT(ClNamePlatesIds, cl_nameplates_ids, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show client IDs in name plates")
 MACRO_CONFIG_INT(ClNamePlatesOwn, cl_nameplates_own, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show own name plate (useful for demo recording)")
 MACRO_CONFIG_INT(ClNamePlatesFriendMark, cl_nameplates_friendmark, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show friend mark (♥) in name plates")
