@@ -112,7 +112,6 @@ class CGameConsole : public CComponent
 		void PrintLine(const char *pLine, int Len, ColorRGBA PrintColor) REQUIRES(!m_BacklogPendingLock);
 		int GetLinesToScroll(int Direction, int LinesToScroll);
 		void ScrollToCenter(int StartLine, int EndLine);
-		void ClearSearch();
 		void Dump() REQUIRES(!m_BacklogPendingLock);
 
 		const char *GetString() const { return m_Input.GetString(); }
@@ -135,6 +134,8 @@ class CGameConsole : public CComponent
 		void UpdateEntryTextAttributes(CBacklogEntry *pEntry) const;
 
 	private:
+		void SetSearching(bool Searching);
+		void ClearSearch();
 		void UpdateSearch();
 
 		friend class CGameConsole;
@@ -160,6 +161,8 @@ class CGameConsole : public CComponent
 	static const ColorRGBA ms_SearchHighlightColor;
 	static const ColorRGBA ms_SearchSelectedColor;
 
+	int PossibleMaps(const char *pStr, IConsole::FPossibleCallback pfnCallback = IConsole::EmptyPossibleCommandCallback, void *pUser = nullptr);
+
 	static void PossibleCommandsRenderCallback(int Index, const char *pStr, void *pUser);
 	static void ConToggleLocalConsole(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleRemoteConsole(IConsole::IResult *pResult, void *pUserData);
@@ -176,6 +179,7 @@ public:
 	{
 		CONSOLETYPE_LOCAL = 0,
 		CONSOLETYPE_REMOTE,
+		NUM_CONSOLETYPES
 	};
 
 	CGameConsole();
@@ -195,6 +199,6 @@ public:
 	void Prompt(char (&aPrompt)[32]);
 
 	void Toggle(int Type);
-	bool IsClosed() { return m_ConsoleState == CONSOLE_CLOSED; }
+	bool IsActive() const { return m_ConsoleState != CONSOLE_CLOSED; }
 };
 #endif

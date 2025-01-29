@@ -1110,6 +1110,9 @@ Error saving settings
 The width of texture %s is not divisible by %d, or the height is not divisible by %d, which might cause visual bugs.
 == 
 
+"%s" is not compatible with pnglite and cannot be loaded by old DDNet versions:
+== 
+
 The format of texture %s is not RGBA which will cause visual bugs.
 == 
 
@@ -1123,6 +1126,9 @@ Loading map file from storage
 == 
 
 Loading demo file from storage
+== 
+
+Some fonts could not be loaded. Check the local console for details.
 == 
 
 Initializing components
@@ -1147,6 +1153,9 @@ Restarting. Please wait…
 == 
 
 Loading skin files
+== 
+
+Loading background map
 == 
 
 Searching
@@ -1193,6 +1202,10 @@ Multi-View
 
 [Spectating]
 Following %s
+== 
+
+[Spectating Camera Mode Icon]
+AUTO
 == 
 
 Team %d
@@ -1345,7 +1358,7 @@ Leak IP
 No server selected
 == 
 
-Online players (%d)
+Online friends (%d)
 == 
 
 Online clanmates (%d)
@@ -1364,7 +1377,13 @@ Click to remove this player from your friends list.
 Click to remove this clan from your friends list.
 == 
 
-None
+Add friends by entering their name below or by clicking their name in the player list.
+== 
+
+Add clanmates by entering their clan below and leaving the name blank.
+== 
+
+Offline friends and clanmates will appear here.
 == 
 
 Are you sure that you want to remove the player '%s' from your friends list?
@@ -1441,6 +1460,9 @@ Close the demo player
 Toggle keyboard shortcuts
 == 
 
+Toggle auto camera
+== 
+
 Export demo cut
 == 
 
@@ -1500,6 +1522,83 @@ Dummy is not allowed on this server
 == 
 
 Please wait…
+== 
+
+Edit touch controls
+== 
+
+Close
+== 
+
+https://wiki.ddnet.org/wiki/Touch_controls
+== 
+
+Save changes
+== 
+
+Error saving touch controls
+== 
+
+Could not save touch controls to file. See local console for details.
+== 
+
+Unsaved changes
+== 
+
+Discard changes
+== 
+
+Are you sure that you want to discard the current changes to the touch controls?
+== 
+
+Are you sure that you want to reset the touch controls to default?
+== 
+
+Import from clipboard
+== 
+
+Are you sure that you want to import the touch controls from the clipboard? This will overwrite your current touch controls.
+== 
+
+Export to clipboard
+== 
+
+Direct touch input while ingame
+== 
+
+[Direct touch input]
+Disabled
+== 
+
+[Direct touch input]
+Active action
+== 
+
+[Direct touch input]
+Aim
+== 
+
+[Direct touch input]
+Fire
+== 
+
+[Direct touch input]
+Hook
+== 
+
+Direct touch input while spectating
+== 
+
+Error loading touch controls
+== 
+
+Could not load touch controls from file. See local console for details.
+== 
+
+Could not load default touch controls from file. See local console for details.
+== 
+
+Could not load touch controls from clipboard. See local console for details.
 == 
 
 Loading…
@@ -1670,6 +1769,12 @@ Show health, shields and ammo
 Show local time always
 == 
 
+Authed name color in scoreboard
+== 
+
+Same clan color in scoreboard
+== 
+
 DDRace HUD
 == 
 
@@ -1718,19 +1823,28 @@ Preview
 Show friend mark (♥) in name plates
 == 
 
+Show client IDs in name plates
+== 
+
+Hook Strength
+== 
+
 Show hook strength icon indicator
 == 
 
 Show hook strength number indicator
 == 
 
+Size of hook strength icon and number indicator
+== 
+
+Key Presses
+== 
+
 Show local player's key presses
 == 
 
-Authed name color in scoreboard
-== 
-
-Same clan color in scoreboard
+Size of key press icons
 == 
 
 Hook collision line
@@ -1745,7 +1859,10 @@ Always show own player's hook collision line
 Always show other players' hook collision lines
 == 
 
-Hook collision line width
+Width of your own hook collision line
+== 
+
+Width of others' hook collision line
 == 
 
 Hook collision line opacity
@@ -1764,6 +1881,9 @@ Something hookable
 == 
 
 A Tee
+== 
+
+Preview 'Hook collisions' being pressed
 == 
 
 Show finish messages
@@ -1817,7 +1937,7 @@ Opacity
 Only save improvements
 == 
 
-Adjust the opacity of entities belonging to other teams, such as tees and nameplates
+Adjust the opacity of entities belonging to other teams, such as tees and name plates
 == 
 
 Quads are used for background decoration
@@ -1883,6 +2003,9 @@ Tutorial
 Can't find a Tutorial server
 == 
 
+Server could not be started. Make sure to grant the notification permission in the app settings so the server can run in the background.
+== 
+
 Loading race demo files
 == 
 
@@ -1928,6 +2051,15 @@ Eyes
 == 
 
 Loading sound files
+== 
+
+Aim
+== 
+
+Active: Fire
+== 
+
+Active: Hook
 == 
 
 Moved ingame

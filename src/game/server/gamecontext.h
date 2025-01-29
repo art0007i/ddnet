@@ -41,11 +41,6 @@
 
 */
 
-enum
-{
-	NUM_TUNEZONES = 256
-};
-
 class CCharacter;
 class IConfigManager;
 class CConfig;
@@ -154,6 +149,7 @@ class CGameContext : public IGameServer
 	{
 		bool m_IsSpectator;
 		bool m_IsAfk;
+		int m_LastWhisperTo;
 	};
 
 public:
@@ -182,8 +178,7 @@ public:
 	CNetObj_PlayerInput m_aLastPlayerInput[MAX_CLIENTS];
 	bool m_aPlayerHasInput[MAX_CLIENTS];
 	CSaveTeam *m_apSavedTeams[MAX_CLIENTS];
-	CSaveTee *m_apSavedTees[MAX_CLIENTS];
-	CSaveTee *m_apSavedTeleTees[MAX_CLIENTS];
+	CSaveHotReloadTee *m_apSavedTees[MAX_CLIENTS];
 	int m_aTeamMapping[MAX_CLIENTS];
 
 	// returns last input if available otherwise nulled PlayerInput object
@@ -309,6 +304,7 @@ public:
 	void OnShowOthersLegacyNetMessage(const CNetMsg_Cl_ShowOthersLegacy *pMsg, int ClientId);
 	void OnShowOthersNetMessage(const CNetMsg_Cl_ShowOthers *pMsg, int ClientId);
 	void OnShowDistanceNetMessage(const CNetMsg_Cl_ShowDistance *pMsg, int ClientId);
+	void OnCameraInfoNetMessage(const CNetMsg_Cl_CameraInfo *pMsg, int ClientId);
 	void OnSetSpectatorModeNetMessage(const CNetMsg_Cl_SetSpectatorMode *pMsg, int ClientId);
 	void OnChangeInfoNetMessage(const CNetMsg_Cl_ChangeInfo *pMsg, int ClientId);
 	void OnEmoticonNetMessage(const CNetMsg_Cl_Emoticon *pMsg, int ClientId);
@@ -446,6 +442,7 @@ private:
 	static void ConPractice(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeCmdList(IConsole::IResult *pResult, void *pUserData);
 	static void ConSwap(IConsole::IResult *pResult, void *pUserData);
+	static void ConCancelSwap(IConsole::IResult *pResult, void *pUserData);
 	static void ConSave(IConsole::IResult *pResult, void *pUserData);
 	static void ConLoad(IConsole::IResult *pResult, void *pUserData);
 	static void ConMap(IConsole::IResult *pResult, void *pUserData);
@@ -528,7 +525,6 @@ private:
 	static void ConUnFreezeHammer(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConReloadCensorlist(IConsole::IResult *pResult, void *pUserData);
-	static void ConReloadAnnouncement(IConsole::IResult *pResult, void *pUserData);
 
 	CCharacter *GetPracticeCharacter(IConsole::IResult *pResult);
 

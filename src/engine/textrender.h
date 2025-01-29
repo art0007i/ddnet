@@ -149,6 +149,8 @@ MAYBE_UNUSED static const char *FONT_ICON_REDO = "\xEF\x8B\xB9";
 
 MAYBE_UNUSED static const char *FONT_ICON_ARROWS_ROTATE = "\xEF\x80\xA1";
 MAYBE_UNUSED static const char *FONT_ICON_QUESTION = "?";
+
+MAYBE_UNUSED static const char *FONT_ICON_CAMERA = "\xEF\x80\xB0";
 } // end namespace FontIcons
 
 enum ETextCursorSelectionMode
@@ -316,7 +318,7 @@ public:
 	virtual void MoveCursor(CTextCursor *pCursor, float x, float y) const = 0;
 	virtual void SetCursorPosition(CTextCursor *pCursor, float x, float y) const = 0;
 
-	virtual void LoadFonts() = 0;
+	virtual bool LoadFonts() = 0;
 	virtual void SetFontPreset(EFontPreset FontPreset) = 0;
 	virtual void SetFontLanguageVariant(const char *pLanguageFile) = 0;
 

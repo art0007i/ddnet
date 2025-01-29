@@ -299,26 +299,39 @@ int CLayerTiles::BrushGrab(std::shared_ptr<CLayerGroup> pBrush, CUIRect Rect)
 
 		pBrush->AddLayer(pGrabbed);
 
-		// copy the tiles
 		for(int y = 0; y < r.h; y++)
+		{
 			for(int x = 0; x < r.w; x++)
+			{
+				// copy the tiles
 				pGrabbed->m_pTiles[y * pGrabbed->m_Width + x] = GetTile(r.x + x, r.y + y);
 
-		// copy the tele data
-		if(!m_pEditor->Input()->KeyIsPressed(KEY_SPACE))
-			for(int y = 0; y < r.h; y++)
-				for(int x = 0; x < r.w; x++)
+				// copy the tele data
+				if(!m_pEditor->Input()->KeyIsPressed(KEY_SPACE))
 				{
 					pGrabbed->m_pTeleTile[y * pGrabbed->m_Width + x] = static_cast<CLayerTele *>(this)->m_pTeleTile[(r.y + y) * m_Width + (r.x + x)];
 					unsigned char TgtIndex = pGrabbed->m_pTeleTile[y * pGrabbed->m_Width + x].m_Type;
 					if(IsValidTeleTile(TgtIndex))
 					{
-						if(IsTeleTileNumberUsedAny(TgtIndex))
-							m_pEditor->m_TeleNumbers[TgtIndex] = pGrabbed->m_pTeleTile[y * pGrabbed->m_Width + x].m_Number;
+						if(IsTeleTileNumberUsed(TgtIndex, false))
+							m_pEditor->m_TeleNumber = pGrabbed->m_pTeleTile[y * pGrabbed->m_Width + x].m_Number;
+						else if(IsTeleTileNumberUsed(TgtIndex, true))
+							m_pEditor->m_TeleCheckpointNumber = pGrabbed->m_pTeleTile[y * pGrabbed->m_Width + x].m_Number;
 					}
 				}
+				else
+				{
+					CTile Tile = pGrabbed->m_pTiles[y * pGrabbed->m_Width + x];
+					if(IsValidTeleTile(Tile.m_Index) && IsTeleTileNumberUsedAny(Tile.m_Index))
+					{
+						pGrabbed->m_pTeleTile[y * pGrabbed->m_Width + x].m_Number = IsTeleTileCheckpoint(Tile.m_Index) ? m_pEditor->m_TeleCheckpointNumber : m_pEditor->m_TeleNumber;
+					}
+				}
+			}
+		}
 
-		pGrabbed->m_TeleNumbers = m_pEditor->m_TeleNumbers;
+		pGrabbed->m_TeleNum = m_pEditor->m_TeleNumber;
+		pGrabbed->m_TeleCheckpointNum = m_pEditor->m_TeleCheckpointNumber;
 
 		str_copy(pGrabbed->m_aFileName, m_pEditor->m_aFileName);
 	}
@@ -790,7 +803,8 @@ void CLayerTiles::FillGameTiles(EGameTileOp Fill)
 				m_pEditor->m_Map.MakeTeleLayer(pLayer);
 				m_pEditor->m_Map.m_pGameGroup->AddLayer(pLayer);
 
-				vpActions.push_back(std::make_shared<CEditorActionAddLayer>(m_pEditor, m_pEditor->m_SelectedGroup, m_pEditor->m_Map.m_pGameGroup->m_vpLayers.size() - 1));
+				vpActions.push_back(std::make_shared<CEditorActionAddLayer>(m_pEditor, LAYERTYPE_GAME,
+					m_pEditor->m_Map.m_pGameGroup->m_vpLayers.size() - 1));
 
 				if(m_Width != pGLayer->m_Width || m_Height > pGLayer->m_Height)
 				{
@@ -903,7 +917,7 @@ CUi::EPopupMenuFunctionResult CLayerTiles::RenderProperties(CUIRect *pToolBox)
 	{
 		pToolBox->HSplitBottom(12.0f, pToolBox, &Button);
 		static int s_GameTilesButton = 0;
-		if(m_pEditor->DoButton_Editor(&s_GameTilesButton, "Game tiles", 0, &Button, 0, "Constructs game tiles from this layer"))
+		if(m_pEditor->DoButton_Editor(&s_GameTilesButton, "Game tiles", 0, &Button, 0, "Construct game tiles from this layer."))
 			m_pEditor->PopupSelectGametileOpInvoke(m_pEditor->Ui()->MouseX(), m_pEditor->Ui()->MouseY());
 		const int Selected = m_pEditor->PopupSelectGameTileOpResult();
 		FillGameTiles((EGameTileOp)Selected);
@@ -921,7 +935,7 @@ CUi::EPopupMenuFunctionResult CLayerTiles::RenderProperties(CUIRect *pToolBox)
 				Button.VSplitRight(16.0f, &Button, &ButtonAuto);
 				Button.VSplitRight(2.0f, &Button, nullptr);
 				static int s_AutoMapperButtonAuto = 0;
-				if(m_pEditor->DoButton_Editor(&s_AutoMapperButtonAuto, "A", m_AutoAutoMap, &ButtonAuto, 0, "Automatically run automap after modifications."))
+				if(m_pEditor->DoButton_Editor(&s_AutoMapperButtonAuto, "A", m_AutoAutoMap, &ButtonAuto, 0, "Automatically run the automapper after modifications."))
 				{
 					m_AutoAutoMap = !m_AutoAutoMap;
 					FlagModified(0, 0, m_Width, m_Height);
@@ -935,7 +949,7 @@ CUi::EPopupMenuFunctionResult CLayerTiles::RenderProperties(CUIRect *pToolBox)
 			}
 
 			static int s_AutoMapperButton = 0;
-			if(m_pEditor->DoButton_Editor(&s_AutoMapperButton, "Automap", 0, &Button, 0, "Run the automapper"))
+			if(m_pEditor->DoButton_Editor(&s_AutoMapperButton, "Automap", 0, &Button, 0, "Run the automapper."))
 			{
 				m_pEditor->m_Map.m_vpImages[m_Image]->m_AutoMapper.Proceed(this, m_AutoMapperConfig, m_Seed);
 				// record undo
@@ -1099,7 +1113,7 @@ CUi::EPopupMenuFunctionResult CLayerTiles::RenderCommonProperties(SCommonPropSta
 		CUIRect Commit;
 		pToolbox->HSplitBottom(20.0f, pToolbox, &Commit);
 		static int s_CommitButton = 0;
-		if(pEditor->DoButton_Editor(&s_CommitButton, "Commit", 0, &Commit, 0, "Applies the changes"))
+		if(pEditor->DoButton_Editor(&s_CommitButton, "Commit", 0, &Commit, 0, "Apply the changes."))
 		{
 			bool HasModifiedSize = (State.m_Modified & SCommonPropState::MODIFIED_SIZE) != 0;
 			bool HasModifiedColor = (State.m_Modified & SCommonPropState::MODIFIED_COLOR) != 0;

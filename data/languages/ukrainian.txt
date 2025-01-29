@@ -3,11 +3,14 @@
 #	.ua and Ivan. REWORKED BY SwiatoslaW#2927 (09.12.2021)
 #modified by:
 #	404_not_found		2011-07-30 19:50:58
-#	EGYT5453			(15.05.2024-04.06.2024)
+#	EGYT5453			(15.05.2024-04.01.2025)
 #	veydzh3r			(31.08.2024-01.09.2024)
 ##### /authors #####
 
 ##### translated strings #####
+
+"%s" is not compatible with pnglite and cannot be loaded by old DDNet versions:
+== "%s" не сумісний з pnglite і не може бути завантажений на старих версіях DDNet:
 
 %.2f KiB
 == %.2f КіБ
@@ -102,23 +105,46 @@ Activate
 Activate all
 == Активувати усіх
 
+[Direct touch input]
+Active action
+== Поточна дія
+
+Active: Fire
+== Поточне: Вогонь
+
+Active: Hook
+== Поточне: Гак
+
 Add
 == Додати
 
 Add Clan
 == Додати клан
 
+Add clanmates by entering their clan below and leaving the name blank.
+== Додайте співклановців, ввівши їх клан нижче і залишивши поле "Нік" пустим.
+
 Add Friend
 == Додати друга
+
+Add friends by entering their name below or by clicking their name in the player list.
+== Додайте друзів, ввівши їх нікнейми нижче або натиснувши на їх нікнейми у списку гравців.
 
 Address
 == Адреса
 
-Adjust the opacity of entities belonging to other teams, such as tees and nameplates
+Adjust the opacity of entities belonging to other teams, such as tees and name plates
 == Налаштуйте непрозорість сутностей інших команд, як от тії та ніків
 
 AFR
 == АФР
+
+[Direct touch input]
+Aim
+== Прицілювання
+
+Aim
+== Прицілювання
 
 Aim bind
 == Прив’язка
@@ -167,40 +193,49 @@ Appearance
 == Вигляд
 
 Are you sure that you want to delete '%s'?
-== Ви дійсно хочете видалити '%s'?
+== Ви дійсно бажаєте видалити '%s'?
 
 Are you sure that you want to delete the demo '%s'?
-== Ви дійсно хочете видалити демо '%s'?
+== Ви дійсно бажаєте видалити демо '%s'?
 
 Are you sure that you want to delete the folder '%s'?
-== Ви дійсно хочете видалити теку '%s'?
+== Ви дійсно бажаєте видалити теку '%s'?
+
+Are you sure that you want to discard the current changes to the touch controls?
+== Ви дійсно бажаєте скасувати поточні зміни до сенсорного керування?
 
 Are you sure that you want to disconnect?
-== Ви дійсно хочете від’єднатися?
+== Ви дійсно бажаєте від’єднатися?
 
 Are you sure that you want to disconnect and switch to a different server?
-== Ви дійсно хочете від’єднатися й приєднатися до іншого сервера?
+== Ви дійсно бажаєте від’єднатися й приєднатися до іншого сервера?
 
 Are you sure that you want to disconnect your dummy?
-== Ви дійсно хочете від’єднати свого даммі?
+== Ви дійсно бажаєте від’єднати свого даммі?
+
+Are you sure that you want to import the touch controls from the clipboard? This will overwrite your current touch controls.
+== Ви дійсно бажаєте імпортувати сенсорне керування з буфера обміну? Це перезапише ваші поточні налаштування.
 
 Are you sure that you want to quit?
-== Ви дійсно хочете вийти?
+== Ви дійсно бажаєте вийти?
 
 Are you sure that you want to remove the clan '%s' from your friends list?
-== Ви дійсно хочете прибрати клан '%s' зі списку друзів?
+== Ви дійсно бажаєте прибрати клан '%s' зі списку друзів?
 
 Are you sure that you want to remove the player '%s' from your friends list?
-== Ви дійсно хочете прибрати гравця '%s' зі списку друзів?
+== Ви дійсно бажаєте прибрати гравця '%s' зі списку друзів?
 
 Are you sure that you want to reset the controls to their defaults?
-== Ви дійсно хочете скинути налаштування керувань до початкових значень?
+== Ви дійсно бажаєте скинути налаштування керувань до початкових значень?
+
+Are you sure that you want to reset the touch controls to default?
+== Ви дійсно бажаєте скинути сенсорне керування до початкових значень?
 
 Are you sure that you want to restart?
-== Ви дійсно хочете перезапустити?
+== Ви дійсно бажаєте перезапустити?
 
 Are you sure you want to save your skin? If a skin with this name already exists, it will be replaced.
-== Ви дійсно хочете зберегти ваш скін? Якщо скін із цією назвою вже існує, його буде замінено.
+== Ви дійсно бажаєте зберегти ваш скін? Якщо скін із цією назвою вже існує, його буде замінено.
 
 ASI
 == АЗІ
@@ -216,6 +251,10 @@ AUS
 
 Authed name color in scoreboard
 == Колір авторизованих у таблиці
+
+[Spectating Camera Mode Icon]
+AUTO
+== АВТО
 
 Auto
 == Авто
@@ -332,6 +371,9 @@ Client
 Client message
 == Повідомлення клієнта
 
+Close
+== Закрити
+
 Close the demo player
 == Закрити програвач демо
 
@@ -394,11 +436,23 @@ Could not initialize the given graphics backend, reverting to the default backen
 Could not initialize the given graphics backend, this is probably because you didn't install the driver of the integrated graphics card.
 == Не вдалося ініціалізувати заданий графічний рушій, імовірно, ви не встановили драйвери на вбудовану відеокарту.
 
+Could not load default touch controls from file. See local console for details.
+== Не вдалося завантажити стандартне сенсорне керування з файлу. Див. локальну консоль для подробиць.
+
+Could not load touch controls from clipboard. See local console for details.
+== Не вдалося завантажити сенсорне керування з файлу. Див. локальну консоль для подробиць.
+
+Could not load touch controls from file. See local console for details.
+== Не вдалося завантажити сенсорне керування з файлу. Див. локальну консоль для подробиць.
+
 Could not resolve connect address '%s'. See local console for details.
 == Не вдалося визначити адресу з’єднання '%s'. Див. локальну консоль для подробиць.
 
 Could not save downloaded map. Try manually deleting this file: %s
 == Не вдалося зберегти завантажену мапу. Спробуйте самостійно видалити цей файл: %s
+
+Could not save touch controls to file. See local console for details.
+== Не вдалося зберегти сенсорне керування до файлу. Див. локальну консоль для подробиць.
 
 Count players only
 == Рахувати лише гравців
@@ -506,6 +560,19 @@ Demos directory
 Desktop fullscreen
 == Робочий стіл на весь екран
 
+Direct touch input while ingame
+== Прямий сенсорний ввід у грі
+
+Direct touch input while spectating
+== Прямий сенсорний ввід під час спостерігання
+
+[Direct touch input]
+Disabled
+== Вимкнено
+
+Discard changes
+== Скасувати зміни
+
 Disconnect
 == Від’єднатися
 
@@ -550,6 +617,9 @@ Dummy is not allowed on this server
 
 Dynamic Camera
 == Динамічна камера
+
+Edit touch controls
+== Змінити сенсорне керування
 
 Editor
 == Редактор
@@ -608,11 +678,17 @@ Error
 Error loading demo
 == Помилка завантаження демо
 
+Error loading touch controls
+== Помилка завантаження сенсорного керування
+
 Error playing demo
 == Помилка відтворення демо
 
 Error saving settings
 == Помилка збереження налаштувань
+
+Error saving touch controls
+== Помилка збереження сенсорного керування
 
 EUR
 == ЄВР
@@ -631,6 +707,9 @@ Export cut as a separate demo
 
 Export demo cut
 == Експортувати фрагмент демо
+
+Export to clipboard
+== Експортувати до буфера обміну
 
 Extras
 == Додатково
@@ -678,6 +757,10 @@ File already exists, do you want to overwrite it?
 Filter connecting players
 == Не врах. тих, що приєднуються
 
+Fire
+== Вогонь
+
+[Direct touch input]
 Fire
 == Вогонь
 
@@ -821,6 +904,10 @@ Highlighted message
 Hook
 == Гак
 
+[Direct touch input]
+Hook
+== Гак
+
 Hook Collisions
 == Зіткнення гака
 
@@ -830,11 +917,11 @@ Hook collision line
 Hook collision line opacity
 == Непрозорість лінії зіткнення гака
 
-Hook collision line width
-== Товщина лінії зіткнення гака
-
 Hook collisions
 == Зіткнення гака
+
+Hook Strength
+== Сила гака
 
 https://ddnet.org/discord
 == https://ddnet.org/discord
@@ -845,6 +932,9 @@ https://wiki.ddnet.org/
 https://wiki.ddnet.org/wiki/Mapping
 == https://wiki.ddnet.org/wiki/Mapping
 
+https://wiki.ddnet.org/wiki/Touch_controls
+== https://wiki.ddnet.org/wiki/Touch_controls
+
 HUD
 == HUD
 
@@ -854,6 +944,9 @@ Hue
 [Hertz]
 Hz
 == Гц
+
+Import from clipboard
+== Імпортувати з буфера обміну
 
 Indicate map finish
 == Позначати пройдені мапи
@@ -903,6 +996,9 @@ Join Tutorial Server
 Jump
 == Стрибок
 
+Key Presses
+== Натискання клавіш
+
 Kick player
 == Вигнати гравця
 
@@ -938,6 +1034,9 @@ Loading…
 
 Loading assets
 == Завантаження текстур
+
+Loading background map
+== Завантаження мапи-тла
 
 Loading commands…
 == Завантаження команд…
@@ -1089,7 +1188,7 @@ Next weapon
 == Наст. зброя
 
 Nickname
-== Псевдонім
+== Нікнейм
 
 No
 == Ні
@@ -1127,9 +1226,6 @@ No servers match your filter criteria
 No updates available
 == Немає доступних оновлень
 
-None
-== Немає
-
 Normal Color
 == Колір звичайних повідомлень
 
@@ -1146,14 +1242,17 @@ Nothing hookable
 Offline (%d)
 == Не в мережі (%d)
 
+Offline friends and clanmates will appear here.
+== Тут з'являться друзі та співклановці не в мережі.
+
 Ok
 == Гаразд
 
 Online clanmates (%d)
 == Співклановці в мережі (%d)
 
-Online players (%d)
-== Гравці в мережі (%d)
+Online friends (%d)
+== Друзі в мережі (%d)
 
 Only save improvements
 == Зберігати лише покращення
@@ -1264,6 +1363,9 @@ Prev. weapon
 
 Preview
 == Передперегляд
+
+Preview 'Hook collisions' being pressed
+== "Зіткнення гака" натиснуто
 
 Quads are used for background decoration
 == Квади використовуються для декорацій
@@ -1392,6 +1494,9 @@ Sat.
 Save
 == Зберегти
 
+Save changes
+== Зберегти зміни
+
 Save ghost
 == Зберігати привида
 
@@ -1437,6 +1542,9 @@ Server address:
 Server best:
 == Рекорд сервера:
 
+Server could not be started. Make sure to grant the notification permission in the app settings so the server can run in the background.
+== Не вдалося запустити сервер. Переконайтеся, що ви дозволили сповіщення в налаштуваннях програми, щоб сервер міг працювати у фоновому режимі.
+
 Server executable not found, can't run server
 == Виконуваний файл сервера не знайдено, запустити сервер не вдалося
 
@@ -1479,6 +1587,9 @@ Show clan above name plates
 Show client IDs (scoreboard, chat, spectator)
 == Показувати ID клієнта (таблиця, чат, глядачі)
 
+Show client IDs in name plates
+== Показувати ID клієнта в ніках
+
 Show DDNet map finishes in server browser
 == Показувати пройдені мапи DDNet у браузері серверів
 
@@ -1498,7 +1609,7 @@ Show freeze bars
 == Показувати смугу заморозки
 
 Show friend mark (♥) in name plates
-== Показувати позначку друга (♥) біля псевдонімів
+== Показувати позначку друга (♥) біля ніків
 
 Show friends only
 == Показувати лише з друзями
@@ -1534,7 +1645,7 @@ Show local time always
 == Завжди показувати місцевий час
 
 Show name plates
-== Показувати псевдоніми
+== Показувати ніки
 
 Show names in chat in team colors
 == Показувати імена в чаті в кольорах команди
@@ -1587,6 +1698,12 @@ Show votes window after voting
 Size
 == Розмір
 
+Size of hook strength icon and number indicator
+== Розмір іконки та числового індикатора сили гака
+
+Size of key press icons
+== Розмір іконок натискання клавіш
+
 Skin Database
 == Сховище скінів
 
@@ -1608,11 +1725,14 @@ Slow down the demo
 Smooth Dynamic Camera
 == Гладка динамічна камера
 
+Some fonts could not be loaded. Check the local console for details.
+== Не вдалося завантажити деякі шрифти. Див. локальну консоль для подробиць.
+
 Some map images could not be loaded. Check the local console for details.
-== Деякі зображення мапи не завантажилися. Див. локальну консоль для подробиць.
+== Не вдалося завантажити деякі зображення мапи. Див. локальну консоль для подробиць.
 
 Some map sounds could not be loaded. Check the local console for details.
-== Деякі звуки мапи не завантажилися. Див. локальну консоль для подробиць.
+== Не вдалося завантажити деякі звуки мапи. Див. локальну консоль для подробиць.
 
 Something hookable
 == чимось, за що можна зачепитися
@@ -1744,6 +1864,9 @@ Time limit
 Time limit: %d min
 == Обмеження по часу: %dхв
 
+Toggle auto camera
+== Перемкнути автоматичну камеру
+
 Toggle dummy
 == Перемкнути даммі
 
@@ -1822,6 +1945,9 @@ Unknown error. Try to change gfx_backend to OpenGL or Vulkan in settings_ddnet.c
 
 Unregister protocol and file extensions
 == Розреєструвати протокол і розширення файлів
+
+Unsaved changes
+== Незбережені зміни
 
 Update failed! Check log…
 == Помилка оновлення! Перевірте журнал…
@@ -1910,6 +2036,12 @@ When you cross the start line, show a ghost tee replicating the movements of you
 Why are you slowmo replaying to read this?
 == Чому ви переглядаєте це у повторі?
 
+Width of others' hook collision line
+== Товщина лінії зіткнення гака інших
+
+Width of your own hook collision line
+== Товщина вашої лінії зіткнення гака
+
 Windowed
 == У вікні
 
@@ -1929,7 +2061,7 @@ You must restart the game for all settings to take effect.
 == Щоб налаштування набули чинності, перезапустіть гру.
 
 Your nickname '%s' is already used (%d points). Do you still want to use it?
-== Ваш псевдонім «%s» вже зайнято (%d балів). Усе ще хочете використовувати його?
+== Ваш нікнейм «%s» вже зайнято (%d балів). Усе ще бажаєте використовувати його?
 
 Your skin
 == Ваш скін

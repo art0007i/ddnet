@@ -43,6 +43,9 @@
 # 2024-07-21 By
 # 2024-08-29 Pioooooo
 # 2024-09-29 Pioooooo
+# 2024-11-01 Pioooooo
+# 2024-12-03 豆腐渣 & Pioooooo
+# 2025-01-03 Pioooooo
 ##### /authors #####
 
 ##### translated strings #####
@@ -1102,10 +1105,10 @@ Assets directory
 == 资源目录
 
 https://ddnet.org/discord
-== http://chat.teeworlds.cn/
+== https://chat.teeworlds.cn/
 
 Discord
-== 开黑啦
+== 加入社区
 
 The width of texture %s is not divisible by %d, or the height is not divisible by %d, which might cause visual bugs.
 == 纹理文件 %s 的宽度无法被 %d 整除，或者高度无法被 %d 整除，这可能会导致显示错误。
@@ -1218,7 +1221,7 @@ When you cross the start line, show a ghost tee replicating the movements of you
 Opacity
 == 不透明度
 
-Adjust the opacity of entities belonging to other teams, such as tees and nameplates
+Adjust the opacity of entities belonging to other teams, such as tees and name plates
 == 调整单人区域或其他队伍中玩家的不透明度
 
 Quads are used for background decoration
@@ -1393,9 +1396,6 @@ Show jumps indicator
 
 Hook collision line
 == 钩索辅助线
-
-Hook collision line width
-== 辅助线宽度
 
 Hook collision line opacity
 == 辅助线不透明度
@@ -1586,9 +1586,6 @@ Copy info
 Create a random skin
 == 随机创造皮肤
 
-Online players (%d)
-== 在线玩家 (%d人)
-
 Online clanmates (%d)
 == 在线战队成员 (%d人)
 
@@ -1604,9 +1601,6 @@ Click to remove this player from your friends list.
 
 Click to remove this clan from your friends list.
 == 单击从你的好友列表移除此战队
-
-None
-== 无
 
 Add Clan
 == 添加战队
@@ -1983,3 +1977,144 @@ Feet
 [skins]
 Eyes
 == 眼睛
+
+Some fonts could not be loaded. Check the local console for details.
+== 未能加载某些字体。检查本地控制台以获取详情。
+
+Online friends (%d)
+== 在线好友 (%d人)
+
+Add friends by entering their name below or by clicking their name in the player list.
+== 在下方输入好友名称或点击玩家列表中的好友名称即可添加好友
+
+Add clanmates by entering their clan below and leaving the name blank.
+== 在下方输入战队并留空名称即可添加战队
+
+Offline friends and clanmates will appear here.
+== 离线好友和战队会显示在这里
+
+Edit touch controls
+== 编辑触控设置
+
+Close
+== 关闭
+
+Save changes
+== 保存更改
+
+Error saving touch controls
+== 保存触控设置错误
+
+Could not save touch controls to file. See local console for details.
+== 无法将触控设置保存到文件。检查本地控制台以获取详情。
+
+Unsaved changes
+== 更改未保存
+
+Discard changes
+== 放弃更改
+
+Are you sure that you want to discard the current changes to the touch controls?
+== 确定要放弃当前对触控设置的更改吗？
+
+Are you sure that you want to reset the touch controls to default?
+== 确定要将触控设置重置为默认设置吗？
+
+Import from clipboard
+== 从剪贴板导入
+
+Are you sure that you want to import the touch controls from the clipboard? This will overwrite your current touch controls.
+== 您确定要从剪贴板导入触控设置吗？这将覆盖当前的触控设置。
+
+Export to clipboard
+== 导出到剪贴板
+
+Direct touch input while ingame
+== 游戏时直接触摸操作
+
+[Direct touch input]
+Disabled
+== 禁用
+
+[Direct touch input]
+Active action
+== 当前动作
+
+[Direct touch input]
+Aim
+== 瞄准
+
+[Direct touch input]
+Fire
+== 开火
+
+[Direct touch input]
+Hook
+== 钩索
+
+Direct touch input while spectating
+== 旁观时直接触摸操作
+
+Error loading touch controls
+== 加载触控设置错误
+
+Could not load touch controls from file. See local console for details.
+== 无法从文件加载触控设置。检查本地控制台以获取详情。
+
+Could not load default touch controls from file. See local console for details.
+== 无法从文件加载默认触控设置。检查本地控制台以获取详情。
+
+Could not load touch controls from clipboard. See local console for details.
+== 无法从剪贴板加载触控设置。检查本地控制台以获取详情。
+
+Width of your own hook collision line
+== 自己的钩索辅助线宽度
+
+Width of others' hook collision line
+== 其他玩家的钩索辅助线宽度
+
+Preview 'Hook collisions' being pressed
+== 预览按下时的钩索辅助线
+
+Aim
+== 瞄准
+
+Active: Fire
+== 当前：开火
+
+Active: Hook
+== 当前：钩索
+
+"%s" is not compatible with pnglite and cannot be loaded by old DDNet versions:
+== "%s" 与 pnglite 不兼容，无法被旧版本 DDNet 加载
+
+Loading background map
+== 加载背景地图
+
+[Spectating Camera Mode Icon]
+AUTO
+== 自动
+
+Toggle auto camera
+== 切换自动视角
+
+https://wiki.ddnet.org/wiki/Touch_controls
+== https://wiki.ddnet.org/wiki/Touch_controls/zh
+
+Show client IDs in name plates
+== 显示客户端 ID
+
+Hook Strength
+== 钩索强度
+
+Size of hook strength icon and number indicator
+== 钩索强度图标与数值的大小
+
+Key Presses
+== 按键显示
+
+Size of key press icons
+== 按键显示图标大小
+
+Server could not be started. Make sure to grant the notification permission in the app settings so the server can run in the background.
+== 服务器无法启动。请确保在应用程序设置中授予通知权限，以便服务器可以在后台运行。

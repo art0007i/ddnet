@@ -75,7 +75,7 @@ static void ConKeyInputCounter(IConsole::IResult *pResult, void *pUserData)
 {
 	CInputState *pState = (CInputState *)pUserData;
 
-	if(pState->m_pControls->GameClient()->m_GameInfo.m_BugDDRaceInput && pState->m_pControls->GameClient()->m_Snap.m_SpecInfo.m_Active)
+	if((pState->m_pControls->GameClient()->m_GameInfo.m_BugDDRaceInput && pState->m_pControls->GameClient()->m_Snap.m_SpecInfo.m_Active) || pState->m_pControls->GameClient()->m_Spectator.IsActive())
 		return;
 
 	int *pVariable = pState->m_apVariables[g_Config.m_ClDummy];
@@ -174,7 +174,7 @@ void CControls::OnMessage(int Msg, void *pRawMsg)
 		if(g_Config.m_ClAutoswitchWeapons)
 			m_aInputData[g_Config.m_ClDummy].m_WantedWeapon = pMsg->m_Weapon + 1;
 		// We don't really know ammo count, until we'll switch to that weapon, but any non-zero count will suffice here
-		m_aAmmoCount[pMsg->m_Weapon % NUM_WEAPONS] = 10;
+		m_aAmmoCount[maximum(0, pMsg->m_Weapon % NUM_WEAPONS)] = 10;
 	}
 }
 
@@ -188,11 +188,14 @@ int CControls::SnapInput(int *pData)
 	else
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags = PLAYERFLAG_PLAYING;
 
-	if(m_pClient->m_Scoreboard.Active())
+	if(m_pClient->m_Scoreboard.IsActive())
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_SCOREBOARD;
 
-	if(m_pClient->m_Controls.m_aShowHookColl[g_Config.m_ClDummy] && Client()->ServerCapAnyPlayerFlag())
+	if(Client()->ServerCapAnyPlayerFlag() && m_pClient->m_Controls.m_aShowHookColl[g_Config.m_ClDummy])
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_AIM;
+
+	if(Client()->ServerCapAnyPlayerFlag() && m_pClient->m_Camera.CamType() == CCamera::CAMTYPE_SPEC)
+		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_SPEC_CAM;
 
 	bool Send = m_aLastData[g_Config.m_ClDummy].m_PlayerFlags != m_aInputData[g_Config.m_ClDummy].m_PlayerFlags;
 
@@ -210,13 +213,6 @@ int CControls::SnapInput(int *pData)
 		// even if chat or menu are activated
 		m_aInputData[g_Config.m_ClDummy].m_TargetX = (int)m_aMousePos[g_Config.m_ClDummy].x;
 		m_aInputData[g_Config.m_ClDummy].m_TargetY = (int)m_aMousePos[g_Config.m_ClDummy].y;
-
-		// scale TargetX, TargetY by zoom.
-		if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
-		{
-			m_aInputData[g_Config.m_ClDummy].m_TargetX *= m_pClient->m_Camera.m_Zoom;
-			m_aInputData[g_Config.m_ClDummy].m_TargetY *= m_pClient->m_Camera.m_Zoom;
-		}
 
 		// send once a second just to be sure
 		Send = Send || time_get() > m_LastSendTime + time_freq();
@@ -245,13 +241,6 @@ int CControls::SnapInput(int *pData)
 			m_aInputData[g_Config.m_ClDummy].m_Direction = -1;
 		if(!m_aInputDirectionLeft[g_Config.m_ClDummy] && m_aInputDirectionRight[g_Config.m_ClDummy])
 			m_aInputData[g_Config.m_ClDummy].m_Direction = 1;
-
-		// scale TargetX, TargetY by zoom.
-		if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
-		{
-			m_aInputData[g_Config.m_ClDummy].m_TargetX *= m_pClient->m_Camera.m_Zoom;
-			m_aInputData[g_Config.m_ClDummy].m_TargetY *= m_pClient->m_Camera.m_Zoom;
-		}
 
 		// dummy copy moves
 		if(g_Config.m_ClDummyCopyMoves)
@@ -311,7 +300,7 @@ int CControls::SnapInput(int *pData)
 		Send = Send || m_aInputData[g_Config.m_ClDummy].m_WantedWeapon != m_aLastData[g_Config.m_ClDummy].m_WantedWeapon;
 		Send = Send || m_aInputData[g_Config.m_ClDummy].m_NextWeapon != m_aLastData[g_Config.m_ClDummy].m_NextWeapon;
 		Send = Send || m_aInputData[g_Config.m_ClDummy].m_PrevWeapon != m_aLastData[g_Config.m_ClDummy].m_PrevWeapon;
-		Send = Send || time_get() > m_LastSendTime + time_freq() / 25; // send at least 10hz
+		Send = Send || time_get() > m_LastSendTime + time_freq() / 25; // send at least 25 Hz
 		Send = Send || (m_pClient->m_Snap.m_pLocalCharacter && m_pClient->m_Snap.m_pLocalCharacter->m_Weapon == WEAPON_NINJA && (m_aInputData[g_Config.m_ClDummy].m_Direction || m_aInputData[g_Config.m_ClDummy].m_Jump || m_aInputData[g_Config.m_ClDummy].m_Hook));
 	}
 
@@ -334,7 +323,7 @@ void CControls::OnRender()
 	if(g_Config.m_ClAutoswitchWeaponsOutOfAmmo && !GameClient()->m_GameInfo.m_UnlimitedAmmo && m_pClient->m_Snap.m_pLocalCharacter)
 	{
 		// Keep track of ammo count, we know weapon ammo only when we switch to that weapon, this is tracked on server and protocol does not track that
-		m_aAmmoCount[m_pClient->m_Snap.m_pLocalCharacter->m_Weapon % NUM_WEAPONS] = m_pClient->m_Snap.m_pLocalCharacter->m_AmmoCount;
+		m_aAmmoCount[maximum(0, m_pClient->m_Snap.m_pLocalCharacter->m_Weapon % NUM_WEAPONS)] = m_pClient->m_Snap.m_pLocalCharacter->m_AmmoCount;
 		// Autoswitch weapon if we're out of ammo
 		if(m_aInputData[g_Config.m_ClDummy].m_Fire % 2 != 0 &&
 			m_pClient->m_Snap.m_pLocalCharacter->m_AmmoCount == 0 &&
@@ -356,11 +345,20 @@ void CControls::OnRender()
 
 	// update target pos
 	if(m_pClient->m_Snap.m_pGameInfoObj && !m_pClient->m_Snap.m_SpecInfo.m_Active)
-		m_aTargetPos[g_Config.m_ClDummy] = m_pClient->m_LocalCharacterPos + m_aMousePos[g_Config.m_ClDummy];
+	{
+		// make sure to compensate for smooth dyncam to ensure the cursor stays still in world space if zoomed
+		vec2 DyncamOffsetDelta = m_pClient->m_Camera.m_DyncamTargetCameraOffset - m_pClient->m_Camera.m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy];
+		float Zoom = m_pClient->m_Camera.m_Zoom;
+		m_aTargetPos[g_Config.m_ClDummy] = m_pClient->m_LocalCharacterPos + m_aMousePos[g_Config.m_ClDummy] - DyncamOffsetDelta + DyncamOffsetDelta / Zoom;
+	}
 	else if(m_pClient->m_Snap.m_SpecInfo.m_Active && m_pClient->m_Snap.m_SpecInfo.m_UsePosition)
+	{
 		m_aTargetPos[g_Config.m_ClDummy] = m_pClient->m_Snap.m_SpecInfo.m_Position + m_aMousePos[g_Config.m_ClDummy];
+	}
 	else
+	{
 		m_aTargetPos[g_Config.m_ClDummy] = m_aMousePos[g_Config.m_ClDummy];
+	}
 }
 
 bool CControls::OnCursorMove(float x, float y, IInput::ECursorType CursorType)

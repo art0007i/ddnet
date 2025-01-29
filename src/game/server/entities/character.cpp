@@ -123,13 +123,6 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 			delete GameServer()->m_apSavedTees[m_pPlayer->GetCid()];
 			GameServer()->m_apSavedTees[m_pPlayer->GetCid()] = nullptr;
 		}
-
-		if(GameServer()->m_apSavedTeleTees[m_pPlayer->GetCid()])
-		{
-			m_pPlayer->m_LastTeleTee = *GameServer()->m_apSavedTeleTees[m_pPlayer->GetCid()];
-			delete GameServer()->m_apSavedTeleTees[m_pPlayer->GetCid()];
-			GameServer()->m_apSavedTeleTees[m_pPlayer->GetCid()] = nullptr;
-		}
 	}
 
 	return true;
@@ -206,6 +199,8 @@ void CCharacter::SetInvincible(bool Invincible)
 	m_Core.m_Invincible = Invincible;
 	if(Invincible)
 		UnFreeze();
+
+	SetEndlessJump(Invincible);
 }
 
 void CCharacter::SetLiveFrozen(bool Active)
@@ -1004,6 +999,14 @@ void CCharacter::Die(int Killer, int Weapon, bool SendKillMsg)
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCid()] = 0;
 	GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCid(), TeamMask());
 	Teams()->OnCharacterDeath(GetPlayer()->GetCid(), Weapon);
+
+	// Cancel swap requests
+	for(auto &pPlayer : GameServer()->m_apPlayers)
+	{
+		if(pPlayer && pPlayer->m_SwapTargetsClientId == GetPlayer()->GetCid())
+			pPlayer->m_SwapTargetsClientId = -1;
+	}
+	GetPlayer()->m_SwapTargetsClientId = -1;
 }
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
@@ -1087,8 +1090,7 @@ void CCharacter::SnapCharacter(int SnappingClient, int Id)
 	{
 		Health = m_Health;
 		Armor = m_Armor;
-		if(m_Core.m_aWeapons[m_Core.m_ActiveWeapon].m_Ammo > 0)
-			AmmoCount = (m_FreezeTime == 0) ? m_Core.m_aWeapons[m_Core.m_ActiveWeapon].m_Ammo : 0;
+		AmmoCount = (m_FreezeTime == 0) ? m_Core.m_aWeapons[m_Core.m_ActiveWeapon].m_Ammo : 0;
 	}
 
 	if(GetPlayer()->IsAfk() || GetPlayer()->IsPaused())
@@ -1380,13 +1382,25 @@ void CCharacter::HandleSkippableTiles(int Index)
 		   Collision()->GetCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH ||
 		   Collision()->GetCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
 		   Collision()->GetCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH ||
-		   Collision()->GetFCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
-		   Collision()->GetFCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH ||
-		   Collision()->GetFCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
-		   Collision()->GetFCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH) &&
+		   Collision()->GetFrontCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
+		   Collision()->GetFrontCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH ||
+		   Collision()->GetFrontCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
+		   Collision()->GetFrontCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH) &&
 		!m_Core.m_Super && !m_Core.m_Invincible && !(Team() && Teams()->TeeFinished(m_pPlayer->GetCid())))
 	{
-		Die(m_pPlayer->GetCid(), WEAPON_WORLD);
+		if(Teams()->IsPractice(Team()))
+		{
+			Freeze();
+			// Rate limit death effects to once per second
+			if(Server()->Tick() - m_pPlayer->m_DieTick >= Server()->TickSpeed())
+			{
+				m_pPlayer->m_DieTick = Server()->Tick();
+				GameServer()->CreateSound(m_Pos, SOUND_PLAYER_DIE, TeamMask());
+				GameServer()->CreateDeath(m_Pos, m_pPlayer->GetCid(), TeamMask());
+			}
+		}
+		else
+			Die(m_pPlayer->GetCid(), WEAPON_WORLD);
 		return;
 	}
 
@@ -1494,7 +1508,7 @@ void CCharacter::HandleTiles(int Index)
 	int MapIndex = Index;
 	//int PureMapIndex = Collision()->GetPureMapIndex(m_Pos);
 	m_TileIndex = Collision()->GetTileIndex(MapIndex);
-	m_TileFIndex = Collision()->GetFTileIndex(MapIndex);
+	m_TileFIndex = Collision()->GetFrontTileIndex(MapIndex);
 	m_MoveRestrictions = Collision()->GetMoveRestrictions(IsSwitchActiveCb, this, m_Pos, 18.0f, MapIndex);
 	if(Index < 0)
 	{
@@ -1504,7 +1518,7 @@ void CCharacter::HandleTiles(int Index)
 		return;
 	}
 	SetTimeCheckpoint(Collision()->IsTimeCheckpoint(MapIndex));
-	SetTimeCheckpoint(Collision()->IsFTimeCheckpoint(MapIndex));
+	SetTimeCheckpoint(Collision()->IsFrontTimeCheckpoint(MapIndex));
 	int TeleCheckpoint = Collision()->IsTeleCheckpoint(MapIndex);
 	if(TeleCheckpoint)
 		m_TeleCheckpoint = TeleCheckpoint;
@@ -2115,17 +2129,25 @@ void CCharacter::DDRaceTick()
 	int Index = Collision()->GetPureMapIndex(m_Pos);
 	const int aTiles[] = {
 		Collision()->GetTileIndex(Index),
-		Collision()->GetFTileIndex(Index),
+		Collision()->GetFrontTileIndex(Index),
 		Collision()->GetSwitchType(Index)};
 	m_Core.m_IsInFreeze = false;
 	for(const int Tile : aTiles)
 	{
-		if(Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE)
+		if(Tile == TILE_FREEZE || Tile == TILE_DFREEZE || Tile == TILE_LFREEZE || Tile == TILE_DEATH)
 		{
 			m_Core.m_IsInFreeze = true;
 			break;
 		}
 	}
+	m_Core.m_IsInFreeze |= (Collision()->GetCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
+				Collision()->GetCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH ||
+				Collision()->GetCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
+				Collision()->GetCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH ||
+				Collision()->GetFrontCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
+				Collision()->GetFrontCollisionAt(m_Pos.x + GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH ||
+				Collision()->GetFrontCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y - GetProximityRadius() / 3.f) == TILE_DEATH ||
+				Collision()->GetFrontCollisionAt(m_Pos.x - GetProximityRadius() / 3.f, m_Pos.y + GetProximityRadius() / 3.f) == TILE_DEATH);
 
 	// look for save position for rescue feature
 	// always update auto rescue
@@ -2168,9 +2190,9 @@ void CCharacter::DDRacePostCoreTick()
 		m_Core.m_Jumped = 1;
 	}
 
-	if((m_Core.m_Super || m_Core.m_Invincible || m_Core.m_EndlessJump) && m_Core.m_Jumped > 1)
+	if((m_Core.m_Super || m_Core.m_EndlessJump) && m_Core.m_Jumped > 1)
 	{
-		// Super players, invincible players and players with infinite jumps always have light feet
+		// Super players and players with infinite jumps always have light feet
 		m_Core.m_Jumped = 1;
 	}
 

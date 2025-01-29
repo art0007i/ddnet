@@ -249,11 +249,9 @@ static const CMenus::SCustomItem *GetCustomItem(int CurTab, size_t Index)
 template<typename TName>
 void ClearAssetList(std::vector<TName> &vList, IGraphics *pGraphics)
 {
-	for(size_t i = 0; i < vList.size(); ++i)
+	for(TName &Asset : vList)
 	{
-		if(vList[i].m_RenderTexture.IsValid())
-			pGraphics->UnloadTexture(&(vList[i].m_RenderTexture));
-		vList[i].m_RenderTexture = IGraphics::CTextureHandle();
+		pGraphics->UnloadTexture(&Asset.m_RenderTexture);
 	}
 	vList.clear();
 }
@@ -266,9 +264,7 @@ void CMenus::ClearCustomItems(int CurTab)
 		{
 			for(auto &Image : Entity.m_aImages)
 			{
-				if(Image.m_Texture.IsValid())
-					Graphics()->UnloadTexture(&Image.m_Texture);
-				Image.m_Texture = IGraphics::CTextureHandle();
+				Graphics()->UnloadTexture(&Image.m_Texture);
 			}
 		}
 		m_vEntitiesList.clear();
@@ -381,7 +377,7 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 	User.m_pUser = this;
 	User.m_LoadedFunc = [&]() {
 		if(time_get_nanoseconds() - LoadStartTime > 500ms)
-			RenderLoading(Localize("Loading assets"), "", 0, false);
+			RenderLoading(Localize("Loading assets"), "", 0);
 	};
 	if(s_CurCustomTab == ASSETS_TAB_ENTITIES)
 	{
@@ -603,7 +599,7 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 	MainView.HSplitBottom(ms_ButtonHeight, &MainView, &QuickSearch);
 	QuickSearch.VSplitLeft(220.0f, &QuickSearch, &DirectoryButton);
 	QuickSearch.HSplitTop(5.0f, nullptr, &QuickSearch);
-	if(Ui()->DoEditBox_Search(&s_aFilterInputs[s_CurCustomTab], &QuickSearch, 14.0f, !Ui()->IsPopupOpen() && m_pClient->m_GameConsole.IsClosed()))
+	if(Ui()->DoEditBox_Search(&s_aFilterInputs[s_CurCustomTab], &QuickSearch, 14.0f, !Ui()->IsPopupOpen() && !m_pClient->m_GameConsole.IsActive()))
 	{
 		gs_aInitCustomList[s_CurCustomTab] = true;
 	}

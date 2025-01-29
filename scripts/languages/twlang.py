@@ -1,3 +1,4 @@
+import functools
 import os
 import re
 from collections import OrderedDict
@@ -54,10 +55,11 @@ def decode(fileobj, elements_per_key):
 
 def check_file(path):
 	with open(path, encoding="utf-8") as fileobj:
-		matches = re.findall(r"(Localize|Localizable)\s*\(\s*\"([^\"]+)\"(?:\s*,\s*\"([^\"]+)\")?\s*\)", fileobj.read())
+		matches = re.findall(r"(Localize|Localizable)\s*\(\s*\"((?:(?:\\\")|[^\"])+)\"(?:\s*,\s*\"((?:(?:\\\")|[^\"])+)\")?\s*\)", fileobj.read())
 	return matches
 
 
+@functools.lru_cache(None)
 def check_folder(path):
 	englishlist = OrderedDict()
 	for path2, dirs, files in os.walk(path):
@@ -66,7 +68,8 @@ def check_folder(path):
 			if not any(f.endswith(x) for x in [".cpp", ".c", ".h"]):
 				continue
 			for sentence in check_file(os.path.join(path2, f)):
-				englishlist[sentence[1:]] = None
+				key = (sentence[1:][0].replace("\\\"", "\""), sentence[1:][1].replace("\\\"", "\""))
+				englishlist[key] = None
 	return englishlist
 
 

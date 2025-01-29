@@ -56,7 +56,9 @@ void CGameContext::ConCredits(IConsole::IResult *pResult, void *pUserData)
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
 		"DynamoFox, MilkeeyCat, iMilchshake, SchrodingerZhu,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"catseyenebulous, Rei-Tw, Matodor, Emilcha, art0007i & others");
+		"catseyenebulous, Rei-Tw, Matodor, Emilcha, art0007i, SollyBunny,");
+	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
+		"0xfaulty & others");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
 		"Based on DDRace by the DDRace developers,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
@@ -854,6 +856,62 @@ void CGameContext::ConSwap(IConsole::IResult *pResult, void *pUserData)
 	}
 
 	Teams.SwapTeamCharacters(pPlayer, pSwapPlayer, Team);
+}
+
+void CGameContext::ConCancelSwap(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer)
+		return;
+
+	if(!g_Config.m_SvSwap)
+	{
+		pSelf->Console()->Print(
+			IConsole::OUTPUT_LEVEL_STANDARD,
+			"chatresp",
+			"Swap is disabled on this server.");
+		return;
+	}
+
+	if(g_Config.m_SvTeam == SV_TEAM_FORCED_SOLO)
+	{
+		pSelf->Console()->Print(
+			IConsole::OUTPUT_LEVEL_STANDARD,
+			"chatresp",
+			"Swap is not available on forced solo servers.");
+		return;
+	}
+
+	CGameTeams &Teams = pSelf->m_pController->Teams();
+
+	int Team = Teams.m_Core.Team(pResult->m_ClientId);
+
+	if(Team < TEAM_FLOCK || Team >= TEAM_SUPER)
+	{
+		pSelf->Console()->Print(
+			IConsole::OUTPUT_LEVEL_STANDARD,
+			"chatresp",
+			"Join a team to use swap feature, which means you can swap positions with each other.");
+		return;
+	}
+
+	bool SwapPending = pPlayer->m_SwapTargetsClientId != -1 && !pSelf->Server()->ClientSlotEmpty(pPlayer->m_SwapTargetsClientId);
+
+	if(!SwapPending)
+	{
+		pSelf->Console()->Print(
+			IConsole::OUTPUT_LEVEL_STANDARD,
+			"chatresp",
+			"You do not have a pending swap request.");
+		return;
+	}
+
+	Teams.CancelTeamSwap(pPlayer, Team);
 }
 
 void CGameContext::ConSave(IConsole::IResult *pResult, void *pUserData)
@@ -1920,10 +1978,12 @@ void CGameContext::ConTeleCursor(IConsole::IResult *pResult, void *pUserData)
 		return;
 	}
 
+	// default to view pos when character is not available
 	vec2 Pos = pPlayer->m_ViewPos;
-	if(pResult->NumArguments() == 0 && !pPlayer->IsPaused())
+	if(pResult->NumArguments() == 0 && !pPlayer->IsPaused() && pPlayer->GetCharacter() && pPlayer->GetCharacter()->IsAlive())
 	{
-		Pos += vec2(pChr->Core()->m_Input.m_TargetX, pChr->Core()->m_Input.m_TargetY);
+		vec2 Target = vec2(pChr->Core()->m_Input.m_TargetX, pChr->Core()->m_Input.m_TargetY);
+		Pos = pPlayer->m_CameraInfo.ConvertTargetToWorld(pPlayer->GetCharacter()->GetPos(), Target);
 	}
 	else if(pResult->NumArguments() > 0)
 	{

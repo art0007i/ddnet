@@ -6,6 +6,7 @@
 #include <cmath>
 #include <vector>
 
+#include <base/log.h>
 #include <base/math.h>
 #include <base/system.h>
 #include <base/vmath.h>
@@ -72,8 +73,6 @@ CMenus::CMenus()
 
 	m_DemoPlayerState = DEMOPLAYER_NONE;
 	m_Dummy = false;
-
-	m_ServerProcess.m_Process = INVALID_PROCESS;
 
 	for(SUIAnimator &animator : m_aAnimatorsSettingsTab)
 	{
@@ -756,12 +755,13 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 	}
 }
 
-void CMenus::RenderLoading(const char *pCaption, const char *pContent, int IncreaseCounter, bool RenderLoadingBar, bool RenderMenuBackgroundMap)
+void CMenus::RenderLoading(const char *pCaption, const char *pContent, int IncreaseCounter)
 {
 	// TODO: not supported right now due to separate render thread
 
 	const int CurLoadRenderCount = m_LoadingState.m_Current;
 	m_LoadingState.m_Current += IncreaseCounter;
+	dbg_assert(m_LoadingState.m_Current <= m_LoadingState.m_Total, "Invalid progress for RenderLoading");
 
 	// make sure that we don't render for each little thing we load
 	// because that will slow down loading if we have vsync
@@ -769,17 +769,24 @@ void CMenus::RenderLoading(const char *pCaption, const char *pContent, int Incre
 	if(Now - m_LoadingState.m_LastRender < std::chrono::nanoseconds(1s) / 60l)
 		return;
 
-	m_LoadingState.m_LastRender = Now;
-
 	// need up date this here to get correct
 	ms_GuiColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_UiColor, true));
 
 	Ui()->MapScreen();
 
-	if(!RenderMenuBackgroundMap || !GameClient()->m_MenuBackground.Render())
+	if(GameClient()->m_MenuBackground.IsLoading())
+	{
+		// Avoid rendering while loading the menu background as this would otherwise
+		// cause the regular menu background to be rendered for a few frames while
+		// the menu background is not loaded yet.
+		return;
+	}
+	if(!GameClient()->m_MenuBackground.Render())
 	{
 		RenderBackground();
 	}
+
+	m_LoadingState.m_LastRender = Now;
 
 	CUIRect Box;
 	Ui()->Screen()->Margin(160.0f, &Box);
@@ -797,7 +804,7 @@ void CMenus::RenderLoading(const char *pCaption, const char *pContent, int Incre
 	Box.HSplitTop(24.0f, &Label, &Box);
 	Ui()->DoLabel(&Label, pContent, 20.0f, TEXTALIGN_MC);
 
-	if(RenderLoadingBar)
+	if(m_LoadingState.m_Total > 0)
 	{
 		CUIRect ProgressBar;
 		Box.HSplitBottom(30.0f, &Box, nullptr);
@@ -806,7 +813,15 @@ void CMenus::RenderLoading(const char *pCaption, const char *pContent, int Incre
 		Ui()->RenderProgressBar(ProgressBar, CurLoadRenderCount / (float)m_LoadingState.m_Total);
 	}
 
+	Graphics()->SetColor(1.0, 1.0, 1.0, 1.0);
+
 	Client()->UpdateAndSwap();
+}
+
+void CMenus::FinishLoading()
+{
+	m_LoadingState.m_Current = 0;
+	m_LoadingState.m_Total = 0;
 }
 
 void CMenus::RenderNews(CUIRect MainView)
@@ -894,9 +909,8 @@ void CMenus::OnInit()
 	m_TextureBlob = Graphics()->LoadTexture("blob.png", IStorage::TYPE_ALL);
 
 	// setup load amount
-	const int NumMenuImages = 5;
 	m_LoadingState.m_Current = 0;
-	m_LoadingState.m_Total = g_pData->m_NumImages + NumMenuImages + GameClient()->ComponentCount();
+	m_LoadingState.m_Total = g_pData->m_NumImages + GameClient()->ComponentCount();
 	if(!g_Config.m_ClThreadsoundloading)
 		m_LoadingState.m_Total += g_pData->m_NumSounds;
 
@@ -986,10 +1000,11 @@ void CMenus::PopupWarning(const char *pTopic, const char *pBody, const char *pBu
 	// no multiline support for console
 	std::string BodyStr = pBody;
 	while(BodyStr.find('\n') != std::string::npos)
+	{
 		BodyStr.replace(BodyStr.find('\n'), 1, " ");
-	dbg_msg(pTopic, "%s", BodyStr.c_str());
+	}
+	log_warn("client", "%s: %s", pTopic, BodyStr.c_str());
 
-	// reset active item
 	Ui()->SetActiveItem(nullptr);
 
 	str_copy(m_aMessageTopic, pTopic);
@@ -1815,7 +1830,7 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 					if(m_pClient->m_Skins7.SaveSkinfile(m_SkinNameInput.GetString(), m_Dummy))
 					{
 						m_Popup = POPUP_NONE;
-						m_SkinListNeedsUpdate = true;
+						m_SkinList7LastRefreshTime = std::nullopt;
 					}
 					else
 						PopupMessage(Localize("Error"), Localize("Unable to save the skin"), Localize("Ok"), POPUP_SAVE_SKIN);
@@ -2372,9 +2387,9 @@ void CMenus::RenderBackground()
 
 bool CMenus::CheckHotKey(int Key) const
 {
-	return m_Popup == POPUP_NONE &&
-	       !Input()->ShiftIsPressed() && !Input()->ModifierIsPressed() && // no modifier
-	       Input()->KeyIsPressed(Key) && m_pClient->m_GameConsole.IsClosed();
+	return !Input()->ShiftIsPressed() && !Input()->ModifierIsPressed() && !Input()->AltIsPressed() && // no modifier
+	       Input()->KeyPress(Key) &&
+	       !m_pClient->m_GameConsole.IsActive();
 }
 
 int CMenus::DoButton_CheckBox_Tristate(const void *pId, const char *pText, TRISTATE Checked, const CUIRect *pRect)
@@ -2429,7 +2444,7 @@ int CMenus::MenuImageScan(const char *pName, int IsDir, int DirType, void *pUser
 	str_truncate(MenuImage.m_aName, sizeof(MenuImage.m_aName), pName, str_length(pName) - str_length(pExtension));
 	pSelf->m_vMenuImages.push_back(MenuImage);
 
-	pSelf->RenderLoading(Localize("Loading DDNet Client"), Localize("Loading menu images"), 1);
+	pSelf->RenderLoading(Localize("Loading DDNet Client"), Localize("Loading menu images"), 0);
 
 	return 0;
 }

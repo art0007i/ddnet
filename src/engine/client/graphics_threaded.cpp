@@ -350,7 +350,7 @@ bool CGraphics_Threaded::IsSpriteTextureFullyTransparent(const CImageInfo &FromI
 	return IsImageSubFullyTransparent(FromImageInfo, x, y, w, h);
 }
 
-static void LoadTextureAddWarning(size_t Width, size_t Height, int Flags, const char *pTexName, std::vector<SWarning> &vWarnings)
+void CGraphics_Threaded::LoadTextureAddWarning(size_t Width, size_t Height, int Flags, const char *pTexName)
 {
 	if((Flags & IGraphics::TEXLOAD_TO_2D_ARRAY_TEXTURE) != 0 || (Flags & IGraphics::TEXLOAD_TO_3D_TEXTURE) != 0)
 	{
@@ -360,7 +360,7 @@ static void LoadTextureAddWarning(size_t Width, size_t Height, int Flags, const 
 			char aText[128];
 			str_format(aText, sizeof(aText), "\"%s\"", pTexName ? pTexName : "(no name)");
 			str_format(NewWarning.m_aWarningMsg, sizeof(NewWarning.m_aWarningMsg), Localize("The width of texture %s is not divisible by %d, or the height is not divisible by %d, which might cause visual bugs."), aText, 16, 16);
-			vWarnings.emplace_back(NewWarning);
+			AddWarning(NewWarning);
 		}
 	}
 }
@@ -385,7 +385,7 @@ static CCommandBuffer::SCommand_Texture_Create LoadTextureCreateCommand(int Text
 
 IGraphics::CTextureHandle CGraphics_Threaded::LoadTextureRaw(const CImageInfo &Image, int Flags, const char *pTexName)
 {
-	LoadTextureAddWarning(Image.m_Width, Image.m_Height, Flags, pTexName, m_vWarnings);
+	LoadTextureAddWarning(Image.m_Width, Image.m_Height, Flags, pTexName);
 
 	if(Image.m_Width == 0 || Image.m_Height == 0)
 		return IGraphics::CTextureHandle();
@@ -416,7 +416,7 @@ IGraphics::CTextureHandle CGraphics_Threaded::LoadTextureRawMove(CImageInfo &Ima
 		return TextureHandle;
 	}
 
-	LoadTextureAddWarning(Image.m_Width, Image.m_Height, Flags, pTexName, m_vWarnings);
+	LoadTextureAddWarning(Image.m_Width, Image.m_Height, Flags, pTexName);
 
 	if(Image.m_Width == 0 || Image.m_Height == 0)
 		return IGraphics::CTextureHandle();
@@ -484,7 +484,7 @@ bool CGraphics_Threaded::UnloadTextTextures(CTextureHandle &TextTexture, CTextur
 	return true;
 }
 
-bool CGraphics_Threaded::UpdateTextTexture(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, const uint8_t *pData)
+bool CGraphics_Threaded::UpdateTextTexture(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, uint8_t *pData, bool IsMovedPointer)
 {
 	CCommandBuffer::SCommand_TextTexture_Update Cmd;
 	Cmd.m_Slot = TextureId.Id();
@@ -493,10 +493,17 @@ bool CGraphics_Threaded::UpdateTextTexture(CTextureHandle TextureId, int x, int 
 	Cmd.m_Width = Width;
 	Cmd.m_Height = Height;
 
-	const size_t MemSize = Width * Height;
-	uint8_t *pTmpData = static_cast<uint8_t *>(malloc(MemSize));
-	mem_copy(pTmpData, pData, MemSize);
-	Cmd.m_pData = pTmpData;
+	if(IsMovedPointer)
+	{
+		Cmd.m_pData = pData;
+	}
+	else
+	{
+		const size_t MemSize = Width * Height;
+		uint8_t *pTmpData = static_cast<uint8_t *>(malloc(MemSize));
+		mem_copy(pTmpData, pData, MemSize);
+		Cmd.m_pData = pTmpData;
+	}
 	AddCmd(Cmd);
 
 	return true;
@@ -505,7 +512,8 @@ bool CGraphics_Threaded::UpdateTextTexture(CTextureHandle TextureId, int x, int 
 static SWarning FormatPngliteIncompatibilityWarning(int PngliteIncompatible, const char *pContextName)
 {
 	SWarning Warning;
-	str_format(Warning.m_aWarningMsg, sizeof(Warning.m_aWarningMsg), Localize("\"%s\" is not compatible with pnglite and cannot be loaded by old DDNet versions: "), pContextName);
+	str_format(Warning.m_aWarningMsg, sizeof(Warning.m_aWarningMsg), Localize("\"%s\" is not compatible with pnglite and cannot be loaded by old DDNet versions:"), pContextName);
+	str_append(Warning.m_aWarningMsg, " ");
 	static const int FLAGS[] = {CImageLoader::PNGLITE_COLOR_TYPE, CImageLoader::PNGLITE_BIT_DEPTH, CImageLoader::PNGLITE_INTERLACE_TYPE, CImageLoader::PNGLITE_COMPRESSION_TYPE, CImageLoader::PNGLITE_FILTER_TYPE};
 	static const char *const EXPLANATION[] = {"color type", "bit depth", "interlace type", "compression type", "filter type"};
 
@@ -536,7 +544,7 @@ bool CGraphics_Threaded::LoadPng(CImageInfo &Image, const char *pFilename, int S
 
 	if(m_WarnPngliteIncompatibleImages && PngliteIncompatible != 0)
 	{
-		m_vWarnings.emplace_back(FormatPngliteIncompatibilityWarning(PngliteIncompatible, pFilename));
+		AddWarning(FormatPngliteIncompatibilityWarning(PngliteIncompatible, pFilename));
 	}
 
 	return true;
@@ -551,7 +559,7 @@ bool CGraphics_Threaded::LoadPng(CImageInfo &Image, const uint8_t *pData, size_t
 
 	if(m_WarnPngliteIncompatibleImages && PngliteIncompatible != 0)
 	{
-		m_vWarnings.emplace_back(FormatPngliteIncompatibilityWarning(PngliteIncompatible, pContextName));
+		AddWarning(FormatPngliteIncompatibilityWarning(PngliteIncompatible, pContextName));
 	}
 
 	return true;
@@ -570,7 +578,7 @@ bool CGraphics_Threaded::CheckImageDivisibility(const char *pContextName, CImage
 		str_format(aContextNameQuoted, sizeof(aContextNameQuoted), "\"%s\"", pContextName);
 		str_format(NewWarning.m_aWarningMsg, sizeof(NewWarning.m_aWarningMsg),
 			Localize("The width of texture %s is not divisible by %d, or the height is not divisible by %d, which might cause visual bugs."), aContextNameQuoted, DivX, DivY);
-		m_vWarnings.emplace_back(NewWarning);
+		AddWarning(NewWarning);
 		ImageIsValid = false;
 	}
 
@@ -604,7 +612,7 @@ bool CGraphics_Threaded::IsImageFormatRgba(const char *pContextName, const CImag
 		str_format(aContextNameQuoted, sizeof(aContextNameQuoted), "\"%s\"", pContextName);
 		str_format(NewWarning.m_aWarningMsg, sizeof(NewWarning.m_aWarningMsg),
 			Localize("The format of texture %s is not RGBA which will cause visual bugs."), aContextNameQuoted);
-		m_vWarnings.emplace_back(NewWarning);
+		AddWarning(NewWarning);
 		return false;
 	}
 	return true;
@@ -622,7 +630,7 @@ void CGraphics_Threaded::KickCommandBuffer()
 		for(const auto &WarnStr : WarningStrings)
 			WarningStr.append((WarnStr + "\n"));
 		str_copy(NewWarning.m_aWarningMsg, WarningStr.c_str());
-		m_vWarnings.emplace_back(NewWarning);
+		AddWarning(NewWarning);
 	}
 
 	// swap buffer
@@ -1910,6 +1918,9 @@ int CGraphics_Threaded::CreateBufferObject(size_t UploadDataSize, void *pUploadD
 		m_vBufferObjectIndices[Index] = Index;
 	}
 
+	dbg_assert((CreateFlags & EBufferObjectCreateFlags::BUFFER_OBJECT_CREATE_FLAGS_ONE_TIME_USE_BIT) == 0 || (UploadDataSize <= CCommandBuffer::MAX_VERTICES * maximum(sizeof(CCommandBuffer::SVertexTex3DStream), sizeof(CCommandBuffer::SVertexTex3D))),
+		"If BUFFER_OBJECT_CREATE_FLAGS_ONE_TIME_USE_BIT is used, then the buffer size must not exceed max(sizeof(CCommandBuffer::SVertexTex3DStream), sizeof(CCommandBuffer::SVertexTex3D)) * CCommandBuffer::MAX_VERTICES");
+
 	CCommandBuffer::SCommand_CreateBufferObject Cmd;
 	Cmd.m_BufferIndex = Index;
 	Cmd.m_DataSize = UploadDataSize;
@@ -1962,6 +1973,9 @@ void CGraphics_Threaded::RecreateBufferObject(int BufferIndex, size_t UploadData
 	Cmd.m_DataSize = UploadDataSize;
 	Cmd.m_DeletePointer = IsMovedPointer;
 	Cmd.m_Flags = CreateFlags;
+
+	dbg_assert((CreateFlags & EBufferObjectCreateFlags::BUFFER_OBJECT_CREATE_FLAGS_ONE_TIME_USE_BIT) == 0 || (UploadDataSize <= CCommandBuffer::MAX_VERTICES * maximum(sizeof(CCommandBuffer::SVertexTex3DStream), sizeof(CCommandBuffer::SVertexTex3D))),
+		"If BUFFER_OBJECT_CREATE_FLAGS_ONE_TIME_USE_BIT is used, then the buffer size must not exceed max(sizeof(CCommandBuffer::SVertexTex3DStream), sizeof(CCommandBuffer::SVertexTex3D)) * CCommandBuffer::MAX_VERTICES");
 
 	if(IsMovedPointer)
 	{
@@ -2217,11 +2231,11 @@ void CGraphics_Threaded::UpdateViewport(int X, int Y, int W, int H, bool ByResiz
 void CGraphics_Threaded::AddBackEndWarningIfExists()
 {
 	const char *pErrStr = m_pBackend->GetErrorString();
-	if(pErrStr != NULL)
+	if(pErrStr != nullptr)
 	{
 		SWarning NewWarning;
 		str_copy(NewWarning.m_aWarningMsg, Localize(pErrStr));
-		m_vWarnings.emplace_back(NewWarning);
+		AddWarning(NewWarning);
 	}
 }
 
@@ -2701,15 +2715,6 @@ void CGraphics_Threaded::TakeCustomScreenshot(const char *pFilename)
 
 void CGraphics_Threaded::Swap()
 {
-	if(!m_vWarnings.empty())
-	{
-		SWarning *pCurWarning = GetCurWarning();
-		if(pCurWarning->m_WasShown)
-		{
-			m_vWarnings.erase(m_vWarnings.begin());
-		}
-	}
-
 	bool Swapped = false;
 	ScreenshotDirect(&Swapped);
 	ReadPixelDirect(&Swapped);
@@ -2783,14 +2788,24 @@ void CGraphics_Threaded::WaitForIdle()
 	m_pBackend->WaitForIdle();
 }
 
-SWarning *CGraphics_Threaded::GetCurWarning()
+void CGraphics_Threaded::AddWarning(const SWarning &Warning)
 {
+	const std::unique_lock<std::mutex> Lock(m_WarningsMutex);
+	m_vWarnings.emplace_back(Warning);
+}
+
+std::optional<SWarning> CGraphics_Threaded::CurrentWarning()
+{
+	const std::unique_lock<std::mutex> Lock(m_WarningsMutex);
 	if(m_vWarnings.empty())
-		return NULL;
+	{
+		return std::nullopt;
+	}
 	else
 	{
-		SWarning *pCurWarning = m_vWarnings.data();
-		return pCurWarning;
+		std::optional<SWarning> Result = std::make_optional(m_vWarnings[0]);
+		m_vWarnings.erase(m_vWarnings.begin());
+		return Result;
 	}
 }
 

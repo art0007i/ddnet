@@ -95,12 +95,7 @@ void CChat::RebuildChat()
 	}
 }
 
-void CChat::OnWindowResize()
-{
-	RebuildChat();
-}
-
-void CChat::Reset()
+void CChat::ClearLines()
 {
 	for(auto &Line : m_aLines)
 	{
@@ -115,6 +110,16 @@ void CChat::Reset()
 	}
 	m_PrevScoreBoardShowed = false;
 	m_PrevShowChat = false;
+}
+
+void CChat::OnWindowResize()
+{
+	RebuildChat();
+}
+
+void CChat::Reset()
+{
+	ClearLines();
 
 	m_Show = false;
 	m_CompletionUsed = false;
@@ -183,6 +188,11 @@ void CChat::ConEcho(IConsole::IResult *pResult, void *pUserData)
 	((CChat *)pUserData)->Echo(pResult->GetString(0));
 }
 
+void CChat::ConClearChat(IConsole::IResult *pResult, void *pUserData)
+{
+	((CChat *)pUserData)->ClearLines();
+}
+
 void CChat::ConchainChatOld(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
 {
 	pfnCallback(pResult, pCallbackUserData);
@@ -217,6 +227,7 @@ void CChat::OnConsoleInit()
 	Console()->Register("chat", "s['team'|'all'] ?r[message]", CFGFLAG_CLIENT, ConChat, this, "Enable chat with all/team mode");
 	Console()->Register("+show_chat", "", CFGFLAG_CLIENT, ConShowChat, this, "Show chat");
 	Console()->Register("echo", "r[message]", CFGFLAG_CLIENT | CFGFLAG_STORE, ConEcho, this, "Echo the text in chat window");
+	Console()->Register("clear_chat", "", CFGFLAG_CLIENT | CFGFLAG_STORE, ConClearChat, this, "Clear chat messages");
 }
 
 void CChat::OnInit()
@@ -565,7 +576,6 @@ bool CChat::LineShouldHighlight(const char *pLine, const char *pName)
 	return false;
 }
 
-#define SAVES_FILE "ddnet-saves.txt"
 const char *SAVES_HEADER[] = {
 	"Time",
 	"Player",
@@ -696,8 +706,25 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 				ChatLogColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageColor));
 		}
 
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, pLine_->m_Whisper ? "whisper" : (pLine_->m_Team ? "teamchat" : "chat"), aBuf, ChatLogColor);
+		const char *pFrom;
+		if(pLine_->m_Whisper)
+			pFrom = "chat/whisper";
+		else if(pLine_->m_Team)
+			pFrom = "chat/team";
+		else if(pLine_->m_ClientId == SERVER_MSG)
+			pFrom = "chat/server";
+		else if(pLine_->m_ClientId == CLIENT_MSG)
+			pFrom = "chat/client";
+		else
+			pFrom = "chat/all";
+
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, pFrom, aBuf, ChatLogColor);
 	};
+
+	// Custom color for new line
+	std::optional<ColorRGBA> CustomColor = std::nullopt;
+	if(ClientId == CLIENT_MSG)
+		CustomColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
 
 	CLine *pCurrentLine = &m_aLines[m_CurrentLine];
 
@@ -705,7 +732,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	// 0 = global; 1 = team; 2 = sending whisper; 3 = receiving whisper
 
 	// If it's a client message, m_aText will have ": " prepended so we have to work around it.
-	if(pCurrentLine->m_TeamNumber == Team && pCurrentLine->m_ClientId == ClientId && str_comp(pCurrentLine->m_aText, pLine) == 0)
+	if(pCurrentLine->m_TeamNumber == Team && pCurrentLine->m_ClientId == ClientId && str_comp(pCurrentLine->m_aText, pLine) == 0 && pCurrentLine->m_CustomColor == CustomColor)
 	{
 		pCurrentLine->m_TimesRepeated++;
 		TextRender()->DeleteTextContainer(pCurrentLine->m_TextContainerIndex);
@@ -732,6 +759,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	pCurrentLine->m_NameColor = -2;
 	pCurrentLine->m_Friend = false;
 	pCurrentLine->m_HasRenderTee = false;
+	pCurrentLine->m_CustomColor = CustomColor;
 
 	TextRender()->DeleteTextContainer(pCurrentLine->m_TextContainerIndex);
 	Graphics()->DeleteQuadContainer(pCurrentLine->m_QuadContainerIndex);
@@ -739,12 +767,12 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	// check for highlighted name
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
 	{
-		if(ClientId >= 0 && ClientId != m_pClient->m_aLocalIds[0] && (!m_pClient->Client()->DummyConnected() || ClientId != m_pClient->m_aLocalIds[1]))
+		if(ClientId >= 0 && ClientId != m_pClient->m_aLocalIds[0] && ClientId != m_pClient->m_aLocalIds[1])
 		{
-			// main character
-			Highlighted |= LineShouldHighlight(pLine, m_pClient->m_aClients[m_pClient->m_aLocalIds[0]].m_aName);
-			// dummy
-			Highlighted |= m_pClient->Client()->DummyConnected() && LineShouldHighlight(pLine, m_pClient->m_aClients[m_pClient->m_aLocalIds[1]].m_aName);
+			for(int LocalId : m_pClient->m_aLocalIds)
+			{
+				Highlighted |= LocalId >= 0 && LineShouldHighlight(pLine, m_pClient->m_aClients[LocalId].m_aName);
+			}
 		}
 	}
 	else
@@ -773,7 +801,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		if(LineAuthor.m_Team == TEAM_SPECTATORS)
 			pCurrentLine->m_NameColor = TEAM_SPECTATORS;
 
-		if(m_pClient->m_Snap.m_pGameInfoObj && m_pClient->m_Snap.m_pGameInfoObj->m_GameFlags & GAMEFLAG_TEAMS)
+		if(m_pClient->IsTeamPlay())
 		{
 			if(LineAuthor.m_Team == TEAM_RED)
 				pCurrentLine->m_NameColor = TEAM_RED;
@@ -890,7 +918,7 @@ void CChat::OnPrepareLines(float y)
 	float x = 5.0f;
 	float FontSize = this->FontSize();
 
-	const bool IsScoreBoardOpen = m_pClient->m_Scoreboard.Active() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
+	const bool IsScoreBoardOpen = m_pClient->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
 	const bool ShowLargeArea = m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
 	const bool ForceRecreate = IsScoreBoardOpen != m_PrevScoreBoardShowed || ShowLargeArea != m_PrevShowChat;
 	m_PrevScoreBoardShowed = IsScoreBoardOpen;
@@ -1033,7 +1061,9 @@ void CChat::OnPrepareLines(float y)
 
 		// render name
 		ColorRGBA NameColor;
-		if(Line.m_ClientId == SERVER_MSG)
+		if(Line.m_CustomColor)
+			NameColor = *Line.m_CustomColor;
+		else if(Line.m_ClientId == SERVER_MSG)
 			NameColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageSystemColor));
 		else if(Line.m_ClientId == CLIENT_MSG)
 			NameColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
@@ -1066,9 +1096,10 @@ void CChat::OnPrepareLines(float y)
 			TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &Cursor, ": ");
 		}
 
-		// render line
 		ColorRGBA Color;
-		if(Line.m_ClientId == SERVER_MSG)
+		if(Line.m_CustomColor)
+			Color = *Line.m_CustomColor;
+		else if(Line.m_ClientId == SERVER_MSG)
 			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageSystemColor));
 		else if(Line.m_ClientId == CLIENT_MSG)
 			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
@@ -1078,7 +1109,6 @@ void CChat::OnPrepareLines(float y)
 			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageTeamColor));
 		else // regular message
 			Color = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageColor));
-
 		TextRender()->TextColor(Color);
 
 		CTextCursor AppendCursor = Cursor;
@@ -1194,7 +1224,7 @@ void CChat::OnRender()
 			{
 				if(str_startswith_nocase(Command.m_aName, m_Input.GetString() + 1))
 				{
-					Cursor.m_X = m_Input.GetCaretPosition().x;
+					Cursor.m_X = Cursor.m_X + TextRender()->TextWidth(Cursor.m_FontSize, m_Input.GetString(), -1, Cursor.m_LineWidth);
 					Cursor.m_Y = m_Input.GetCaretPosition().y;
 					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.5f);
 					TextRender()->TextEx(&Cursor, Command.m_aName + str_length(m_Input.GetString() + 1));
@@ -1216,7 +1246,7 @@ void CChat::OnRender()
 
 	OnPrepareLines(y);
 
-	bool IsScoreBoardOpen = m_pClient->m_Scoreboard.Active() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
+	bool IsScoreBoardOpen = m_pClient->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
 
 	int64_t Now = time();
 	float HeightLimit = IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f);

@@ -1294,9 +1294,6 @@ Show local player's key presses
 Hook collision line
 == Dodir kuke
 
-Hook collision line width
-== Debljina linije za dodir kuke
-
 Hook collision line opacity
 == Providnost linije za dodir kuke
 
@@ -1327,7 +1324,7 @@ When you cross the start line, show a ghost tee replicating the movements of you
 Opacity
 == Providnost
 
-Adjust the opacity of entities belonging to other teams, such as tees and nameplates
+Adjust the opacity of entities belonging to other teams, such as tees and name plates
 == Podesite neprozirnost entiteta koji pripadaju drugim timovima, kao što su majice i natpisne pločice
 
 Quads are used for background decoration
@@ -1440,9 +1437,6 @@ Copy info
 No server selected
 == Није изабран сервер
 
-Online players (%d)
-== Играчи на мрежи (%d)
-
 Online clanmates (%d)
 == Чланови клана на мрежи (%d)
 
@@ -1458,9 +1452,6 @@ Click to remove this player from your friends list.
 
 Click to remove this clan from your friends list.
 == Кликните да бисте уклонили овај клан са листе пријатеља.
-
-None
-== Ништа
 
 Are you sure that you want to remove the player '%s' from your friends list?
 == Да ли сте сигурни да желите да уклоните играча '%s' са листе пријатеља?
@@ -1661,7 +1652,16 @@ Saving settings to '%s' failed
 Error saving settings
 == 
 
+"%s" is not compatible with pnglite and cannot be loaded by old DDNet versions:
+== 
+
 Loading demo file from storage
+== 
+
+Some fonts could not be loaded. Check the local console for details.
+== 
+
+Loading background map
 == 
 
 Searching
@@ -1696,6 +1696,10 @@ Loading commands…
 
 [Spectating]
 Following %s
+== 
+
+[Spectating Camera Mode Icon]
+AUTO
 == 
 
 Some map images could not be loaded. Check the local console for details.
@@ -1758,6 +1762,18 @@ No login required
 Communities
 == 
 
+Online friends (%d)
+== 
+
+Add friends by entering their name below or by clicking their name in the player list.
+== 
+
+Add clanmates by entering their clan below and leaving the name blank.
+== 
+
+Offline friends and clanmates will appear here.
+== 
+
 Server filter
 == 
 
@@ -1779,6 +1795,9 @@ Change the skip duration
 == 
 
 Go forward the specified duration
+== 
+
+Toggle auto camera
 == 
 
 Render cut to video
@@ -1804,6 +1823,83 @@ Dummy is not allowed on this server
 == 
 
 Please wait…
+== 
+
+Edit touch controls
+== 
+
+Close
+== 
+
+https://wiki.ddnet.org/wiki/Touch_controls
+== 
+
+Save changes
+== 
+
+Error saving touch controls
+== 
+
+Could not save touch controls to file. See local console for details.
+== 
+
+Unsaved changes
+== 
+
+Discard changes
+== 
+
+Are you sure that you want to discard the current changes to the touch controls?
+== 
+
+Are you sure that you want to reset the touch controls to default?
+== 
+
+Import from clipboard
+== 
+
+Are you sure that you want to import the touch controls from the clipboard? This will overwrite your current touch controls.
+== 
+
+Export to clipboard
+== 
+
+Direct touch input while ingame
+== 
+
+[Direct touch input]
+Disabled
+== 
+
+[Direct touch input]
+Active action
+== 
+
+[Direct touch input]
+Aim
+== 
+
+[Direct touch input]
+Fire
+== 
+
+[Direct touch input]
+Hook
+== 
+
+Direct touch input while spectating
+== 
+
+Error loading touch controls
+== 
+
+Could not load touch controls from file. See local console for details.
+== 
+
+Could not load default touch controls from file. See local console for details.
+== 
+
+Could not load touch controls from clipboard. See local console for details.
 == 
 
 Loading…
@@ -1834,6 +1930,12 @@ Info Messages
 Show local time always
 == 
 
+Authed name color in scoreboard
+== 
+
+Same clan color in scoreboard
+== 
+
 Show client IDs (scoreboard, chat, spectator)
 == 
 
@@ -1852,16 +1954,25 @@ Chat width
 Show friend mark (♥) in name plates
 == 
 
+Show client IDs in name plates
+== 
+
+Hook Strength
+== 
+
 Show hook strength icon indicator
 == 
 
 Show hook strength number indicator
 == 
 
-Authed name color in scoreboard
+Size of hook strength icon and number indicator
 == 
 
-Same clan color in scoreboard
+Key Presses
+== 
+
+Size of key press icons
 == 
 
 Show own player's hook collision line
@@ -1871,6 +1982,15 @@ Always show own player's hook collision line
 == 
 
 Always show other players' hook collision lines
+== 
+
+Width of your own hook collision line
+== 
+
+Width of others' hook collision line
+== 
+
+Preview 'Hook collisions' being pressed
 == 
 
 Show finish messages
@@ -1901,6 +2021,9 @@ Delete skin
 == 
 
 Unable to delete skin
+== 
+
+Server could not be started. Make sure to grant the notification permission in the app settings so the server can run in the background.
 == 
 
 Round %d/%d
@@ -1939,6 +2062,15 @@ Feet
 
 [skins]
 Eyes
+== 
+
+Aim
+== 
+
+Active: Fire
+== 
+
+Active: Hook
 == 
 
 https://wiki.ddnet.org/wiki/Mapping

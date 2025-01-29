@@ -196,7 +196,7 @@ bool CLineInput::ProcessInput(const IInput::CEvent &Event)
 	const size_t SelectionLength = GetSelectionLength();
 	bool KeyHandled = false;
 
-	if((Event.m_Flags & IInput::FLAG_TEXT) && !(KEY_LCTRL <= Event.m_Key && Event.m_Key <= KEY_RGUI))
+	if(Event.m_Flags & IInput::FLAG_TEXT)
 	{
 		SetRange(Event.m_aText, m_SelectionStart, m_SelectionEnd);
 		KeyHandled = true;
@@ -358,6 +358,7 @@ bool CLineInput::ProcessInput(const IInput::CEvent &Event)
 								Line = GetString();
 							}
 							Begin = i + 1;
+							str_sanitize_cc(Line.data());
 							m_pfnClipboardLineCallback(Line.c_str());
 						}
 					}

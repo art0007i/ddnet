@@ -1,31 +1,3 @@
-##### authors #####
-#originally created by:
-#	Dominik Geyer
-#modified by:
-#	Fujnky			2010-06-03 11:30:05
-#	Fujnky			2010-06-03 17:41:45
-#	Fujnky			2010-06-05 23:36:52
-#	Fujnky			2010-06-07 16:17:40
-#	Fujnky			2010-06-11 09:50:47
-#	Sworddragon		2010-11-21 14:25:00
-#	Fujnky			2011-01-02 19:49:22
-#	heinrich5991	2011-01-23 17:53:42
-#	Sworddragon		2011-02-09 12:54:50
-#	heinrich5991	2011-04-03 23:46:51
-#	ghost91			2011-04-04 20:47:01
-#	andi103			2011-05-02 19:12:27
-#	andi103			2011-05-03 23:25:20
-#	heinrich5991	2011-07-02 09:10:21
-#	Yared Hufkens	2012-02-03 19:57:59
-#	andi103			2012-07-14 11:31:11
-#	timakro			2014-06-30 18:26:59
-#	deen			2020-06-26 18:32:00
-#	bluesky			2022-07-05 21:00:00
-# BlaiZephyr 2024-03-23 20:55:00
-##### /authors #####
-
-##### translated strings #####
-
 %ds left
 == Noch %ds
 
@@ -90,7 +62,7 @@ Client
 == Client
 
 Colors of the hook collision line, in case of a possible collision with:
-== Die Farbe der Hakenkollisionlinie bei einer möglichen Kollision mit:
+== Die Farbe der Hakenkollisionslinie bei einer möglichen Kollision mit:
 
 Connecting to
 == Verbinden mit
@@ -848,9 +820,6 @@ Hook collision line
 Hook collision line opacity
 == Deckkraft der Hakenkollisionslinie
 
-Hook collision line width
-== Breite der Hakenkollisionslinie
-
 Fetch Info
 == Neu laden
 
@@ -1239,7 +1208,7 @@ Super
 Team %d
 == Team %d
 
-Adjust the opacity of entities belonging to other teams, such as tees and nameplates
+Adjust the opacity of entities belonging to other teams, such as tees and name plates
 == Deckkraft von Entitäten die zu einem anderen Team gehören, z.B. Tees und Namensschilder
 
 Position:
@@ -1559,9 +1528,6 @@ Open the settings file
 Create a random skin
 == Erstelle einen zufälligen Skin
 
-Online players (%d)
-== Online-Spieler (%d)
-
 Online clanmates (%d)
 == Online-Clanmitglieder (%d)
 
@@ -1577,9 +1543,6 @@ Click to remove this player from your friends list.
 
 Click to remove this clan from your friends list.
 == Klicke um diesen Clan aus deiner Freundesliste zu entfernen.
-
-None
-== Keine
 
 Add Clan
 == Clan hinzufügen
@@ -1956,3 +1919,148 @@ Eyes
 
 https://wiki.ddnet.org/wiki/Mapping
 == https://wiki.ddnet.org/wiki/Mapping
+
+Some fonts could not be loaded. Check the local console for details.
+== Einige Schriften konnten nicht geladen werden. Prüf die lokale Konsole für Details.
+
+Online friends (%d)
+== Online-Freunde (%d)
+
+Add friends by entering their name below or by clicking their name in the player list.
+== Freunde hinzufügen durch Eingabe des Namens oder durch Klicken auf ihren Namen in Spielerliste.
+
+Add clanmates by entering their clan below and leaving the name blank.
+== Clanmitglieder hinzufügen durch Eingabe des Clans und Leerlassen des Namens.
+
+Offline friends and clanmates will appear here.
+== Offline-Freunde und Clanmitglieder erscheinen hier.
+
+Edit touch controls
+== Berührungseingaben bearbeiten
+
+Close
+== Schließen
+
+Save changes
+== Änderungen speichern
+
+Error saving touch controls
+== Berührungseingaben konnten nicht gespeichert werden
+
+Could not save touch controls to file. See local console for details.
+== Konnte Berührungseingaben nicht in Datei speichern. Siehe lokale Konsole für Details.
+
+Unsaved changes
+== Ungespeicherte Änderungen
+
+Discard changes
+== Änderungen verwerfen
+
+Are you sure that you want to discard the current changes to the touch controls?
+== Willst du wirklich die aktuellen Änderungen zu Berührungseingaben verwerfen?
+
+Are you sure that you want to reset the touch controls to default?
+== Willst du wirklich die Berührungseingaben zurücksetzen?
+
+Import from clipboard
+== Aus Zwischenablage importieren
+
+Are you sure that you want to import the touch controls from the clipboard? This will overwrite your current touch controls.
+== Willst du wirklich Berührungseingaben aus der Zwischenablage importieren? Dies überschreibt deine aktuellen Berührungseingaben.
+
+Export to clipboard
+== In Zwischenablage exportieren
+
+Direct touch input while ingame
+== Direkte Berührungseingaben beim Spielen
+
+[Direct touch input]
+Disabled
+== Deaktiviert
+
+[Direct touch input]
+Active action
+== Aktive Aktion
+
+[Direct touch input]
+Aim
+== Zielen
+
+[Direct touch input]
+Fire
+== Feuern
+
+[Direct touch input]
+Hook
+== Haken
+
+Direct touch input while spectating
+== Direkte Berührungseingaben beim Zuschauen
+
+Error loading touch controls
+== Konnte Berührungssteuerung nicht laden
+
+Could not load touch controls from file. See local console for details.
+== Konnte Berührungssteuerung nicht von Datei laden. Siehe Details in der lokalen Konsole.
+
+Could not load default touch controls from file. See local console for details.
+== Konnte Standard-Berührungssteuerung nicht von Datei laden. Siehe Details in der lokalen Konsole.
+
+Could not load touch controls from clipboard. See local console for details.
+== Konnte Berührungssteuerung nicht von Zwischenablage laden. Siehe Details in der lokalen Konsole.
+
+Width of your own hook collision line
+== Breite der eigenen Hakenkollisionslinie
+
+Width of others' hook collision line
+== Breite der Hakenkollisionslinie anderer
+
+Aim
+== Zielen
+
+Active: Fire
+== Aktiv: Feuern
+
+Active: Hook
+== Aktiv: Haken
+
+Preview 'Hook collisions' being pressed
+== Vorschau für 'Hakenkollisionen' gedrückt
+
+Loading background map
+== Hintergrund-Karte laden
+
+[Spectating Camera Mode Icon]
+AUTO
+== AUTO
+
+Toggle auto camera
+== Auto-Kamera wechseln
+
+https://wiki.ddnet.org/wiki/Touch_controls
+== https://wiki.ddnet.org/wiki/Touch_controls
+
+Show client IDs in name plates
+== Client-IDs in Spielernamen anzeigen
+
+Hook Strength
+== Hakenstärke
+
+Size of hook strength icon and number indicator
+== Größe des Hakenstärke-Symbole und der Zahl
+
+Key Presses
+== Tastendrücke
+
+Size of key press icons
+== Größe der Tastendruck-Symbole
+
+Server could not be started. Make sure to grant the notification permission in the app settings so the server can run in the background.
+== Server konnte nicht gestartet werden. Erlaub Benachrichtigungen in den App-Einstellungen so dass der Server im Hintergrund laufen kann.
+
+"%s" is not compatible with pnglite and cannot be loaded by old DDNet versions:
+== "%s" is nicht mit pnglite kompatibel und kann in alten DDNet-Versionen nicht geladen werden:
+
+[Translation credits: Add your own name here when you update translations]
+English translation by the DDNet Team
+== Deutsche Übersetzung von Dominik Geyer, Fujnky, Sworddragon, heinrich5991, ghost91, andi103, Yared Hufkens, timakro, deen, bluesky, BlaiZephyr, Robyt3

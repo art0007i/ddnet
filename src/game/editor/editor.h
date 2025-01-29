@@ -385,6 +385,7 @@ public:
 
 		m_FileDialogStorageType = 0;
 		m_FileDialogLastPopulatedStorageType = 0;
+		m_FileDialogSaveAction = false;
 		m_pFileDialogTitle = nullptr;
 		m_pFileDialogButtonText = nullptr;
 		m_pFileDialogUser = nullptr;
@@ -439,7 +440,6 @@ public:
 		}
 
 		m_CheckerTexture.Invalidate();
-		m_BackgroundTexture.Invalidate();
 		for(auto &CursorTexture : m_aCursorTextures)
 			CursorTexture.Invalidate();
 
@@ -449,15 +449,9 @@ public:
 
 		// DDRace
 
-		m_ViewTeleNumber = 1;
-		m_TeleNumbers = {
-			{TILE_TELEINEVIL, 1},
-			{TILE_TELEINWEAPON, 1},
-			{TILE_TELEINHOOK, 1},
-			{TILE_TELEIN, 1},
-			{TILE_TELEOUT, 1},
-			{TILE_TELECHECK, 1},
-			{TILE_TELECHECKOUT, 1}};
+		m_TeleNumber = 1;
+		m_TeleCheckpointNumber = 1;
+		m_ViewTeleNumber = 0;
 
 		m_SwitchNum = 1;
 		m_TuningNum = 1;
@@ -540,6 +534,7 @@ public:
 	void FreeDynamicPopupMenus();
 	void UpdateColorPipette();
 	void RenderMousePointer();
+	void RenderGameEntities(const std::shared_ptr<CLayerTiles> &pTiles);
 
 	std::vector<CQuad *> GetSelectedQuads();
 	std::shared_ptr<CLayer> GetSelectedLayerType(int Index, int Type) const;
@@ -614,7 +609,9 @@ public:
 		POPEVENT_PLACE_BORDER_TILES,
 		POPEVENT_PIXELART_BIG_IMAGE,
 		POPEVENT_PIXELART_MANY_COLORS,
-		POPEVENT_PIXELART_TOO_MANY_COLORS
+		POPEVENT_PIXELART_TOO_MANY_COLORS,
+		POPEVENT_REMOVE_USED_IMAGE,
+		POPEVENT_REMOVE_USED_SOUND,
 	};
 
 	int m_PopupEventType;
@@ -638,6 +635,7 @@ public:
 
 	int m_FileDialogStorageType;
 	int m_FileDialogLastPopulatedStorageType;
+	bool m_FileDialogSaveAction;
 	const char *m_pFileDialogTitle;
 	const char *m_pFileDialogButtonText;
 	bool (*m_pfnFileDialogFunc)(const char *pFileName, int StorageType, void *pUser);
@@ -746,7 +744,6 @@ public:
 	bool m_ShowMousePointer;
 	bool m_GuiActive;
 
-	char m_aMenuBackgroundTooltip[256];
 	bool m_PreviewZoom;
 	float m_MouseWorldScale = 1.0f; // Mouse (i.e. UI) scale relative to the World (selected Group)
 	vec2 m_MouseWorldPos = vec2(0.0f, 0.0f);
@@ -819,7 +816,6 @@ public:
 	bool m_ColorPipetteActive = false;
 
 	IGraphics::CTextureHandle m_CheckerTexture;
-	IGraphics::CTextureHandle m_BackgroundTexture;
 
 	enum ECursorType
 	{
@@ -973,6 +969,7 @@ public:
 	};
 	void DoMapEditor(CUIRect View);
 	void DoToolbarLayers(CUIRect Toolbar);
+	void DoToolbarImages(CUIRect Toolbar);
 	void DoToolbarSounds(CUIRect Toolbar);
 	void DoQuad(int LayerIndex, const std::shared_ptr<CLayerQuads> &pLayer, CQuad *pQuad, int Index);
 	void PreparePointDrag(const std::shared_ptr<CLayerQuads> &pLayer, CQuad *pQuad, int QuadIndex, int PointIndex);
@@ -1014,6 +1011,7 @@ public:
 	static bool ReplaceSoundCallback(const char *pFileName, int StorageType, void *pUser);
 	static bool AddImage(const char *pFilename, int StorageType, void *pUser);
 	static bool AddSound(const char *pFileName, int StorageType, void *pUser);
+	static bool IsAssetUsed(int FileType, int Index, void *pUser);
 
 	bool IsEnvelopeUsed(int EnvelopeIndex) const;
 	void RemoveUnusedEnvelopes();
@@ -1159,8 +1157,9 @@ public:
 	IGraphics::CTextureHandle GetSwitchTexture();
 	IGraphics::CTextureHandle GetTuneTexture();
 
+	unsigned char m_TeleNumber;
+	unsigned char m_TeleCheckpointNumber;
 	unsigned char m_ViewTeleNumber;
-	std::map<int, unsigned char> m_TeleNumbers;
 
 	unsigned char m_TuningNum;
 
@@ -1174,7 +1173,7 @@ public:
 
 	void AdjustBrushSpecialTiles(bool UseNextFree, int Adjust = 0);
 	int FindNextFreeSwitchNumber();
-	int FindNextFreeTeleNumber(int Index);
+	int FindNextFreeTeleNumber(bool Checkpoint = false);
 
 	// Undo/Redo
 	CEditorHistory m_EditorHistory;

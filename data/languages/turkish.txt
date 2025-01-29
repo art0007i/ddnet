@@ -8,16 +8,11 @@
 #	Learath2		2012-01-01 22:54:29
 #	ardadem			2020-08-20 00:00:00
 #	ardadem			2020-08-22 00:00:00
-#   h-kaan          2023-08-23 15:57:36
-#   h-kaan          2023-08-30 01:52:04
-#   h-kaan          2023-09-21 21:04:35
-#   eghwand          2024-03-03 13:24:20
-#   Gokturk          2024-04-23 01:56:10
-#   Gokturk          2024-04-24 03:01:50
-#   Gokturk          2024-06-09 12:00:50
-#   Gokturk          2024-07-17 02:24:00
-#   Gokturk          2024-08-29 23:31:00
-#   Gokturk          2024-09-29 19:23:00
+# h-kaan          2023-08-23 15:57:36
+# h-kaan          2023-08-30 01:52:04
+# h-kaan          2023-09-21 21:04:35
+# eghwand          2024-03-03 13:24:20
+# Gokturk          2024-04-23 01:56:10 / 2025-01-08 14:00:00
 ##### /authors #####
 
 ##### translated strings #####
@@ -545,7 +540,7 @@ Ghost
 == Hayalet
 
 Loading DDNet Client
-== DDNet Client yükleniyor
+== DDNet İstemcisi Yükleniyor
 
 Reconnect in %d sec
 == %d saniye içinde yeniden bağlanılacak
@@ -626,7 +621,7 @@ Update failed! Check log…
 == Güncelleme sırasında hata oluştu!
 
 DDNet Client updated!
-== DDNet Client güncellendi!
+== DDNet İstemcisi güncellendi!
 
 Update now
 == Güncelle
@@ -1171,9 +1166,6 @@ Leak IP
 No server selected
 == Sunucu seçilmedi
 
-Online players (%d)
-== Çevrim içi oyuncular (%d)
-
 Online clanmates (%d)
 == Çevrim içi klan arkadaşları (%d)
 
@@ -1189,9 +1181,6 @@ Click to remove this player from your friends list.
 
 Click to remove this clan from your friends list.
 == Bu klanı arkadaş listesinden silmek için tıkla.
-
-None
-== Yok
 
 Are you sure that you want to remove the player '%s' from your friends list?
 == '%s' oyuncusunu arkadaş listenizden silmek istediğinize emin misiniz?
@@ -1495,9 +1484,6 @@ Show local player's key presses
 Hook collision line
 == Kanca çizgisi
 
-Hook collision line width
-== Kanca çizgisi kalınlığı
-
 Hook collision line opacity
 == Kanca çizgisi opaklığı
 
@@ -1561,7 +1547,7 @@ When you cross the start line, show a ghost tee replicating the movements of you
 Opacity
 == Opaklık
 
-Adjust the opacity of entities belonging to other teams, such as tees and nameplates
+Adjust the opacity of entities belonging to other teams, such as tees and name plates
 == Teeler ve isim etiketleri gibi diğer takımlara ait varlıkların opaklığını ayarlayın
 
 Quads are used for background decoration
@@ -1878,7 +1864,7 @@ https://wiki.ddnet.org/wiki/Mapping
 == https://wiki.ddnet.org/wiki/Mapping/tr
 
 Could not resolve connect address '%s'. See local console for details.
-== '%s' Bağlantı adresi çözümlenemedi. Detaylar için yerel konsola bakın
+== '%s' bağlantı adresi çözümlenemedi. Detaylar için yerel konsola bakın.
 
 Connect address error
 == Bağlantı adresi hatası
@@ -1920,7 +1906,7 @@ Unable to save the skin
 == Skin kaydedilemiyor
 
 Unable to save the skin with a reserved name
-== Skin kaydedilemiyor, bu isimde zaten bir skin var.
+== Skin kaydedilemiyor bu isimde zaten bir skin var
 
 No local servers found (ports %d-%d)
 == Yerel sunucu bulunamadı (bağlantı noktası %d-%d)
@@ -1952,3 +1938,144 @@ Feet
 [skins]
 Eyes
 == Göz
+
+Some fonts could not be loaded. Check the local console for details.
+== Bazı fontlar yüklenemiyor. Detaylar için konsolu kontrol edin.
+
+Online friends (%d)
+== Çevrim içi arkadaşlar (%d)
+
+Add friends by entering their name below or by clicking their name in the player list.
+== Aşağıya isim girerek veya oyuncu listesinden isme tıklayarak arkadaş ekle.
+
+Add clanmates by entering their clan below and leaving the name blank.
+== Klan arkadaşlarınızı klanlarını aşağıya girerek ve isimlerini boş bırakarak ekleyin.
+
+Offline friends and clanmates will appear here.
+== Çevrim dışı arkadaşlar ve klan arkadaşları burada görünecek.
+
+Edit touch controls
+== Dokunmatik ayarlarını düzelt
+
+Close
+== Kapat
+
+Save changes
+== Değişiklikleri kaydet
+
+Error saving touch controls
+== Dokunmatik ayarları kaydedilirken bir hata oldu
+
+Could not save touch controls to file. See local console for details.
+== Dokunmatik ayarları dosyalara kaydedilemedi. Detaylar için yerel konsola bakın.
+
+Unsaved changes
+== Kaydedilmemiş değişiklikler
+
+Discard changes
+== Değişiklikleri iptal et
+
+Are you sure that you want to discard the current changes to the touch controls?
+== Dokunmatik ayarlarında ki değişiklikleri iptal etmek istediğinden emin misin?
+
+Are you sure that you want to reset the touch controls to default?
+== Dokunmatik ayarlarını varsayılan ayarlarına döndürmek istediğinden emin misin?
+
+Import from clipboard
+== Panodan içeri aktar
+
+Are you sure that you want to import the touch controls from the clipboard? This will overwrite your current touch controls.
+== Dokunmatik ayarlarını panodan içeri aktarmak istediğine emin misin? Bu şu anki kontrollerin üzerine yazılacak. 
+
+Export to clipboard
+== Panodan dışarı aktar
+
+Direct touch input while ingame
+== Oyun içindeyken doğrudan dokunmatik giriş
+
+[Direct touch input]
+Disabled
+== Devre dışı
+
+[Direct touch input]
+Active action
+== Aktif aksiyon
+
+[Direct touch input]
+Aim
+== Aim
+
+[Direct touch input]
+Fire
+== Ateş
+
+[Direct touch input]
+Hook
+== Kanca
+
+Direct touch input while spectating
+== Gezinme modundayken dokunarak doğrudan giriş
+
+Error loading touch controls
+== Dokunmatik ayarları yüklenirken bir hata oluştu
+
+Could not load touch controls from file. See local console for details.
+== Dokunmatik ayarları dosyalardan yüklenemedi. Detaylar için konsola bakın.
+
+Could not load default touch controls from file. See local console for details.
+== Varsayılan dokunmatik ayarları dosyalardan yüklenemedi. Detaylar için konsola bakın.
+
+Could not load touch controls from clipboard. See local console for details.
+== Dokunmatik ayarları panodan yüklenemedi. Detaylar için konsola bakın.
+
+Width of your own hook collision line
+== Kendi kancanın çarpışma çizgisi kalınlığı 
+
+Width of others' hook collision line
+== Başkalarının kancalarının çarpışma çizgisi kalınlığı
+
+Preview 'Hook collisions' being pressed
+== Ön izleme 'Kanca çarpışmaları' gösteriliyor
+
+Aim
+== Aim
+
+Active: Fire
+== Aktif: Ateş etme
+
+Active: Hook
+== Aktif: Kanca
+
+"%s" is not compatible with pnglite and cannot be loaded by old DDNet versions:
+== "%s" pnglite ile uyumlu değil ve eski DDnet versiyonları tarafından yüklenemiyor:
+
+Loading background map
+== Arkaplan haritası yükleniyor
+
+[Spectating Camera Mode Icon]
+AUTO
+== OTOMATİK
+
+Toggle auto camera
+== Otomatik kamerayı değiştir
+
+https://wiki.ddnet.org/wiki/Touch_controls
+== https://wiki.ddnet.org/wiki/Touch_controls
+
+Show client IDs in name plates
+== İstemci ID'sini isim kısmında göster
+
+Hook Strength
+== Kanca gücü
+
+Size of hook strength icon and number indicator
+== Kanca gücü simgesi ve sayı göstergesinin boyutu
+
+Key Presses
+== Tuş Basışları
+
+Size of key press icons
+== Tuşa basma simgesinin boyutu
+
+Server could not be started. Make sure to grant the notification permission in the app settings so the server can run in the background.
+== Sunucu başlatılamıyor. Sunucunun arka planda çalışması için ayarlardan bildirim iznini açtığınıza emin olun.

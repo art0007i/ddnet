@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 #define GRAPHICS_TYPE_UNSIGNED_BYTE 0x1401
@@ -284,7 +285,7 @@ public:
 	// pTextData & pTextOutlineData are automatically free'd
 	virtual bool LoadTextTextures(size_t Width, size_t Height, CTextureHandle &TextTexture, CTextureHandle &TextOutlineTexture, uint8_t *pTextData, uint8_t *pTextOutlineData) = 0;
 	virtual bool UnloadTextTextures(CTextureHandle &TextTexture, CTextureHandle &TextOutlineTexture) = 0;
-	virtual bool UpdateTextTexture(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, const uint8_t *pData) = 0;
+	virtual bool UpdateTextTexture(CTextureHandle TextureId, int x, int y, size_t Width, size_t Height, uint8_t *pData, bool IsMovedPointer) = 0;
 
 	virtual CTextureHandle LoadSpriteTexture(const CImageInfo &FromImageInfo, const struct CDataSprite *pSprite) = 0;
 
@@ -369,26 +370,11 @@ public:
 		CQuadItem() {}
 		CQuadItem(float x, float y, float w, float h) :
 			m_X(x), m_Y(y), m_Width(w), m_Height(h) {}
-		void Set(float x, float y, float w, float h)
-		{
-			m_X = x;
-			m_Y = y;
-			m_Width = w;
-			m_Height = h;
-		}
-
-		CFreeformItem ToFreeForm() const
-		{
-			return CFreeformItem(m_X, m_Y, m_X + m_Width, m_Y, m_X, m_Y + m_Height, m_X + m_Width, m_Y + m_Height);
-		}
 	};
 	virtual void QuadsDraw(CQuadItem *pArray, int Num) = 0;
 	virtual void QuadsDrawTL(const CQuadItem *pArray, int Num) = 0;
 
 	virtual void QuadsTex3DDrawTL(const CQuadItem *pArray, int Num) = 0;
-
-	virtual const GL_STexCoord *GetCurTextureCoordinates() = 0;
-	virtual const GL_SColor *GetCurColor() = 0;
 
 	virtual int CreateQuadContainer(bool AutomaticUpload = true) = 0;
 	virtual void QuadContainerChangeAutomaticUpload(int ContainerIndex, bool AutomaticUpload) = 0;
@@ -482,7 +468,7 @@ public:
 	// this function always returns the pixels in RGB
 	virtual TGLBackendReadPresentedImageData &GetReadPresentedImageDataFuncUnsafe() = 0;
 
-	virtual SWarning *GetCurWarning() = 0;
+	virtual std::optional<SWarning> CurrentWarning() = 0;
 
 	// returns true if the error msg was shown
 	virtual bool ShowMessageBox(unsigned Type, const char *pTitle, const char *pMsg) = 0;
