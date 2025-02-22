@@ -408,10 +408,9 @@ void CCamera::OnReset()
 {
 	m_CameraSmoothing = false;
 
-	m_Zoom = CCamera::ZoomStepsToValue(g_Config.m_ClDefaultZoom - 10);
+	m_Zoom = m_UserZoomTarget = m_ZoomSmoothingTarget = CCamera::ZoomStepsToValue(g_Config.m_ClDefaultZoom - 10);
 	m_Zooming = false;
 	m_AutoSpecCameraZooming = false;
-	m_UserZoomTarget = CCamera::ZoomStepsToValue(g_Config.m_ClDefaultZoom - 10);
 }
 
 void CCamera::ConZoomPlus(IConsole::IResult *pResult, void *pUserData)

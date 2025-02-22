@@ -1512,15 +1512,16 @@ void CHud::RenderSpectatorHud()
 	TextRender()->Text(m_Width - 174.0f, m_Height - 15.0f + (15.f - 8.f) / 2.f, 8.0f, aBuf, -1.0f);
 
 	// draw the camera info
+	constexpr float RightMargin = 4.0f;
+	constexpr float Padding = 3.0f;
+	float ZoomTextX = m_Width - RightMargin;
 	if(m_pClient->m_Camera.SpectatingPlayer() && m_pClient->m_Camera.CanUseAutoSpecCamera() && g_Config.m_ClSpecAutoSync)
 	{
 		bool AutoSpecCameraEnabled = m_pClient->m_Camera.m_AutoSpecCamera;
 		const char *pLabelText = Localize("AUTO", "Spectating Camera Mode Icon");
 		const float TextWidth = TextRender()->TextWidth(6.0f, pLabelText);
 
-		constexpr float RightMargin = 4.0f;
 		constexpr float IconWidth = 6.0f;
-		constexpr float Padding = 3.0f;
 		const float TagWidth = IconWidth + TextWidth + Padding * 3.0f;
 		const float TagX = m_Width - RightMargin - TagWidth;
 		Graphics()->DrawRect(TagX, m_Height - 12.0f, TagWidth, 10.0f, ColorRGBA(1.0f, 1.0f, 1.0f, AutoSpecCameraEnabled ? 0.50f : 0.10f), IGraphics::CORNER_ALL, 2.5f);
@@ -1530,7 +1531,13 @@ void CHud::RenderSpectatorHud()
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 		TextRender()->Text(TagX + Padding + IconWidth + Padding, m_Height - 10.0f, 6.0f, pLabelText, -1.0f);
 		TextRender()->TextColor(1, 1, 1, 1);
+		ZoomTextX = TagX - Padding;
 	}
+
+	char ZoomString[16];
+	snprintf(ZoomString, sizeof(ZoomString), "%ld", 10+std::lroundf(log(m_pClient->m_Camera.m_ZoomSmoothingTarget) / log(m_pClient->m_Camera.ZOOM_STEP)));
+	const float TextWidth = TextRender()->TextWidth(6.0f, ZoomString);
+	TextRender()->Text(ZoomTextX - TextWidth, m_Height - 10.0f, 6.0f, ZoomString);
 }
 
 void CHud::RenderLocalTime(float x)
