@@ -1392,6 +1392,10 @@ set(EXPECTED_DATA
   countryflags/index.txt
   deadtee.png
   debug_font.png
+  editor/arrow_array_gen/gen_part1.py
+  editor/arrow_array_gen/gen_part2.py
+  editor/arrow_array_gen/input.png
+  editor/arrow_array_gen/readme.md
   editor/audio_source.png
   editor/automap/basic_freeze.rules
   editor/automap/ddmax_freeze.rules
@@ -1851,7 +1855,7 @@ set(EXPECTED_DATA
   wordlist.txt
 )
 
-set_glob(DATA GLOB_RECURSE "cfg;frag;json;map;otf;png;rules;ttc;ttf;txt;vert;wv" data ${EXPECTED_DATA})
+set_glob(DATA GLOB_RECURSE "cfg;frag;json;map;otf;png;rules;ttc;ttf;txt;vert;wv;py;md" data ${EXPECTED_DATA})
 
 ########################################################################
 # COPY DATA AND SHARED LIBS
