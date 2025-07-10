@@ -178,6 +178,7 @@ public:
 	// text editing
 	virtual void StartTextInput() = 0;
 	virtual void StopTextInput() = 0;
+	virtual void EnsureScreenKeyboardShown() = 0;
 	virtual const char *GetComposition() const = 0;
 	virtual bool HasComposition() const = 0;
 	virtual int GetCompositionCursor() const = 0;
@@ -205,7 +206,7 @@ class IEngineInput : public IInput
 	MACRO_INTERFACE("engineinput")
 public:
 	virtual void Init() = 0;
-	virtual void Shutdown() override = 0;
+	void Shutdown() override = 0;
 	virtual int Update() = 0;
 };
 

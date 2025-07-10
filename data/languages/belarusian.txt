@@ -1573,12 +1573,12 @@ Go back the specified duration
 == Назад на выбраную працягласць
 
 [Demo player duration]
-%d min.
-== %d хв.
+%s min.
+== %s хв.
 
 [Demo player duration]
-%d sec.
-== %d сек.
+%s sec.
+== %s сек.
 
 Change the skip duration
 == Змяніць працягласць пропуску
@@ -1673,10 +1673,6 @@ A render command failed. Try to update your GPU drivers.
 [Graphics error]
 Failed during initialization. Try to change gfx_backend to OpenGL or Vulkan in settings_ddnet.cfg in the config directory and try again.
 == Памылка падчас ініцыялізацыі. Паспрабуйце змяніць gfx_backend на OpenGL або Vulcan у settings_dnet.cfg ў тэчцы канфігурацыйных файлаў і паспрабуйце яшчэ раз.
-
-[Graphics error]
-Out of VRAM. Try removing custom assets (skins, entities, etc.), especially those with high resolution.
-== Недахоп VRAM. Паспрабуйце выдаліць карыстацкія тэкстуры (скіны, энтыты і г.д.), асабліва тыя, якія маюць высокую разрознасць.
 
 [Graphics error]
 Submitting the render commands failed. Try to update your GPU drivers.
@@ -1850,9 +1846,6 @@ No demo with this filename exists
 
 Some fonts could not be loaded. Check the local console for details.
 == Некаторыя шрыфты не атрымалася загрузіць. Для атрымання дэталей праверце лакальную кансоль.
-
-Loading background map
-== Загрузка фонавай карты
 
 Auto-sync player camera
 == Аўтасінхранізацыя з камерай гульца
@@ -2179,3 +2172,44 @@ Active: Fire
 
 Active: Hook
 == Актыўна: Крук
+
+[Graphics error]
+Out of VRAM. Try setting 'cl_skins_loaded_max' to a lower value or remove custom assets (skins, entities, etc.), especially those with high resolution.
+== 
+
+[Spectating]
+Following %d: %s
+== 
+
+Loading map
+== 
+
+This name cannot be used for files and folders
+== 
+
+Error checking player name
+== 
+
+Could not check for existing player with your name. Check your internet connection.
+== 
+
+This skin name cannot be used.
+== 
+
+Skin could not be loaded due to an error. Check the local console for details.
+== 
+
+Skin could not be found.
+== 
+
+No skins match your filter criteria
+== 
+
+Preview player's name plate
+== 
+
+Dragger Outline Color
+== 
+
+Dragger Inner Color
+== 

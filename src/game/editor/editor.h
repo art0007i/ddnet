@@ -36,6 +36,7 @@
 #include "editor_server_settings.h"
 #include "editor_trackers.h"
 #include "editor_ui.h"
+#include "font_typer.h"
 #include "layer_selector.h"
 #include "map_view.h"
 #include "quadart.h"
@@ -66,6 +67,11 @@ enum
 	DIALOG_FILE,
 	DIALOG_MAPSETTINGS_ERROR,
 	DIALOG_QUICK_PROMPT,
+
+	// The font typer component sets m_Dialog
+	// while it is active to make sure no other component
+	// interprets the key presses
+	DIALOG_PSEUDO_FONT_TYPER,
 };
 
 class CEditorImage;
@@ -293,6 +299,7 @@ class CEditor : public IEditor
 	CMapView m_MapView;
 	CLayerSelector m_LayerSelector;
 	CPrompt m_Prompt;
+	CFontTyper m_FontTyper;
 
 	bool m_EditorWasUsedBefore = false;
 
@@ -448,8 +455,6 @@ public:
 
 		m_CursorType = CURSOR_NORMAL;
 
-		ms_pUiGotContext = nullptr;
-
 		// DDRace
 
 		m_TeleNumber = 1;
@@ -497,7 +502,7 @@ public:
 	void OnActivate() override;
 	void OnWindowResize() override;
 	void OnClose() override;
-	void OnDialogClose() override;
+	void OnDialogClose();
 	bool HasUnsavedData() const override { return m_Map.m_Modified; }
 	void UpdateMentions() override { m_Mentions++; }
 	void ResetMentions() override { m_Mentions = 0; }
@@ -506,6 +511,15 @@ public:
 
 	void HandleCursorMovement();
 	void OnMouseMove(vec2 MousePos);
+	void MouseAxisLock(vec2 &CursorRel);
+	vec2 m_MouseAxisInitialPos = vec2(0.0f, 0.0f);
+	enum class EAxisLock
+	{
+		Start,
+		None,
+		Horizontal,
+		Vertical
+	} m_MouseAxisLockState = EAxisLock::Start;
 	void HandleAutosave();
 	bool PerformAutosave();
 	void HandleWriterFinishJobs();
@@ -851,7 +865,7 @@ public:
 	std::shared_ptr<CLayerTiles> m_pTilesetPicker;
 	std::shared_ptr<CLayerQuads> m_pQuadsetPicker;
 
-	static const void *ms_pUiGotContext;
+	const void *m_pUiGotContext = nullptr;
 
 	CEditorMap m_Map;
 	std::deque<std::shared_ptr<CDataFileWriterFinishJob>> m_WriterFinishJobs;
@@ -1081,86 +1095,6 @@ public:
 
 	void DoAudioPreview(CUIRect View, const void *pPlayPauseButtonId, const void *pStopButtonId, const void *pSeekBarId, int SampleId);
 
-	// Tile Numbers For Explanations - TODO: Add/Improve tiles and explanations
-	enum
-	{
-		TILE_PUB_AIR,
-		TILE_PUB_HOOKABLE,
-		TILE_PUB_DEATH,
-		TILE_PUB_UNHOOKABLE,
-
-		TILE_PUB_CREDITS1 = 140,
-		TILE_PUB_CREDITS2,
-		TILE_PUB_CREDITS3,
-		TILE_PUB_CREDITS4,
-		TILE_PUB_CREDITS5 = 156,
-		TILE_PUB_CREDITS6,
-		TILE_PUB_CREDITS7,
-		TILE_PUB_CREDITS8,
-
-		TILE_PUB_ENTITIES_OFF1 = 190,
-		TILE_PUB_ENTITIES_OFF2,
-	};
-
-	enum
-	{
-		TILE_FNG_SPIKE_GOLD = 7,
-		TILE_FNG_SPIKE_NORMAL,
-		TILE_FNG_SPIKE_RED,
-		TILE_FNG_SPIKE_BLUE,
-		TILE_FNG_SCORE_RED,
-		TILE_FNG_SCORE_BLUE,
-
-		TILE_FNG_SPIKE_GREEN = 14,
-		TILE_FNG_SPIKE_PURPLE,
-
-		TILE_FNG_SPAWN = 192,
-		TILE_FNG_SPAWN_RED,
-		TILE_FNG_SPAWN_BLUE,
-		TILE_FNG_FLAG_RED,
-		TILE_FNG_FLAG_BLUE,
-		TILE_FNG_SHIELD,
-		TILE_FNG_HEART,
-		TILE_FNG_SHOTGUN,
-		TILE_FNG_GRENADE,
-		TILE_FNG_NINJA,
-		TILE_FNG_LASER,
-
-		TILE_FNG_SPIKE_OLD1 = 208,
-		TILE_FNG_SPIKE_OLD2,
-		TILE_FNG_SPIKE_OLD3
-	};
-
-	enum
-	{
-		TILE_VANILLA_SPAWN = 192,
-		TILE_VANILLA_SPAWN_RED,
-		TILE_VANILLA_SPAWN_BLUE,
-		TILE_VANILLA_FLAG_RED,
-		TILE_VANILLA_FLAG_BLUE,
-		TILE_VANILLA_SHIELD,
-		TILE_VANILLA_HEART,
-		TILE_VANILLA_SHOTGUN,
-		TILE_VANILLA_GRENADE,
-		TILE_VANILLA_NINJA,
-		TILE_VANILLA_LASER,
-	};
-
-	// Explanations
-	enum class EExplanation
-	{
-		NONE,
-		DDNET,
-		FNG,
-		RACE,
-		VANILLA,
-		BLOCKWORLDS
-	};
-	static const char *ExplainDDNet(int Tile, int Layer);
-	static const char *ExplainFNG(int Tile, int Layer);
-	static const char *ExplainVanilla(int Tile, int Layer);
-	static const char *Explain(EExplanation Explanation, int Tile, int Layer);
-
 	// Zooming
 	void ZoomAdaptOffsetX(float ZoomFactor, const CUIRect &View);
 	void UpdateZoomEnvelopeX(const CUIRect &View);
@@ -1201,9 +1135,6 @@ public:
 	unsigned char m_ViewSwitch;
 
 	void AdjustBrushSpecialTiles(bool UseNextFree, int Adjust = 0);
-	int FindNextFreeSwitchNumber();
-	int FindNextFreeTeleNumber(bool Checkpoint = false);
-	int FindNextFreeTuneNumber();
 
 	// Undo/Redo
 	CEditorHistory m_EditorHistory;

@@ -230,8 +230,6 @@ void CLayerSwitch::FillSelection(bool Empty, std::shared_ptr<CLayer> pBrush, CUI
 	if(m_Readonly || (!Empty && pBrush->m_Type != LAYERTYPE_TILES))
 		return;
 
-	Snap(&Rect); // corrects Rect; no need of <=
-
 	Snap(&Rect);
 
 	int sx = ConvertX(Rect.x);
@@ -323,7 +321,19 @@ void CLayerSwitch::FillSelection(bool Empty, std::shared_ptr<CLayer> pBrush, CUI
 	FlagModified(sx, sy, w, h);
 }
 
-bool CLayerSwitch::ContainsElementWithId(int Id)
+int CLayerSwitch::FindNextFreeNumber() const
+{
+	for(int i = 1; i <= 255; i++)
+	{
+		if(!ContainsElementWithId(i))
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+bool CLayerSwitch::ContainsElementWithId(int Id) const
 {
 	for(int y = 0; y < m_Height; ++y)
 	{
