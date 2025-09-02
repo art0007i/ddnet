@@ -382,7 +382,7 @@ protected:
 		m_FontSize = Data.m_FontSizeClan;
 		str_copy(m_aText, Data.m_pSkin, sizeof(m_aText));
 		CTextCursor Cursor;
-		This.TextRender()->SetCursor(&Cursor, 0.0f, 0.0f, m_FontSize, TEXTFLAG_RENDER);
+		Cursor.m_FontSize = m_FontSize;
 		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, m_aText);
 	}
 

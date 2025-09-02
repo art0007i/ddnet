@@ -1,3 +1,11 @@
+# DDNet art0007i fork
+
+## this fork's features
+- show skin names above players (`cl_nameplates_skin 0|1`)
+- show icon for dummy reset on switch (next to dummy hammer and dummy copy icons)
+- show zoom number next to player name when spectating
+- allow spectating self with left click quick spectate
+
 [![DDraceNetwork](https://ddnet.org/ddnet-small.png)](https://ddnet.org) 
 
 [![](https://github.com/ddnet/ddnet/workflows/Build/badge.svg)](https://github.com/ddnet/ddnet/actions?query=workflow%3ABuild+event%3Apush+branch%3Amaster)

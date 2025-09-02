@@ -1580,7 +1580,7 @@ void CHud::RenderSpectatorHud()
 	constexpr float RightMargin = 4.0f;
 	constexpr float Padding = 3.0f;
 	float ZoomTextX = m_Width - RightMargin;
-	ifClient()->State() != IClient::STATE_DEMOPLAYBACK && (GameClient()->m_Camera.SpectatingPlayer() && GameClient()->m_Camera.CanUseAutoSpecCamera() && g_Config.m_ClSpecAutoSync)
+	if(Client()->State() != IClient::STATE_DEMOPLAYBACK && (GameClient()->m_Camera.SpectatingPlayer() && GameClient()->m_Camera.CanUseAutoSpecCamera() && g_Config.m_ClSpecAutoSync))
 	{
 		bool AutoSpecCameraEnabled = GameClient()->m_Camera.m_AutoSpecCamera;
 		const char *pLabelText = Localize("AUTO", "Spectating Camera Mode Icon");
