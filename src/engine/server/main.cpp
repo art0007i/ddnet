@@ -1,19 +1,23 @@
+#include <base/crashdump.h>
+#include <base/detect.h>
+#include <base/io.h>
 #include <base/logger.h>
-#include <base/system.h>
+#include <base/os.h>
+#include <base/process.h>
+#include <base/str.h>
+#include <base/windows.h>
 
 #include <engine/console.h>
 #include <engine/engine.h>
 #include <engine/map.h>
 #include <engine/server.h>
-#include <engine/storage.h>
-
 #include <engine/server/antibot.h>
 #include <engine/server/databases/connection.h>
 #include <engine/server/server.h>
 #include <engine/server/server_logger.h>
-
 #include <engine/shared/assertion_logger.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 
 #include <game/version.h>
 
@@ -23,6 +27,8 @@
 #if defined(CONF_FAMILY_WINDOWS)
 #include <windows.h>
 #elif defined(CONF_PLATFORM_ANDROID)
+#include <base/fs.h>
+
 #include <jni.h>
 #endif
 
@@ -122,13 +128,22 @@ int main(int argc, const char **argv)
 	pFutureAssertionLogger->Set(CreateAssertionLogger(pStorage, GAME_NAME));
 
 	{
-		char aBuf[IO_MAX_PATH_LENGTH];
+		char aTimestamp[20];
+		str_timestamp(aTimestamp, sizeof(aTimestamp));
+
 		char aBufName[IO_MAX_PATH_LENGTH];
-		char aDate[64];
-		str_timestamp(aDate, sizeof(aDate));
-		str_format(aBufName, sizeof(aBufName), "dumps/" GAME_NAME "-Server_%s_crash_log_%s_%d_%s.RTP", CONF_PLATFORM_STRING, aDate, pid(), GIT_SHORTREV_HASH != nullptr ? GIT_SHORTREV_HASH : "");
-		pStorage->GetCompletePath(IStorage::TYPE_SAVE, aBufName, aBuf, sizeof(aBuf));
-		crashdump_init_if_available(aBuf);
+		str_format(aBufName, sizeof(aBufName), "dumps/%s-Server_%s_%s_%s_crash_log_%s_%d_%s.RTP",
+			GAME_NAME,
+			GAME_RELEASE_VERSION,
+			CONF_PLATFORM_STRING,
+			CONF_ARCH_STRING,
+			aTimestamp,
+			process_id(),
+			GIT_SHORTREV_HASH != nullptr ? GIT_SHORTREV_HASH : "");
+
+		char aBufPath[IO_MAX_PATH_LENGTH];
+		pStorage->GetCompletePath(IStorage::TYPE_SAVE, aBufName, aBufPath, sizeof(aBufPath));
+		crashdump_init_if_available(aBufPath);
 	}
 
 	IConsole *pConsole = CreateConsole(CFGFLAG_SERVER | CFGFLAG_ECON).release();
@@ -137,9 +152,9 @@ int main(int argc, const char **argv)
 	IConfigManager *pConfigManager = CreateConfigManager();
 	pKernel->RegisterInterface(pConfigManager);
 
-	IEngineMap *pEngineMap = CreateEngineMap();
-	pKernel->RegisterInterface(pEngineMap); // IEngineMap
-	pKernel->RegisterInterface(static_cast<IMap *>(pEngineMap), false);
+	IEngineHttp *pEngineHttp = CreateEngineHttp();
+	pKernel->RegisterInterface(pEngineHttp); // IEngineHttp
+	pKernel->RegisterInterface(static_cast<IHttp *>(pEngineHttp), false);
 
 	IEngineAntibot *pEngineAntibot = CreateEngineAntibot();
 	pKernel->RegisterInterface(pEngineAntibot); // IEngineAntibot
@@ -158,11 +173,11 @@ int main(int argc, const char **argv)
 	// execute autoexec file
 	if(pStorage->FileExists(AUTOEXEC_SERVER_FILE, IStorage::TYPE_ALL))
 	{
-		pConsole->ExecuteFile(AUTOEXEC_SERVER_FILE);
+		pConsole->ExecuteFile(AUTOEXEC_SERVER_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
 	}
 	else // fallback
 	{
-		pConsole->ExecuteFile(AUTOEXEC_FILE);
+		pConsole->ExecuteFile(AUTOEXEC_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
 	}
 
 	// parse the command line arguments
@@ -174,6 +189,7 @@ int main(int argc, const char **argv)
 	pConfigManager->SetReadOnly("sv_rescue", true);
 	pConfigManager->SetReadOnly("sv_port", true);
 	pConfigManager->SetReadOnly("bindaddr", true);
+	pConfigManager->SetReadOnly("logfile", true);
 
 	if(g_Config.m_Logfile[0])
 	{
@@ -211,10 +227,10 @@ int main(int argc, const char **argv)
 }
 
 #if defined(CONF_PLATFORM_ANDROID)
-#if !defined(ANDROID_PACKAGE_NAME)
-#error "ANDROID_PACKAGE_NAME must define the package name when compiling for Android (using underscores instead of dots, e.g. org_example_app)"
+#if !defined(ANDROID_PACKAGE_NAME_JNI)
+#error "ANDROID_PACKAGE_NAME_JNI must define the package name when compiling for Android (using underscores instead of dots, e.g. org_example_app)"
 #endif
-// Helpers to force macro expansion else the ANDROID_PACKAGE_NAME macro is not expanded
+// Helpers to force macro expansion else the ANDROID_PACKAGE_NAME_JNI macro is not expanded
 #define EXPAND_MACRO(x) x
 #define JNI_MAKE_NAME(PACKAGE, CLASS, FUNCTION) Java_##PACKAGE##_##CLASS##_##FUNCTION
 #define JNI_EXPORTED_FUNCTION(PACKAGE, CLASS, FUNCTION, RETURN_TYPE, ...) \
@@ -233,7 +249,7 @@ std::vector<std::string> FetchAndroidServerCommandQueue()
 	return vResult;
 }
 
-JNI_EXPORTED_FUNCTION(ANDROID_PACKAGE_NAME, NativeServer, runServer, jint, JNIEnv *pEnv, jobject Object, jstring WorkingDirectory, jobjectArray ArgumentsArray)
+JNI_EXPORTED_FUNCTION(ANDROID_PACKAGE_NAME_JNI, NativeServer, runServer, jint, JNIEnv *pEnv, jobject Object, jstring WorkingDirectory, jobjectArray ArgumentsArray)
 {
 	// Set working directory to external storage location. This is not possible
 	// in Java so we pass the intended working directory to the native code.
@@ -268,7 +284,7 @@ JNI_EXPORTED_FUNCTION(ANDROID_PACKAGE_NAME, NativeServer, runServer, jint, JNIEn
 	return main(vpArguments.size(), vpArguments.data());
 }
 
-JNI_EXPORTED_FUNCTION(ANDROID_PACKAGE_NAME, NativeServer, executeCommand, void, JNIEnv *pEnv, jobject Object, jstring Command)
+JNI_EXPORTED_FUNCTION(ANDROID_PACKAGE_NAME_JNI, NativeServer, executeCommand, void, JNIEnv *pEnv, jobject Object, jstring Command)
 {
 	const char *pCommand = pEnv->GetStringUTFChars(Command, nullptr);
 	{

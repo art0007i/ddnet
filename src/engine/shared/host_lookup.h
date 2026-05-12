@@ -3,7 +3,7 @@
 #ifndef ENGINE_SHARED_HOST_LOOKUP_H
 #define ENGINE_SHARED_HOST_LOOKUP_H
 
-#include <base/system.h>
+#include <base/types.h>
 
 #include <engine/shared/jobs.h>
 
@@ -18,7 +18,6 @@ private:
 	void Run() override;
 
 public:
-	CHostLookup();
 	CHostLookup(const char *pHostname, int Nettype);
 
 	int Result() const { return m_Result; }

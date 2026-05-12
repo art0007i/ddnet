@@ -1,7 +1,10 @@
-#include "logger.h"
-
+#include "aio.h"
 #include "color.h"
-#include "system.h"
+#include "dbg.h"
+#include "logger.h"
+#include "str.h"
+#include "time.h"
+#include "windows.h"
 
 #include <atomic>
 #include <cstdio>
@@ -12,6 +15,8 @@
 #include <io.h>
 #include <windows.h>
 #else
+#include "io.h"
+
 #include <unistd.h>
 #endif
 
@@ -28,9 +33,15 @@ void log_set_global_logger(ILogger *logger)
 	ILogger *null = nullptr;
 	if(!global_logger.compare_exchange_strong(null, logger, std::memory_order_acq_rel))
 	{
-		dbg_assert(false, "global logger has already been set and can only be set once");
+		dbg_assert_failed("global logger has already been set and can only be set once");
 	}
+#if !defined(CONF_PLATFORM_EMSCRIPTEN)
+	// With Emscripten, when atexit calls log_global_logger_finish, which calls GlobalFinish, the
+	// Emscripten runtime has already exited, so we cannot wait for the AIO thread to finish and
+	// calling io_sync in the assertion logger is not possible. We instead finish the global logger
+	// manually in src/engine/client/client.cpp before exit.
 	atexit(log_global_logger_finish);
+#endif
 }
 
 void log_global_logger_finish()
@@ -42,16 +53,7 @@ void log_global_logger_finish()
 
 void log_set_global_logger_default()
 {
-	std::unique_ptr<ILogger> logger;
-#if defined(CONF_PLATFORM_ANDROID)
-	logger = log_logger_android();
-#else
-	logger = log_logger_stdout();
-#endif
-	if(logger)
-	{
-		log_set_global_logger(logger.release());
-	}
+	log_set_global_logger(log_logger_default().release());
 }
 
 ILogger *log_get_scope_logger()
@@ -94,12 +96,11 @@ void log_set_scope_logger(ILogger *logger)
 	Msg.m_Level = level;
 	Msg.m_HaveColor = have_color;
 	Msg.m_Color = color;
-	str_timestamp_format(Msg.m_aTimestamp, sizeof(Msg.m_aTimestamp), FORMAT_SPACE);
+	str_timestamp_format(Msg.m_aTimestamp, sizeof(Msg.m_aTimestamp), TimestampFormat::SPACE);
 	Msg.m_TimestampLength = str_length(Msg.m_aTimestamp);
 	str_copy(Msg.m_aSystem, sys);
 	Msg.m_SystemLength = str_length(Msg.m_aSystem);
 
-	// TODO: Add level?
 	str_format(Msg.m_aLine, sizeof(Msg.m_aLine), "%s %c %s: ", Msg.m_aTimestamp, "EWIDT"[level], Msg.m_aSystem);
 	Msg.m_LineMessageOffset = str_length(Msg.m_aLine);
 
@@ -161,7 +162,10 @@ public:
 		case LEVEL_WARN: AndroidLevel = ANDROID_LOG_WARN; break;
 		case LEVEL_ERROR: AndroidLevel = ANDROID_LOG_ERROR; break;
 		}
-		__android_log_write(AndroidLevel, pMessage->m_aSystem, pMessage->Message());
+		char aTag[64];
+		str_copy(aTag, ANDROID_PACKAGE_NAME "/");
+		str_append(aTag, pMessage->m_aSystem);
+		__android_log_write(AndroidLevel, aTag, pMessage->Message());
 	}
 };
 std::unique_ptr<ILogger> log_logger_android()
@@ -209,6 +213,16 @@ public:
 std::unique_ptr<ILogger> log_logger_collection(std::vector<std::shared_ptr<ILogger>> &&vpLoggers)
 {
 	return std::make_unique<CLoggerCollection>(std::move(vpLoggers));
+}
+
+std::unique_ptr<ILogger> log_logger_default()
+{
+#if defined(CONF_PLATFORM_ANDROID)
+	std::unique_ptr<ILogger> logger = log_logger_android();
+#else
+	std::unique_ptr<ILogger> logger = log_logger_stdout();
+#endif
+	return logger == nullptr ? log_logger_noop() : std::move(logger);
 }
 
 class CLoggerAsync : public ILogger
@@ -447,8 +461,7 @@ std::unique_ptr<ILogger> log_logger_stdout()
 	}
 	else
 	{
-		dbg_assert(false, "GetFileType failure");
-		dbg_break();
+		dbg_assert_failed("GetFileType failure");
 	}
 #endif
 }
@@ -503,7 +516,7 @@ void CFutureLogger::Set(std::shared_ptr<ILogger> pLogger)
 	std::shared_ptr<ILogger> pNullLogger;
 	if(!std::atomic_compare_exchange_strong_explicit(&m_pLogger, &pNullLogger, pLogger, std::memory_order_acq_rel, std::memory_order_acq_rel))
 	{
-		dbg_assert(false, "future logger has already been set and can only be set once");
+		dbg_assert_failed("future logger has already been set and can only be set once");
 	}
 	m_pLogger = std::move(pLogger);
 

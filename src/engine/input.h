@@ -32,6 +32,11 @@ public:
 		FLAG_PRESS = 1 << 0,
 		FLAG_RELEASE = 1 << 1,
 		FLAG_TEXT = 1 << 2,
+		/**
+		 * Combined with @link FLAG_PRESS @endlink for key press events that
+		 * are being repeated when a key is held down.
+		 */
+		FLAG_REPEAT = 1 << 3,
 	};
 	enum ECursorType
 	{
@@ -88,6 +93,7 @@ public:
 	class IJoystick
 	{
 	public:
+		virtual ~IJoystick() = default;
 		virtual int GetIndex() const = 0;
 		virtual const char *GetName() const = 0;
 		virtual int GetNumAxes() const = 0;

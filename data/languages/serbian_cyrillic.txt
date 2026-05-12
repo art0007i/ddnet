@@ -22,9 +22,6 @@ Abort
 Add
 == Додај
 
-Add Friend
-== Додај пријатеља
-
 Address
 == Адреса
 
@@ -438,8 +435,6 @@ Yes
 
 You must restart the game for all settings to take effect.
 == Морате поново покренути игру да би сва подешавања била примењена
-
-##### needs translation #####
 
 Demo
 == Снимак
@@ -867,9 +862,6 @@ Show text entities
 Show others (own team only)
 == Прикажи остале (само свој тим)
 
-Show quads
-== Прикажи quads
-
 AntiPing
 == AntiPing
 
@@ -1275,20 +1267,8 @@ Hook collision line
 Hook collision line opacity
 == Провидност линије за додир куке
 
-Colors of the hook collision line, in case of a possible collision with:
-== Боје линије за додир куке,у случају да можеш да се закачиш:
-
 Your movements are not taken into account when calculating the line colors
 == Ваши покрети се не узимају у обзир при израчунавању боја линија
-
-Nothing hookable
-== Ништа закачиво
-
-Something hookable
-== Нешто закачиво
-
-A Tee
-== Играч
 
 Normal Color
 == Нормална боја
@@ -1297,7 +1277,7 @@ Highlight Color
 == Истакнута Боја
 
 When you cross the start line, show a ghost tee replicating the movements of your best time
-== Када кренеш да се тркаш, прикажи твог најбржег духа 
+== Када кренеш да се тркаш, прикажи твог најбржег духа
 
 Opacity
 == Провидност
@@ -1337,9 +1317,6 @@ https://ddnet.org/discord
 
 Tutorial
 == Увод
-
-Can't find a Tutorial server
-== Неможемо пронаћи уводни сервер
 
 Loading race demo files
 == Учитавам тркачке демо фајлове
@@ -1441,6 +1418,21 @@ Quitting. Please wait…
 Restarting. Please wait…
 == 
 
+Team save in progress. You'll be able to load with '/load %s'
+== 
+
+Team save in progress. You'll be able to load with '/load %s' if save is successful or with '/load %s' if it fails
+== 
+
+Team successfully saved by %s. The database connection failed, using generated save code instead to avoid collisions. Use '/load %s' to continue
+== 
+
+Team successfully saved by %s. The database connection failed, using generated save code instead to avoid collisions. Use '/load %s' on %s to continue
+== 
+
+Save failed!
+== 
+
 Auto-sync player camera
 == 
 
@@ -1512,6 +1504,19 @@ Following %s
 AUTO
 == 
 
+[Important alert message]
+Press Esc or Tab to dismiss…
+== 
+
+Server alert
+== 
+
+Moderator alert
+== 
+
+Press a key…
+== 
+
 Server could not be started. Make sure to grant the notification permission in the app settings so the server can run in the background.
 == 
 
@@ -1530,9 +1535,6 @@ Some map sounds could not be loaded. Check the local console for details.
 Loading menu themes
 == 
 
-Press a key…
-== 
-
 Main menu
 == 
 
@@ -1545,6 +1547,9 @@ Render complete
 Are you sure that you want to restart?
 == 
 
+Joining Tutorial server
+== 
+
 Save skin
 == 
 
@@ -1555,6 +1560,9 @@ There's an unsaved map in the editor, you might want to save it.
 == 
 
 Continue anyway?
+== 
+
+There's an unsaved change in the touch controls editor, you might want to save it.
 == 
 
 This name cannot be used for files and folders
@@ -1575,10 +1583,43 @@ File '%s' already exists, do you want to overwrite it?
 (paused)
 == 
 
+You will be disconnected from the server.
+== 
+
 Videos directory
 == 
 
 Video was saved to '%s'
+== 
+
+Could not get server list from master server
+== 
+
+There are no Tutorial servers available
+== 
+
+Please wait…
+== 
+
+Retrying…
+== 
+
+Error joining Tutorial server
+== 
+
+Could not find a Tutorial server. Check your internet connection.
+== 
+
+You're playing on a local server because no online Tutorial server could be found.\n\nYour record will only be saved locally.
+== 
+
+Could not find online Tutorial server.\nStarting and connecting to local server…
+== 
+
+Waiting for local server to stop…
+== 
+
+Waiting for local server to start…
 == 
 
 Cancel
@@ -1602,7 +1643,7 @@ Unable to save the skin
 No local servers found (ports %d-%d)
 == 
 
-Could not get server list from master server
+Start and connect to local server
 == 
 
 Example of usage
@@ -1612,6 +1653,15 @@ No login required
 == 
 
 Communities
+== 
+
+Error loading communities
+== 
+
+Click to remove this community from your favorites.
+== 
+
+Click to add this community to your favorites.
 == 
 
 Copy info
@@ -1651,7 +1701,10 @@ Are you sure that you want to remove the player '%s' from your friends list?
 Are you sure that you want to remove the clan '%s' from your friends list?
 == 
 
-Add Clan
+Add clan
+== 
+
+Add friend
 == 
 
 Server filter
@@ -1767,7 +1820,19 @@ Map size
 map not included
 == 
 
+Refresh the demo list
+== 
+
 Open the directory that contains the demo files
+== 
+
+Are you sure that you want to disconnect and play this demo?
+== 
+
+Open the selected folder
+== 
+
+Play the selected demo
 == 
 
 Are you sure that you want to delete the folder '%s'?
@@ -1786,9 +1851,6 @@ Unable to delete the folder '%s'. Make sure it's empty first.
 == 
 
 Dummy is not allowed on this server
-== 
-
-Please wait…
 == 
 
 Edit touch controls
@@ -1813,6 +1875,9 @@ Could not load default touch controls from file. See local console for details.
 == 
 
 Could not load touch controls from clipboard. See local console for details.
+== 
+
+https://wiki.ddnet.org/wiki/Touch_controls
 == 
 
 Community
@@ -1887,22 +1952,7 @@ Are you sure that you want to delete this button?
 Duplicate
 == 
 
-New button already created
-== 
-
-A new button has already been created, please save or delete it before creating another one.
-== 
-
 Please save your changes before duplicating a button.
-== 
-
-No space for button
-== 
-
-There is not enough space available to place another button.
-== 
-
-There is not enough space available to place another button with this size. The button has been resized.
 == 
 
 Deselect
@@ -1955,6 +2005,9 @@ Bind Toggle
 Predefined
 == 
 
+Info
+== 
+
 Command
 == 
 
@@ -1982,7 +2035,10 @@ Excluded
 Ignore
 == 
 
-Long press on a touch button to select it.
+Button browser
+== 
+
+You can select buttons directly in the list below, or long press on a touch button on the screen to select it. You can also move and resize buttons by touch.
 == 
 
 New button
@@ -2032,13 +2088,19 @@ Hook
 Direct touch input while spectating
 == 
 
+Preview visibilities
+== 
+
 Preview button visibility while the editor is active.
 == 
 
 Show all buttons
 == 
 
-https://wiki.ddnet.org/wiki/Touch_controls
+You can manage your touch controls settings on this page. Only changes that are saved will be available after restarting the client. You can share your touch controls with others by exporting them to the clipboard.\n\nYou can find more detailed information about the touch controls on the DDNet Wiki.
+== 
+
+Open DDNet Wiki
 == 
 
 Error saving touch controls
@@ -2068,6 +2130,9 @@ Save all changes before switching selected button?
 Discard
 == 
 
+No space for button
+== 
+
 There is not enough space available for the button. Check its visibilities and size.
 == 
 
@@ -2090,6 +2155,9 @@ The selected button is overlapping with other buttons.
 == 
 
 Wrong button settings
+== 
+
+There is not enough space available to place another button.
 == 
 
 [Touch button visibilities]
@@ -2164,11 +2232,77 @@ Joystick Fire
 Joystick Hook
 == 
 
+Buttons with this behavior execute console commands like regular key binds.
+== 
+
+Buttons with this behavior cycle between executing one of two or more specified commands.
+== 
+
+Buttons with this behavior execute some predefined actions.
+== 
+
+Opens the ingame menu immediately when released.
+== 
+
+The extra menu button which toggles visibility of buttons with "Extra Menu" visibilities. Also opens the ingame menu on long press.
+== 
+
+Opens the emoticon selector (this does not work with binds).
+== 
+
+Opens the spectator menu (this does not work with binds).
+== 
+
+Swaps the active action (fire and hook) for direct touch input and virtual joysticks.
+== 
+
+Uses the active action with the current aiming position.
+== 
+
+Virtual joystick which uses the active action.
+== 
+
+Virtual joystick which only aims without using an action.
+== 
+
+Virtual joystick which always uses fire.
+== 
+
+Virtual joystick which always uses hook.
+== 
+
+Player is ingame, i.e. not spectating.
+== 
+
+Zoom is allowed on this server.
+== 
+
+A vote is currently active.
+== 
+
+Dummy is allowed on this server.
+== 
+
+Dummy is currently connected.
+== 
+
+Player is currently authed in rcon.
+== 
+
+Demo player is currently active.
+== 
+
+The extra menu with the given number is activated.
+== 
+
 [Hertz]
 Hz
 == 
 
-Save power by lowering refresh rate (higher input latency)
+Update Rate
+== 
+
+Save power by lowering update rate (higher input latency)
 == 
 
 Open the settings file
@@ -2205,18 +2339,6 @@ No skins match your filter criteria
 == 
 
 Open the directory to add custom skins
-== 
-
-No controller found. Plug in a controller.
-== 
-
-Axis
-== 
-
-Reset controls
-== 
-
-Are you sure that you want to reset the controls to their defaults?
 == 
 
 Show FPS
@@ -2258,6 +2380,9 @@ Always show chat
 Show only chat messages from team members
 == 
 
+Censor profanity
+== 
+
 Chat font size
 == 
 
@@ -2292,7 +2417,7 @@ Show friend icon in name plates
 Show client IDs in name plates
 == 
 
-Show client IDs on a seperate line
+Show client IDs on a separate line
 == 
 
 Client IDs size
@@ -2356,6 +2481,25 @@ Width of your own hook collision line
 Width of others' hook collision line
 == 
 
+Colors of the hook collision line:
+== 
+
+[Hook collision line color]
+When nothing is hookable
+== 
+
+[Hook collision line color]
+When something is hookable
+== 
+
+[Hook collision line color]
+When a Tee is hookable
+== 
+
+[Hook collision line color]
+Hook collision line tip
+== 
+
 Preview 'Hook collisions' being pressed
 == 
 
@@ -2404,7 +2548,13 @@ Enable ghost
 Only save improvements
 == 
 
-AntiPing: prediction margin
+Show background quads
+== 
+
+Prediction margin
+== 
+
+Predict events (experimental)
 == 
 
 Regular background color
@@ -2434,6 +2584,24 @@ Unable to delete skin
 Open the directory to add custom assets
 == 
 
+Scoreboard cursor
+== 
+
+Reset controls
+== 
+
+Are you sure that you want to reset the controls to their defaults?
+== 
+
+No controller found. Plug in a controller.
+== 
+
+Axis
+== 
+
+Download
+== 
+
 [Spectators]
 %d others…
 == 
@@ -2443,6 +2611,18 @@ Open the directory to add custom assets
 == 
 
 Team %d (%d/%d)
+== 
+
+Unmute
+== 
+
+Mute
+== 
+
+Unmute emoticons
+== 
+
+Mute emoticons
 == 
 
 [skins]

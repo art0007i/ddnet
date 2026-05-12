@@ -13,18 +13,30 @@
 
 class CConsole : public IConsole
 {
-	class CCommand : public CCommandInfo
+	class CCommand : public ICommandInfo
 	{
-	public:
+		EAccessLevel m_AccessLevel;
 		CCommand *m_pNext;
+
+	public:
+		const char *m_pName;
+		const char *m_pHelp;
+		const char *m_pParams;
+
+		const CCommand *Next() const { return m_pNext; }
+		CCommand *Next() { return m_pNext; }
+		void SetNext(CCommand *pNext) { m_pNext = pNext; }
 		int m_Flags;
 		bool m_Temp;
 		FCommandCallback m_pfnCallback;
 		void *m_pUserData;
 
-		const CCommandInfo *NextCommandInfo(int AccessLevel, int FlagMask) const override;
-
-		void SetAccessLevel(int AccessLevel);
+		const char *Name() const override { return m_pName; }
+		const char *Help() const override { return m_pHelp; }
+		const char *Params() const override { return m_pParams; }
+		int Flags() const override { return m_Flags; }
+		EAccessLevel GetAccessLevel() const override { return m_AccessLevel; }
+		void SetAccessLevel(EAccessLevel AccessLevel);
 	};
 
 	class CChain
@@ -50,7 +62,6 @@ class CConsole : public IConsole
 
 	CExecFile *m_pFirstExec;
 	IStorage *m_pStorage;
-	int m_AccessLevel;
 
 	CCommand *m_pRecycleList;
 	CHeap m_TempCommands;
@@ -62,14 +73,20 @@ class CConsole : public IConsole
 	static void Con_Exec(IResult *pResult, void *pUserData);
 	static void ConCommandAccess(IResult *pResult, void *pUser);
 	static void ConCommandStatus(IConsole::IResult *pResult, void *pUser);
+	void PrintCommandList(EAccessLevel MinAccessLevel, int ExcludeFlagMask);
 
-	void ExecuteLineStroked(int Stroke, const char *pStr, int ClientId = -1, bool InterpretSemicolons = true) override;
+	void ExecuteLineStroked(int Stroke, const char *pStr, int ClientId = IConsole::CLIENT_ID_UNSPECIFIED, bool InterpretSemicolons = true) override;
 
 	FTeeHistorianCommandCallback m_pfnTeeHistorianCommandCallback;
 	void *m_pTeeHistorianCommandUserdata;
 
 	FUnknownCommandCallback m_pfnUnknownCommandCallback = EmptyUnknownCommandCallback;
 	void *m_pUnknownCommandUserdata = nullptr;
+
+	FCanUseCommandCallback m_pfnCanUseCommandCallback = nullptr;
+	void *m_pCanUseCommandUserData;
+
+	bool CanUseCommand(int ClientId, const IConsole::ICommandInfo *pCommand) const;
 
 	enum
 	{
@@ -95,7 +112,7 @@ class CConsole : public IConsole
 		const char *GetString(unsigned Index) const override;
 		int GetInteger(unsigned Index) const override;
 		float GetFloat(unsigned Index) const override;
-		std::optional<ColorHSLA> GetColor(unsigned Index, float DarkestLighting) const override;
+		ColorHSLA GetColor(unsigned Index, float DarkestLighting) const override;
 
 		// DDRace
 
@@ -121,10 +138,11 @@ class CConsole : public IConsole
 		PARSEARGS_OK = 0,
 		PARSEARGS_MISSING_VALUE,
 		PARSEARGS_INVALID_INTEGER,
+		PARSEARGS_INVALID_COLOR,
 		PARSEARGS_INVALID_FLOAT,
 	};
 
-	int ParseArgs(CResult *pResult, const char *pFormat, bool IsColor = false);
+	int ParseArgs(CResult *pResult, const char *pFormat);
 
 	/*
 	this function will set pFormat to the next parameter (i,s,r,v,?) it contains and
@@ -152,11 +170,12 @@ class CConsole : public IConsole
 
 public:
 	CConsole(int FlagMask);
-	~CConsole();
+	~CConsole() override;
 
 	void Init() override;
-	const CCommandInfo *FirstCommandInfo(int AccessLevel, int FlagMask) const override;
-	const CCommandInfo *GetCommandInfo(const char *pName, int FlagMask, bool Temp) override;
+	const ICommandInfo *FirstCommandInfo(int ClientId, int FlagMask) const override;
+	const ICommandInfo *NextCommandInfo(const IConsole::ICommandInfo *pInfo, int ClientId, int FlagMask) const override;
+	const ICommandInfo *GetCommandInfo(const char *pName, int FlagMask, bool Temp) override;
 	int PossibleCommands(const char *pStr, int FlagMask, bool Temp, FPossibleCallback pfnCallback, void *pUser) override;
 
 	void ParseArguments(int NumArgs, const char **ppArguments) override;
@@ -168,32 +187,31 @@ public:
 	void StoreCommands(bool Store) override;
 
 	bool LineIsValid(const char *pStr) override;
-	void ExecuteLine(const char *pStr, int ClientId = -1, bool InterpretSemicolons = true) override;
-	void ExecuteLineFlag(const char *pStr, int FlagMask, int ClientId = -1, bool InterpretSemicolons = true) override;
-	bool ExecuteFile(const char *pFilename, int ClientId = -1, bool LogFailure = false, int StorageType = IStorage::TYPE_ALL) override;
+	void ExecuteLine(const char *pStr, int ClientId = IConsole::CLIENT_ID_UNSPECIFIED, bool InterpretSemicolons = true) override;
+	void ExecuteLineFlag(const char *pStr, int FlagMask, int ClientId = IConsole::CLIENT_ID_UNSPECIFIED, bool InterpretSemicolons = true) override;
+	bool ExecuteFile(const char *pFilename, int ClientId = IConsole::CLIENT_ID_UNSPECIFIED, bool LogFailure = false, int StorageType = IStorage::TYPE_ALL) override;
 
-	void Print(int Level, const char *pFrom, const char *pStr, ColorRGBA PrintColor = gs_ConsoleDefaultColor) const override;
+	void Print(int Level, const char *pFrom, const char *pStr, ColorRGBA PrintColor = CONSOLE_DEFAULT_COLOR) const override;
 	void SetTeeHistorianCommandCallback(FTeeHistorianCommandCallback pfnCallback, void *pUser) override;
 	void SetUnknownCommandCallback(FUnknownCommandCallback pfnCallback, void *pUser) override;
+	void SetCanUseCommandCallback(FCanUseCommandCallback pfnCallback, void *pUser) override;
 	void InitChecksum(CChecksumData *pData) const override;
 
-	void SetAccessLevel(int AccessLevel) override;
-
 	/**
-	 * Converts access level string to access level enum (integer).
+	 * Converts access level string to access level enum.
 	 *
-	 * @param pAccesssLevel should be either "admin", "mod", "moderator", "helper" or "user".
-	 * @return `std::nullopt` on error otherwise one of the auth enums such as `ACCESS_LEVEL_ADMIN`.
+	 * @param pAccessLevel should be either "admin", "mod", "moderator", "helper" or "user".
+	 * @return `std::nullopt` on error otherwise one of the auth enums such as `EAccessLevel::ADMIN`.
 	 */
-	static std::optional<int> AccessLevelToInt(const char *pAccessLevel);
+	static std::optional<EAccessLevel> AccessLevelToEnum(const char *pAccessLevel);
 
 	/**
-	 * Converts access level enum (integer) to access level string.
+	 * Converts access level enum to access level string.
 	 *
-	 * @param AccessLevel should be one of these: `ACCESS_LEVEL_ADMIN`, `ACCESS_LEVEL_MOD`, `ACCESS_LEVEL_HELPER` or `ACCESS_LEVEL_USER`.
+	 * @param AccessLevel should be one of these: `EAccessLevel::ADMIN`, `EAccessLevel::MODERATOR`, `EAccessLevel::HELPER` or `EAccessLevel::USER`.
 	 * @return `nullptr` on error or access level string like "admin".
 	 */
-	static const char *AccessLevelToString(int AccessLevel);
+	static const char *AccessLevelToString(EAccessLevel AccessLevel);
 
 	static std::optional<ColorHSLA> ColorParse(const char *pStr, float DarkestLighting);
 

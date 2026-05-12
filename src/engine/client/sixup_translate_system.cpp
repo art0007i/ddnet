@@ -1,3 +1,5 @@
+#include <base/dbg.h>
+
 #include <engine/client/client.h>
 
 int CClient::TranslateSysMsg(int *pMsgId, bool System, CUnpacker *pUnpacker, CPacker *pPacker, CNetChunk *pPacket, bool *pIsExMsg)
@@ -41,7 +43,7 @@ int CClient::TranslateSysMsg(int *pMsgId, bool System, CUnpacker *pUnpacker, CPa
 		str_copy(m_CurrentServerInfo.m_aName, pUnpacker->GetString(CUnpacker::SANITIZE_CC | CUnpacker::SKIP_START_WHITESPACES));
 		str_clean_whitespaces(m_CurrentServerInfo.m_aName);
 		pUnpacker->GetString(CUnpacker::SANITIZE_CC | CUnpacker::SKIP_START_WHITESPACES); // Hostname
-		str_copy(m_CurrentServerInfo.m_aMap, pUnpacker->GetString(CUnpacker::SANITIZE_CC | CUnpacker::SKIP_START_WHITESPACES));
+		pUnpacker->GetString(CUnpacker::SANITIZE_CC | CUnpacker::SKIP_START_WHITESPACES); // Map, determined based on filename
 		str_copy(m_CurrentServerInfo.m_aGameType, pUnpacker->GetString(CUnpacker::SANITIZE_CC | CUnpacker::SKIP_START_WHITESPACES));
 		int Flags = pUnpacker->GetInt();
 		if(Flags & SERVER_FLAG_PASSWORD)

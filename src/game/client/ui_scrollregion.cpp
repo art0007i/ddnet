@@ -1,13 +1,12 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
-#include <base/system.h>
+#include "ui_scrollregion.h"
+
 #include <base/vmath.h>
 
 #include <engine/client.h>
 #include <engine/keys.h>
 #include <engine/shared/config.h>
-
-#include "ui_scrollregion.h"
 
 CScrollRegion::CScrollRegion()
 {
@@ -33,7 +32,7 @@ void CScrollRegion::Reset()
 	m_Params = CScrollRegionParams();
 }
 
-void CScrollRegion::Begin(CUIRect *pClipRect, vec2 *pOutOffset, const CScrollRegionParams *pParams)
+void CScrollRegion::Begin(CUIRect *pClipRect, const CScrollRegionParams *pParams)
 {
 	if(pParams)
 		m_Params = *pParams;
@@ -70,7 +69,7 @@ void CScrollRegion::Begin(CUIRect *pClipRect, vec2 *pOutOffset, const CScrollReg
 
 	m_ClipRect = *pClipRect;
 	m_ContentH = 0.0f;
-	*pOutOffset = m_ContentScrollOff;
+	pClipRect->y += m_ContentScrollOff.y;
 }
 
 void CScrollRegion::End()
@@ -140,6 +139,10 @@ void CScrollRegion::End()
 	if(m_AnimTime > 0.0f)
 	{
 		m_AnimTime -= Client()->RenderFrameTime();
+		if(m_AnimTime < 0.0f)
+		{
+			m_AnimTime = 0.0f;
+		}
 		float AnimProgress = (1.0f - std::pow(m_AnimTime / m_AnimTimeMax, 3.0f)); // cubic ease out
 		m_ScrollY = m_AnimInitScrollY + (m_AnimTargetScrollY - m_AnimInitScrollY) * AnimProgress;
 	}

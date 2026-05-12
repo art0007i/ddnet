@@ -1,7 +1,10 @@
 #include "network.h"
 
+#include <base/dbg.h>
 #include <base/log.h>
-#include <base/system.h>
+#include <base/mem.h>
+#include <base/net.h>
+#include <base/time.h>
 
 #include <algorithm>
 
@@ -26,8 +29,7 @@ static const char *IndexToSystem(int Index)
 	case 1:
 		return "stun/4";
 	}
-	dbg_break();
-	return nullptr;
+	dbg_assert_failed("invalid index %d", Index);
 }
 
 static int RetryWaitSeconds(int NumUnsuccessfulTries)

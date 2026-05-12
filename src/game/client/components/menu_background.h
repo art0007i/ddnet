@@ -9,11 +9,6 @@
 #include <string>
 #include <vector>
 
-class CMenuMap : public CBackgroundEngineMap
-{
-	MACRO_INTERFACE("menu_enginemap")
-};
-
 // themes
 class CTheme
 {
@@ -63,7 +58,10 @@ public:
 		POS_RESERVED2,
 
 		NUM_POS,
+	};
 
+	enum
+	{
 		POS_BROWSER_CUSTOM_NUM = (POS_BROWSER_CUSTOM4 - POS_BROWSER_CUSTOM0) + 1,
 		POS_SETTINGS_RESERVED_NUM = (POS_SETTINGS_RESERVED1 - POS_SETTINGS_RESERVED0) + 1,
 		POS_RESERVED_NUM = (POS_RESERVED2 - POS_RESERVED0) + 1,
@@ -76,8 +74,6 @@ public:
 
 private:
 	CCamera m_Camera;
-
-	CBackgroundEngineMap *CreateBGMap() override;
 
 	vec2 m_RotationCenter;
 	std::array<vec2, NUM_POS> m_aPositions;

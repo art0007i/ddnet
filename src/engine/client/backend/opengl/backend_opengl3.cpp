@@ -1,6 +1,7 @@
 #include "backend_opengl3.h"
 
 #include <base/detect.h>
+#include <base/log.h>
 
 #if defined(BACKEND_AS_OPENGL_ES) || !defined(CONF_BACKEND_OPENGL_ES)
 
@@ -10,14 +11,11 @@
 #include <GLES3/gl3.h>
 #endif
 
-#include <engine/client/backend_sdl.h>
-
+#include <engine/client/backend/glsl_shader_compiler.h>
 #include <engine/client/backend/opengl/opengl_sl.h>
 #include <engine/client/backend/opengl/opengl_sl_program.h>
-
+#include <engine/client/backend_sdl.h>
 #include <engine/gfx/image_manipulation.h>
-
-#include <engine/client/backend/glsl_shader_compiler.h>
 
 #if defined(CONF_PLATFORM_EMSCRIPTEN)
 // WebGL2 defines the type of a buffer at the first bind to a buffer target
@@ -92,7 +90,7 @@ bool CCommandProcessorFragment_OpenGL3_3::Cmd_Init(const SCommand_Init *pCommand
 
 	m_pTextureMemoryUsage = pCommand->m_pTextureMemoryUsage;
 	m_pTextureMemoryUsage->store(0, std::memory_order_relaxed);
-	m_LastBlendMode = CCommandBuffer::BLEND_ALPHA;
+	m_LastBlendMode = EBlendMode::ALPHA;
 	m_LastClipEnable = false;
 	m_pPrimitiveProgram = new CGLSLPrimitiveProgram;
 	m_pPrimitiveProgramTextured = new CGLSLPrimitiveProgram;
@@ -597,7 +595,7 @@ void CCommandProcessorFragment_OpenGL3_3::TextureCreate(int Slot, int Width, int
 
 	int SamplerSlot = 0;
 
-	if((Flags & CCommandBuffer::TEXFLAG_NO_2D_TEXTURE) == 0)
+	if((Flags & TextureFlag::NO_2D_TEXTURE) == 0)
 	{
 		glGenTextures(1, &m_vTextures[Slot].m_Tex);
 		glBindTexture(GL_TEXTURE_2D, m_vTextures[Slot].m_Tex);
@@ -606,9 +604,9 @@ void CCommandProcessorFragment_OpenGL3_3::TextureCreate(int Slot, int Width, int
 		glBindSampler(SamplerSlot, m_vTextures[Slot].m_Sampler);
 	}
 
-	if(Flags & CCommandBuffer::TEXFLAG_NOMIPMAPS)
+	if(Flags & TextureFlag::NO_MIPMAPS)
 	{
-		if((Flags & CCommandBuffer::TEXFLAG_NO_2D_TEXTURE) == 0)
+		if((Flags & TextureFlag::NO_2D_TEXTURE) == 0)
 		{
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -619,7 +617,7 @@ void CCommandProcessorFragment_OpenGL3_3::TextureCreate(int Slot, int Width, int
 	}
 	else
 	{
-		if((Flags & CCommandBuffer::TEXFLAG_NO_2D_TEXTURE) == 0)
+		if((Flags & TextureFlag::NO_2D_TEXTURE) == 0)
 		{
 			glSamplerParameteri(m_vTextures[Slot].m_Sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glSamplerParameteri(m_vTextures[Slot].m_Sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -639,7 +637,7 @@ void CCommandProcessorFragment_OpenGL3_3::TextureCreate(int Slot, int Width, int
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
 
-		if((Flags & (CCommandBuffer::TEXFLAG_TO_2D_ARRAY_TEXTURE)) != 0)
+		if((Flags & TextureFlag::TO_2D_ARRAY_TEXTURE) != 0)
 		{
 			glGenTextures(1, &m_vTextures[Slot].m_Tex2DArray);
 			glBindTexture(GL_TEXTURE_2D_ARRAY, m_vTextures[Slot].m_Tex2DArray);
@@ -657,7 +655,7 @@ void CCommandProcessorFragment_OpenGL3_3::TextureCreate(int Slot, int Width, int
 				glSamplerParameterf(m_vTextures[Slot].m_Sampler2DArray, GL_TEXTURE_LOD_BIAS, ((GLfloat)m_OpenGLTextureLodBIAS / 1000.0f));
 #endif
 
-			uint8_t *p3DImageData = static_cast<uint8_t *>(malloc((size_t)Width * Height * PixelSize));
+			uint8_t *pImageData3D = static_cast<uint8_t *>(malloc((size_t)Width * Height * PixelSize));
 			int Image3DWidth, Image3DHeight;
 
 			int ConvertWidth = Width;
@@ -665,10 +663,10 @@ void CCommandProcessorFragment_OpenGL3_3::TextureCreate(int Slot, int Width, int
 
 			if(ConvertWidth == 0 || (ConvertWidth % 16) != 0 || ConvertHeight == 0 || (ConvertHeight % 16) != 0)
 			{
-				dbg_msg("gfx", "3D/2D array texture was resized");
 				int NewWidth = maximum<int>(HighestBit(ConvertWidth), 16);
 				int NewHeight = maximum<int>(HighestBit(ConvertHeight), 16);
 				uint8_t *pNewTexData = ResizeImage(pTexData, ConvertWidth, ConvertHeight, NewWidth, NewHeight, GLFormatToPixelSize(GLFormat));
+				log_debug("gfx/opengl", "3D/2D array texture was resized");
 
 				ConvertWidth = NewWidth;
 				ConvertHeight = NewHeight;
@@ -677,18 +675,18 @@ void CCommandProcessorFragment_OpenGL3_3::TextureCreate(int Slot, int Width, int
 				pTexData = pNewTexData;
 			}
 
-			if(Texture2DTo3D(pTexData, ConvertWidth, ConvertHeight, PixelSize, 16, 16, p3DImageData, Image3DWidth, Image3DHeight))
+			if(Texture2DTo3D(pTexData, ConvertWidth, ConvertHeight, PixelSize, 16, 16, pImageData3D, Image3DWidth, Image3DHeight))
 			{
-				glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GLStoreFormat, Image3DWidth, Image3DHeight, 256, 0, GLFormat, GL_UNSIGNED_BYTE, p3DImageData);
+				glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GLStoreFormat, Image3DWidth, Image3DHeight, 256, 0, GLFormat, GL_UNSIGNED_BYTE, pImageData3D);
 				glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 			}
 
-			free(p3DImageData);
+			free(pImageData3D);
 		}
 	}
 
 	// This is the initial value for the wrap modes
-	m_vTextures[Slot].m_LastWrapMode = CCommandBuffer::WRAP_REPEAT;
+	m_vTextures[Slot].m_LastWrapMode = EWrapMode::REPEAT;
 
 	// calculate memory usage
 	m_vTextures[Slot].m_MemSize = (size_t)Width * Height * PixelSize;
@@ -721,8 +719,8 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_TextTextures_Destroy(const CComman
 
 void CCommandProcessorFragment_OpenGL3_3::Cmd_TextTextures_Create(const CCommandBuffer::SCommand_TextTextures_Create *pCommand)
 {
-	TextureCreate(pCommand->m_Slot, pCommand->m_Width, pCommand->m_Height, GL_RED, GL_RED, CCommandBuffer::TEXFLAG_NOMIPMAPS, pCommand->m_pTextData);
-	TextureCreate(pCommand->m_SlotOutline, pCommand->m_Width, pCommand->m_Height, GL_RED, GL_RED, CCommandBuffer::TEXFLAG_NOMIPMAPS, pCommand->m_pTextOutlineData);
+	TextureCreate(pCommand->m_Slot, pCommand->m_Width, pCommand->m_Height, GL_RED, GL_RED, TextureFlag::NO_MIPMAPS, pCommand->m_pTextData);
+	TextureCreate(pCommand->m_SlotOutline, pCommand->m_Width, pCommand->m_Height, GL_RED, GL_RED, TextureFlag::NO_MIPMAPS, pCommand->m_pTextOutlineData);
 }
 
 void CCommandProcessorFragment_OpenGL3_3::Cmd_Clear(const CCommandBuffer::SCommand_Clear *pCommand)
@@ -745,18 +743,18 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Clear(const CCommandBuffer::SComma
 	}
 }
 
-void CCommandProcessorFragment_OpenGL3_3::UploadStreamBufferData(unsigned int PrimitiveType, const void *pVertices, size_t VertSize, unsigned int PrimitiveCount, bool AsTex3D)
+void CCommandProcessorFragment_OpenGL3_3::UploadStreamBufferData(EPrimitiveType PrimitiveType, const void *pVertices, size_t VertSize, unsigned int PrimitiveCount, bool AsTex3D)
 {
 	int Count = 0;
 	switch(PrimitiveType)
 	{
-	case CCommandBuffer::PRIMTYPE_LINES:
+	case EPrimitiveType::LINES:
 		Count = PrimitiveCount * 2;
 		break;
-	case CCommandBuffer::PRIMTYPE_TRIANGLES:
+	case EPrimitiveType::TRIANGLES:
 		Count = PrimitiveCount * 3;
 		break;
-	case CCommandBuffer::PRIMTYPE_QUADS:
+	case EPrimitiveType::QUADS:
 		Count = PrimitiveCount * 4;
 		break;
 	default:
@@ -786,13 +784,13 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Render(const CCommandBuffer::SComm
 	switch(pCommand->m_PrimType)
 	{
 	// We don't support GL_QUADS due to core profile
-	case CCommandBuffer::PRIMTYPE_LINES:
+	case EPrimitiveType::LINES:
 		glDrawArrays(GL_LINES, 0, pCommand->m_PrimCount * 2);
 		break;
-	case CCommandBuffer::PRIMTYPE_TRIANGLES:
+	case EPrimitiveType::TRIANGLES:
 		glDrawArrays(GL_TRIANGLES, 0, pCommand->m_PrimCount * 3);
 		break;
-	case CCommandBuffer::PRIMTYPE_QUADS:
+	case EPrimitiveType::QUADS:
 		if(m_aLastIndexBufferBound[m_LastStreamBuffer] != m_QuadDrawIndexBufferId)
 		{
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_QuadDrawIndexBufferId);
@@ -801,7 +799,7 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Render(const CCommandBuffer::SComm
 		glDrawElements(GL_TRIANGLES, pCommand->m_PrimCount * 6, GL_UNSIGNED_INT, 0);
 		break;
 	default:
-		dbg_msg("render", "unknown primtype %d\n", pCommand->m_PrimType);
+		dbg_assert_failed("Invalid primitive type: %d", (int)pCommand->m_PrimType);
 	};
 
 	m_LastStreamBuffer = (m_LastStreamBuffer + 1 >= MAX_STREAM_BUFFER_COUNT ? 0 : m_LastStreamBuffer + 1);
@@ -822,15 +820,15 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_RenderTex3D(const CCommandBuffer::
 	switch(pCommand->m_PrimType)
 	{
 	// We don't support GL_QUADS due to core profile
-	case CCommandBuffer::PRIMTYPE_LINES:
+	case EPrimitiveType::LINES:
 		glDrawArrays(GL_LINES, 0, pCommand->m_PrimCount * 2);
 		break;
-	case CCommandBuffer::PRIMTYPE_QUADS:
+	case EPrimitiveType::QUADS:
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_QuadDrawIndexBufferId);
 		glDrawElements(GL_TRIANGLES, pCommand->m_PrimCount * 6, GL_UNSIGNED_INT, 0);
 		break;
 	default:
-		dbg_msg("render", "unknown primtype %d\n", pCommand->m_PrimType);
+		dbg_assert_failed("Invalid primitive type: %d", (int)pCommand->m_PrimType);
 	};
 }
 
@@ -876,18 +874,17 @@ void CCommandProcessorFragment_OpenGL3_3::AppendIndices(unsigned int NewIndicesC
 	GLuint NewIndexBufferId;
 	glGenBuffers(1, &NewIndexBufferId);
 	glBindBuffer(BUFFER_INIT_INDEX_TARGET, NewIndexBufferId);
-	GLsizeiptr size = sizeof(unsigned int);
-	glBufferData(BUFFER_INIT_INDEX_TARGET, (GLsizeiptr)NewIndicesCount * size, NULL, GL_STATIC_DRAW);
-	glCopyBufferSubData(GL_COPY_READ_BUFFER, BUFFER_INIT_INDEX_TARGET, 0, 0, (GLsizeiptr)m_CurrentIndicesInBuffer * size);
-	glBufferSubData(BUFFER_INIT_INDEX_TARGET, (GLsizeiptr)m_CurrentIndicesInBuffer * size, (GLsizeiptr)AddCount * size, pIndices);
+	constexpr GLsizeiptr Size = sizeof(unsigned int);
+	glBufferData(BUFFER_INIT_INDEX_TARGET, (GLsizeiptr)NewIndicesCount * Size, NULL, GL_STATIC_DRAW);
+	glCopyBufferSubData(GL_COPY_READ_BUFFER, BUFFER_INIT_INDEX_TARGET, 0, 0, (GLsizeiptr)m_CurrentIndicesInBuffer * Size);
+	glBufferSubData(BUFFER_INIT_INDEX_TARGET, (GLsizeiptr)m_CurrentIndicesInBuffer * Size, (GLsizeiptr)AddCount * Size, pIndices);
 	glBindBuffer(BUFFER_INIT_INDEX_TARGET, 0);
 	glBindBuffer(GL_COPY_READ_BUFFER, 0);
 
 	glDeleteBuffers(1, &m_QuadDrawIndexBufferId);
 	m_QuadDrawIndexBufferId = NewIndexBufferId;
 
-	for(unsigned int &i : m_aLastIndexBufferBound)
-		i = 0;
+	std::fill(std::begin(m_aLastIndexBufferBound), std::end(m_aLastIndexBufferBound), 0);
 	for(auto &BufferContainer : m_vBufferContainers)
 	{
 		BufferContainer.m_LastIndexBufferBound = 0;
@@ -1167,7 +1164,7 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_RenderQuadLayer(const CCommandBuff
 
 	if(!Grouped)
 	{
-		vec4 aColors[ms_MaxQuadsPossible];
+		ColorRGBA aColors[ms_MaxQuadsPossible];
 		vec2 aOffsets[ms_MaxQuadsPossible];
 		float aRotations[ms_MaxQuadsPossible];
 
@@ -1193,7 +1190,7 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_RenderQuadLayer(const CCommandBuff
 	}
 	else
 	{
-		vec4 Colors = pCommand->m_pQuadInfo[0].m_Color;
+		ColorRGBA Colors = pCommand->m_pQuadInfo[0].m_Color;
 		vec2 Offsets = pCommand->m_pQuadInfo[0].m_Offsets;
 		float Rotations = pCommand->m_pQuadInfo[0].m_Rotation;
 

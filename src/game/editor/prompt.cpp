@@ -1,10 +1,11 @@
-#include <engine/keys.h>
-#include <game/client/ui_listbox.h>
-#include <game/editor/quick_action.h>
+#include "prompt.h"
 
 #include "editor.h"
 
-#include "prompt.h"
+#include <engine/keys.h>
+
+#include <game/client/ui_listbox.h>
+#include <game/editor/quick_action.h>
 
 static bool FuzzyMatch(const char *pHaystack, const char *pNeedle)
 {
@@ -41,9 +42,12 @@ void CPrompt::SetInactive()
 {
 	m_ResetFilterResults = true;
 	m_PromptInput.Clear();
+
 	if(Editor()->m_Dialog == DIALOG_QUICK_PROMPT)
 	{
 		Editor()->OnDialogClose();
+		m_PromptInput.Deactivate();
+		Ui()->SetActiveItem(nullptr);
 	}
 }
 
@@ -65,7 +69,7 @@ void CPrompt::OnInit(CEditor *pEditor)
 #undef REGISTER_QUICK_ACTION
 }
 
-void CPrompt::OnRender(CUIRect _)
+void CPrompt::Render()
 {
 	if(!IsActive())
 		return;

@@ -1,19 +1,21 @@
+#include "protocolglue.h"
+
+#include <base/dbg.h>
+
 #include <engine/shared/network.h>
 
 #include <generated/protocol.h>
 #include <generated/protocol7.h>
 #include <generated/protocolglue.h>
 
-#include "protocolglue.h"
-
-namespace protocol7 {
-
-enum
+namespace protocol7
 {
-	NET_PACKETFLAG_CONTROL = 1,
-	NET_PACKETFLAG_RESEND = 2,
-	NET_PACKETFLAG_COMPRESSION = 4,
-};
+	enum
+	{
+		NET_PACKETFLAG_CONTROL = 1 << 0,
+		NET_PACKETFLAG_RESEND = 1 << 1,
+		NET_PACKETFLAG_COMPRESSION = 1 << 2,
+	};
 
 }
 
@@ -112,11 +114,29 @@ void PickupType_SevenToSix(int Type7, int &Type6, int &SubType6)
 
 int PickupType_SixToSeven(int Type6, int SubType6)
 {
-	if(Type6 == POWERUP_WEAPON)
-		return SubType6 == WEAPON_SHOTGUN ? protocol7::PICKUP_SHOTGUN : SubType6 == WEAPON_GRENADE ? protocol7::PICKUP_GRENADE : protocol7::PICKUP_LASER;
-	else if(Type6 == POWERUP_NINJA)
-		return protocol7::PICKUP_NINJA;
-	else if(Type6 == POWERUP_ARMOR)
+	switch(Type6)
+	{
+	case POWERUP_WEAPON:
+		switch(SubType6)
+		{
+		case WEAPON_HAMMER: return protocol7::PICKUP_HAMMER;
+		case WEAPON_GUN: return protocol7::PICKUP_GUN;
+		case WEAPON_SHOTGUN: return protocol7::PICKUP_SHOTGUN;
+		case WEAPON_GRENADE: return protocol7::PICKUP_GRENADE;
+		case WEAPON_LASER: return protocol7::PICKUP_LASER;
+		case WEAPON_NINJA: return protocol7::PICKUP_NINJA;
+		default:
+			dbg_assert_failed("invalid subtype %d", SubType6);
+		}
+	case POWERUP_NINJA: return protocol7::PICKUP_NINJA;
+	case POWERUP_HEALTH: return protocol7::PICKUP_HEALTH;
+	case POWERUP_ARMOR:
+	case POWERUP_ARMOR_SHOTGUN:
+	case POWERUP_ARMOR_GRENADE:
+	case POWERUP_ARMOR_NINJA:
+	case POWERUP_ARMOR_LASER:
 		return protocol7::PICKUP_ARMOR;
-	return 0;
+	default:
+		dbg_assert_failed("invalid type %d", Type6);
+	}
 }

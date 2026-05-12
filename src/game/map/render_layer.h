@@ -7,11 +7,8 @@ using offset_ptr_size = char *;
 using offset_ptr = uintptr_t;
 using offset_ptr32 = unsigned int;
 
-#include <memory>
-#include <optional>
-#include <vector>
-
 #include <base/color.h>
+
 #include <engine/graphics.h>
 
 #include <game/map/envelope_manager.h>
@@ -19,6 +16,10 @@ using offset_ptr32 = unsigned int;
 #include <game/map/render_map.h>
 #include <game/mapitems.h>
 #include <game/mapitems_ex.h>
+
+#include <memory>
+#include <optional>
+#include <vector>
 
 class CMapLayers;
 class CMapItemLayerTilemap;
@@ -29,6 +30,19 @@ class CMapImages;
 typedef std::function<void(const char *pCaption, const char *pContent, int IncreaseCounter)> FRenderUploadCallback;
 
 constexpr int BorderRenderDistance = 201;
+
+class CClipRegion
+{
+public:
+	CClipRegion() = default;
+	CClipRegion(float X, float Y, float Width, float Height) :
+		m_X(X), m_Y(Y), m_Width(Width), m_Height(Height) {}
+
+	float m_X;
+	float m_Y;
+	float m_Width;
+	float m_Height;
+};
 
 class CRenderLayerParams
 {
@@ -41,14 +55,16 @@ public:
 	bool m_RenderInvalidTiles;
 	bool m_TileAndQuadBuffering;
 	bool m_RenderTileBorder;
-	int m_DebugRenderOptions;
+	bool m_DebugRenderGroupClips;
+	bool m_DebugRenderQuadClips;
+	bool m_DebugRenderClusterClips;
+	bool m_DebugRenderTileClips;
 };
 
 class CRenderLayer : public CRenderComponent
 {
 public:
 	CRenderLayer(int GroupId, int LayerId, int Flags);
-	virtual ~CRenderLayer() = default;
 	virtual void OnInit(IGraphics *pGraphics, ITextRender *pTextRender, CRenderMap *pRenderMap, std::shared_ptr<CEnvelopeManager> &pEnvelopeManager, IMap *pMap, IMapImages *pMapImages, std::optional<FRenderUploadCallback> &FRenderUploadCallbackOptional);
 
 	virtual void Init() = 0;
@@ -58,6 +74,7 @@ public:
 	virtual bool IsGroup() const { return false; }
 	virtual void Unload() = 0;
 
+	bool IsVisibleInClipRegion(const std::optional<CClipRegion> &ClipRegion) const;
 	int GetGroup() const { return m_GroupId; }
 
 protected:
@@ -73,13 +90,14 @@ protected:
 	IMapImages *m_pMapImages = nullptr;
 	std::shared_ptr<CEnvelopeManager> m_pEnvelopeManager;
 	std::optional<FRenderUploadCallback> m_RenderUploadCallback;
+	std::optional<CClipRegion> m_LayerClip;
 };
 
 class CRenderLayerGroup : public CRenderLayer
 {
 public:
 	CRenderLayerGroup(int GroupId, CMapItemGroup *pGroup);
-	virtual ~CRenderLayerGroup() = default;
+	~CRenderLayerGroup() override = default;
 	void Init() override {}
 	void Render(const CRenderLayerParams &Params) override;
 	bool DoRender(const CRenderLayerParams &Params) override;
@@ -97,7 +115,7 @@ class CRenderLayerTile : public CRenderLayer
 {
 public:
 	CRenderLayerTile(int GroupId, int LayerId, int Flags, CMapItemLayerTilemap *pLayerTilemap);
-	virtual ~CRenderLayerTile() = default;
+	~CRenderLayerTile() override = default;
 	void Render(const CRenderLayerParams &Params) override;
 	bool DoRender(const CRenderLayerParams &Params) override;
 	void Init() override;
@@ -211,16 +229,14 @@ class CRenderLayerQuads : public CRenderLayer
 public:
 	CRenderLayerQuads(int GroupId, int LayerId, int Flags, CMapItemLayerQuads *pLayerQuads);
 	void OnInit(IGraphics *pGraphics, ITextRender *pTextRender, CRenderMap *pRenderMap, std::shared_ptr<CEnvelopeManager> &pEnvelopeManager, IMap *pMap, IMapImages *pMapImages, std::optional<FRenderUploadCallback> &FRenderUploadCallbackOptional) override;
-	virtual void Init() override;
+	void Init() override;
 	bool IsValid() const override { return m_pLayerQuads->m_NumQuads > 0 && m_pQuads; }
-	virtual void Render(const CRenderLayerParams &Params) override;
-	virtual bool DoRender(const CRenderLayerParams &Params) override;
+	void Render(const CRenderLayerParams &Params) override;
+	bool DoRender(const CRenderLayerParams &Params) override;
 	void Unload() override;
 
 protected:
-	virtual IGraphics::CTextureHandle GetTexture() const override { return m_TextureHandle; }
-	void CalculateClipping();
-	bool CalculateQuadClipping(int aQuadOffsetMin[2], int aQuadOffsetMax[2], bool Grouped);
+	IGraphics::CTextureHandle GetTexture() const override { return m_TextureHandle; }
 
 	class CQuadLayerVisuals : public CRenderComponent
 	{
@@ -233,30 +249,30 @@ protected:
 		int m_BufferContainerIndex;
 		bool m_IsTextured;
 	};
-	void RenderQuadLayer(float Alpha = 1.0f);
+	void RenderQuadLayer(float Alpha, const CRenderLayerParams &Params);
 
 	std::optional<CRenderLayerQuads::CQuadLayerVisuals> m_VisualQuad;
 	CMapItemLayerQuads *m_pLayerQuads;
 
-	std::vector<SQuadRenderInfo> m_vQuadRenderInfo;
-
-	bool m_Grouped;
-	class CQuadRenderGroup
+	class CQuadCluster
 	{
 	public:
+		bool m_Grouped;
+		int m_StartIndex;
+		int m_NumQuads;
+
 		int m_PosEnv;
 		float m_PosEnvOffset;
 		int m_ColorEnv;
 		float m_ColorEnvOffset;
 
-		// quad clipping
-		bool m_Clipped;
-		float m_ClipX;
-		float m_ClipY;
-		float m_ClipWidth;
-		float m_ClipHeight;
-	} m_QuadRenderGroup;
+		std::vector<SQuadRenderInfo> m_vQuadRenderInfo;
+		std::optional<CClipRegion> m_ClipRegion;
+	};
+	void CalculateClipping(CQuadCluster &QuadCluster);
+	bool CalculateQuadClipping(const CQuadCluster &QuadCluster, float aQuadOffsetMin[2], float aQuadOffsetMax[2]) const;
 
+	std::vector<CQuadCluster> m_vQuadClusters;
 	CQuad *m_pQuads;
 
 private:
@@ -267,7 +283,7 @@ class CRenderLayerEntityBase : public CRenderLayerTile
 {
 public:
 	CRenderLayerEntityBase(int GroupId, int LayerId, int Flags, CMapItemLayerTilemap *pLayerTilemap);
-	virtual ~CRenderLayerEntityBase() = default;
+	~CRenderLayerEntityBase() override = default;
 	bool DoRender(const CRenderLayerParams &Params) override;
 
 protected:

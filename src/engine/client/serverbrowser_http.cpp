@@ -1,5 +1,14 @@
 #include "serverbrowser_http.h"
 
+#include <base/dbg.h>
+#include <base/io.h>
+#include <base/lock.h>
+#include <base/log.h>
+#include <base/net.h>
+#include <base/secure.h>
+#include <base/str.h>
+#include <base/time.h>
+
 #include <engine/console.h>
 #include <engine/engine.h>
 #include <engine/external/json-parser/json.h>
@@ -10,14 +19,9 @@
 #include <engine/shared/serverinfo.h>
 #include <engine/storage.h>
 
-#include <base/lock.h>
-#include <base/log.h>
-#include <base/system.h>
-
+#include <chrono>
 #include <memory>
 #include <vector>
-
-#include <chrono>
 
 using namespace std::chrono_literals;
 
@@ -171,7 +175,7 @@ bool CChooseMaster::CJob::Abort()
 		return false;
 	}
 
-	CLockScope ls(m_Lock);
+	const CLockScope LockScope(m_Lock);
 	if(m_pHead != nullptr)
 	{
 		m_pHead->Abort();
@@ -217,7 +221,7 @@ void CChooseMaster::CJob::Run()
 		pHead->Timeout(Timeout);
 		pHead->LogProgress(HTTPLOG::FAILURE);
 		{
-			CLockScope ls(m_Lock);
+			const CLockScope LockScope(m_Lock);
 			m_pHead = pHead;
 		}
 
@@ -238,7 +242,7 @@ void CChooseMaster::CJob::Run()
 		pGet->Timeout(Timeout);
 		pGet->LogProgress(HTTPLOG::FAILURE);
 		{
-			CLockScope ls(m_Lock);
+			const CLockScope LockScope(m_Lock);
 			m_pGet = pGet;
 		}
 

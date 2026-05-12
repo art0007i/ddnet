@@ -1,5 +1,6 @@
 /* (c) Shereef Marzouk. See "licence DDRace.txt" and the readme.txt in the root of the distribution for more information. */
 #include "light.h"
+
 #include "character.h"
 
 #include <engine/server.h>
@@ -13,7 +14,7 @@
 
 CLight::CLight(CGameWorld *pGameWorld, vec2 Pos, float Rotation, int Length,
 	int Layer, int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER)
+	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
 {
 	m_To = vec2(0.0f, 0.0f);
 	m_Core = vec2(0.0f, 0.0f);
@@ -72,9 +73,9 @@ void CLight::Move()
 void CLight::Step()
 {
 	Move();
-	vec2 dir(std::sin(m_Rotation), std::cos(m_Rotation));
-	vec2 to2 = m_Pos + normalize(dir) * m_CurveLength;
-	GameServer()->Collision()->IntersectNoLaser(m_Pos, to2, &m_To, nullptr);
+	const vec2 Direction = vec2(std::sin(m_Rotation), std::cos(m_Rotation));
+	const vec2 NextPosition = m_Pos + normalize(Direction) * m_CurveLength;
+	GameServer()->Collision()->IntersectNoLaser(m_Pos, NextPosition, &m_To, nullptr);
 }
 
 void CLight::Reset()
@@ -97,7 +98,7 @@ void CLight::Tick()
 
 void CLight::Snap(int SnappingClient)
 {
-	if(NetworkClipped(SnappingClient, m_Pos) && NetworkClipped(SnappingClient, m_To))
+	if((NetworkClipped(SnappingClient, m_Pos) && NetworkClipped(SnappingClient, m_To)) || !GetId().has_value())
 		return;
 
 	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
@@ -137,6 +138,6 @@ void CLight::Snap(int SnappingClient)
 			StartTick = Server()->Tick();
 	}
 
-	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId(),
+	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
 		m_Pos, From, StartTick, -1, LASERTYPE_FREEZE, 0, m_Number);
 }

@@ -35,7 +35,7 @@ void CMapSounds::PlayAt(int Channel, int SoundId, vec2 Position)
 
 void CMapSounds::OnMapLoad()
 {
-	IMap *pMap = Kernel()->RequestInterface<IMap>();
+	IMap *pMap = GameClient()->Map();
 
 	Clear();
 
@@ -53,16 +53,20 @@ void CMapSounds::OnMapLoad()
 	for(int i = 0; i < m_Count; i++)
 	{
 		CMapItemSound *pSound = (CMapItemSound *)pMap->GetItem(Start + i);
-		if(pSound->m_External)
+		const char *pName = pMap->GetDataString(pSound->m_SoundName);
+		if(pName == nullptr || pName[0] == '\0')
 		{
-			const char *pName = pMap->GetDataString(pSound->m_SoundName);
-			if(pName == nullptr || pName[0] == '\0')
+			if(pSound->m_External)
 			{
 				log_error("mapsounds", "Failed to load map sound %d: failed to load name.", i);
 				ShowWarning = true;
 				continue;
 			}
+			pName = "(error)";
+		}
 
+		if(pSound->m_External)
+		{
 			char aBuf[IO_MAX_PATH_LENGTH];
 			str_format(aBuf, sizeof(aBuf), "mapres/%s.opus", pName);
 			m_aSounds[i] = Sound()->LoadOpus(aBuf);
@@ -78,7 +82,7 @@ void CMapSounds::OnMapLoad()
 				continue;
 			}
 			const int SoundDataSize = pMap->GetDataSize(pSound->m_SoundData);
-			m_aSounds[i] = Sound()->LoadOpusFromMem(pData, SoundDataSize);
+			m_aSounds[i] = Sound()->LoadOpusFromMem(pData, SoundDataSize, false, pName);
 			pMap->UnloadData(pSound->m_SoundData);
 		}
 		ShowWarning = ShowWarning || m_aSounds[i] == -1;
@@ -132,13 +136,13 @@ void CMapSounds::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
-	bool DemoPlayerPaused = Client()->State() == IClient::STATE_DEMOPLAYBACK && DemoPlayer()->BaseInfo()->m_Paused;
+	const bool DemoPlayerPaused = GameClient()->IsDemoPlaybackPaused();
 
 	// enqueue sounds
 	for(auto &Source : m_vSourceQueue)
 	{
 		static float s_Time = 0.0f;
-		if(GameClient()->m_Snap.m_pGameInfoObj) // && !(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags&GAMESTATEFLAG_PAUSED))
+		if(GameClient()->m_Snap.m_pGameInfoObj)
 		{
 			s_Time = mix((Client()->PrevGameTick(g_Config.m_ClDummy) - GameClient()->m_Snap.m_pGameInfoObj->m_RoundStartTick) / (float)Client()->GameTickSpeed(),
 				(Client()->GameTick(g_Config.m_ClDummy) - GameClient()->m_Snap.m_pGameInfoObj->m_RoundStartTick) / (float)Client()->GameTickSpeed(),
@@ -195,7 +199,8 @@ void CMapSounds::OnRender()
 			continue;
 
 		ColorRGBA Position = ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f);
-		GameClient()->m_MapLayersBackground.EnvelopeEval(Source.m_pSource->m_PosEnvOffset, Source.m_pSource->m_PosEnv, Position, 2);
+		CEnvelopeState &EnvEvaluator = GameClient()->m_MapLayersBackground.EnvEvaluator();
+		EnvEvaluator.EnvelopeEval(Source.m_pSource->m_PosEnvOffset, Source.m_pSource->m_PosEnv, Position, 2);
 
 		float x = fx2f(Source.m_pSource->m_Position.x) + Position.r;
 		float y = fx2f(Source.m_pSource->m_Position.y) + Position.g;
@@ -209,11 +214,9 @@ void CMapSounds::OnRender()
 		Sound()->SetVoicePosition(Source.m_Voice, vec2(x, y));
 
 		ColorRGBA Volume = ColorRGBA(1.0f, 0.0f, 0.0f, 0.0f);
-		GameClient()->m_MapLayersBackground.EnvelopeEval(Source.m_pSource->m_SoundEnvOffset, Source.m_pSource->m_SoundEnv, Volume, 1);
-		if(Volume.r < 1.0f)
-		{
-			Sound()->SetVoiceVolume(Source.m_Voice, Volume.r);
-		}
+		EnvEvaluator.EnvelopeEval(Source.m_pSource->m_SoundEnvOffset, Source.m_pSource->m_SoundEnv, Volume, 1);
+
+		Sound()->SetVoiceVolume(Source.m_Voice, std::clamp(Volume.r, 0.0f, 1.0f));
 	}
 }
 

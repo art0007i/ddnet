@@ -1,6 +1,7 @@
 #include "mapbugs.h"
 
-#include <base/system.h>
+#include <base/dbg.h>
+#include <base/str.h>
 
 struct CMapDescription
 {
@@ -78,7 +79,10 @@ EMapBugUpdate CMapBugs::Update(const char *pBug)
 	int Bug = -1;
 	if(false) {}
 #define MAPBUG(constname, string) \
-	else if(str_comp(pBug, string) == 0) { Bug = (constname); }
+	else if(str_comp(pBug, string) == 0) \
+	{ \
+		Bug = (constname); \
+	}
 #include "mapbugs_list.h"
 #undef MAPBUG
 	if(Bug == -1)

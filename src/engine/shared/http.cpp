@@ -1,11 +1,19 @@
 #include "http.h"
 
+#include <base/dbg.h>
+#include <base/fs.h>
+#include <base/io.h>
 #include <base/log.h>
 #include <base/math.h>
-#include <base/system.h>
+#include <base/mem.h>
+#include <base/str.h>
+#include <base/thread.h>
+
 #include <engine/external/json-parser/json.h>
 #include <engine/shared/config.h>
+#include <engine/shared/json.h>
 #include <engine/storage.h>
+
 #include <game/version.h>
 
 #include <limits>
@@ -15,11 +23,6 @@
 #endif
 
 #include <curl/curl.h>
-
-// There is a stray constant on Windows/MSVC...
-#ifdef ERROR
-#undef ERROR
-#endif
 
 static int CurlDebug(CURL *pHandle, curl_infotype Type, char *pData, size_t DataSize, void *pUser)
 {
@@ -104,10 +107,10 @@ static bool CalculateSha256(const char *pAbsoluteFilename, SHA256_DIGEST *pSha25
 
 bool CHttpRequest::ShouldSkipRequest()
 {
-	if(m_WriteToFile && m_ExpectedSha256 != SHA256_ZEROED)
+	if(m_WriteToFile && m_ExpectedSha256.has_value())
 	{
 		SHA256_DIGEST Sha256;
-		if(CalculateSha256(m_aDestAbsolute, &Sha256) && Sha256 == m_ExpectedSha256)
+		if(CalculateSha256(m_aDestAbsolute, &Sha256) && Sha256 == m_ExpectedSha256.value())
 		{
 			log_debug("http", "skipping download because expected file already exists: %s", m_aDest);
 			return true;
@@ -217,7 +220,7 @@ bool CHttpRequest::ConfigureHandle(void *pHandle)
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-	curl_easy_setopt(pH, CURLOPT_IPRESOLVE, m_IpResolve == IPRESOLVE::V4 ? CURL_IPRESOLVE_V4 : m_IpResolve == IPRESOLVE::V6 ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_WHATEVER);
+	curl_easy_setopt(pH, CURLOPT_IPRESOLVE, m_IpResolve == IPRESOLVE::V4 ? CURL_IPRESOLVE_V4 : (m_IpResolve == IPRESOLVE::V6 ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_WHATEVER));
 	if(g_Config.m_Bindaddr[0] != '\0')
 	{
 		curl_easy_setopt(pH, CURLOPT_INTERFACE, g_Config.m_Bindaddr);
@@ -231,7 +234,7 @@ bool CHttpRequest::ConfigureHandle(void *pHandle)
 	}
 
 #ifdef CONF_PLATFORM_ANDROID
-	curl_easy_setopt(pH, CURLOPT_CAINFO, "data/cacert.pem");
+	curl_easy_setopt(pH, CURLOPT_CAPATH, "/system/etc/security/cacerts");
 #endif
 
 	switch(m_Type)
@@ -400,14 +403,14 @@ void CHttpRequest::OnCompletionInternal(void *pHandle, unsigned int Result)
 	if(State == EHttpState::DONE)
 	{
 		m_ActualSha256 = sha256_finish(&m_ActualSha256Ctx);
-		if(m_ExpectedSha256 != SHA256_ZEROED && m_ActualSha256 != m_ExpectedSha256)
+		if(m_ExpectedSha256.has_value() && m_ActualSha256.value() != m_ExpectedSha256.value())
 		{
 			if(g_Config.m_DbgCurl || m_LogProgress >= HTTPLOG::FAILURE)
 			{
 				char aActualSha256[SHA256_MAXSTRSIZE];
-				sha256_str(m_ActualSha256, aActualSha256, sizeof(aActualSha256));
+				sha256_str(m_ActualSha256.value(), aActualSha256, sizeof(aActualSha256));
 				char aExpectedSha256[SHA256_MAXSTRSIZE];
-				sha256_str(m_ExpectedSha256, aExpectedSha256, sizeof(aExpectedSha256));
+				sha256_str(m_ExpectedSha256.value(), aExpectedSha256, sizeof(aExpectedSha256));
 				log_error("http", "SHA256 mismatch: got=%s, expected=%s, url=%s", aActualSha256, aExpectedSha256, m_aUrl);
 			}
 			State = EHttpState::ERROR;
@@ -552,13 +555,14 @@ json_value *CHttpRequest::ResultJson() const
 	unsigned char *pResult;
 	size_t ResultLength;
 	Result(&pResult, &ResultLength);
-	return json_parse((char *)pResult, ResultLength);
+	return JsonParse((char *)pResult, ResultLength);
 }
 
 const SHA256_DIGEST &CHttpRequest::ResultSha256() const
 {
 	dbg_assert(State() == EHttpState::DONE, "Request not done");
-	return m_ActualSha256;
+	dbg_assert(m_ActualSha256.has_value(), "Result SHA256 missing");
+	return m_ActualSha256.value();
 }
 
 int CHttpRequest::StatusCode() const
@@ -649,13 +653,16 @@ void CHttp::RunLoop()
 		// We may have been woken up for a shutdown
 		if(m_Shutdown)
 		{
+			if(m_RunningRequests.empty() && m_PendingRequests.empty())
+				break;
+
 			auto Now = std::chrono::steady_clock::now();
 			if(!m_ShutdownTime.has_value())
 			{
 				m_ShutdownTime = Now + m_ShutdownDelay;
 				s_NextTimeout = m_ShutdownDelay.count();
 			}
-			else if(m_ShutdownTime < Now || m_RunningRequests.empty())
+			else if(m_ShutdownTime < Now)
 			{
 				break;
 			}
@@ -826,4 +833,9 @@ CHttp::~CHttp()
 
 	Shutdown();
 	thread_wait(m_pThread);
+}
+
+IEngineHttp *CreateEngineHttp()
+{
+	return new CHttp;
 }

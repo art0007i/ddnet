@@ -1,6 +1,8 @@
-#include <base/system.h>
+#include "menu_background.h"
 
-#include <algorithm>
+#include <base/dbg.h>
+#include <base/str.h>
+#include <base/time.h>
 
 #include <engine/graphics.h>
 #include <engine/map.h>
@@ -10,13 +12,11 @@
 #include <game/client/components/mapimages.h>
 #include <game/client/components/maplayers.h>
 #include <game/client/gameclient.h>
-
 #include <game/layers.h>
 #include <game/localization.h>
 #include <game/mapitems.h>
 
-#include "menu_background.h"
-
+#include <algorithm>
 #include <chrono>
 
 using namespace std::chrono_literals;
@@ -69,11 +69,6 @@ CMenuBackground::CMenuBackground() :
 	m_Loading = false;
 }
 
-CBackgroundEngineMap *CMenuBackground::CreateBGMap()
-{
-	return new CMenuMap;
-}
-
 void CMenuBackground::OnInterfacesInit(CGameClient *pClient)
 {
 	CComponentInterfaces::OnInterfacesInit(pClient);
@@ -83,12 +78,11 @@ void CMenuBackground::OnInterfacesInit(CGameClient *pClient)
 
 void CMenuBackground::OnInit()
 {
-	m_pBackgroundMap = CreateBGMap();
-	m_pMap = m_pBackgroundMap;
+	m_pBackgroundMap = CreateMap();
+	m_pMap = m_pBackgroundMap.get();
 
 	m_IsInit = true;
 
-	Kernel()->RegisterInterface<CMenuMap>((CMenuMap *)m_pBackgroundMap);
 	if(g_Config.m_ClMenuMap[0] != '\0')
 		LoadMenuBackground();
 
@@ -175,11 +169,11 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 	if(!m_IsInit)
 		return;
 
-	if(m_Loaded && m_pMap == m_pBackgroundMap)
+	if(m_Loaded && m_pMap == m_pBackgroundMap.get())
 		m_pMap->Unload();
 
 	m_Loaded = false;
-	m_pMap = m_pBackgroundMap;
+	m_pMap = m_pBackgroundMap.get();
 	m_pLayers = m_pBackgroundLayers;
 	m_pImages = m_pBackgroundImages;
 
@@ -194,26 +188,29 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 		const char *pMenuMap = g_Config.m_ClMenuMap;
 		if(str_comp(pMenuMap, "auto") == 0)
 		{
-			switch(time_season())
+			const ETimeSeason Season = time_season();
+			switch(Season)
 			{
-			case SEASON_SPRING:
-			case SEASON_EASTER:
+			case ETimeSeason::SPRING:
+			case ETimeSeason::EASTER:
 				pMenuMap = "heavens";
 				break;
-			case SEASON_SUMMER:
+			case ETimeSeason::SUMMER:
 				pMenuMap = "jungle";
 				break;
-			case SEASON_AUTUMN:
-			case SEASON_HALLOWEEN:
+			case ETimeSeason::AUTUMN:
+			case ETimeSeason::HALLOWEEN:
 				pMenuMap = "autumn";
 				break;
-			case SEASON_WINTER:
-			case SEASON_XMAS:
+			case ETimeSeason::WINTER:
+			case ETimeSeason::XMAS:
 				pMenuMap = "winter";
 				break;
-			case SEASON_NEWYEAR:
+			case ETimeSeason::NEWYEAR:
 				pMenuMap = "newyear";
 				break;
+			default:
+				dbg_assert_failed("Invalid season: %d", (int)Season);
 			}
 		}
 		else if(str_comp(pMenuMap, "rand") == 0)
@@ -236,7 +233,7 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 		if(!m_Loaded && ((HasDayHint && IsDaytime) || (HasNightHint && !IsDaytime)))
 		{
 			str_format(aBuf, sizeof(aBuf), "themes/%s_%s.map", pMenuMap, IsDaytime ? "day" : "night");
-			if(m_pMap->Load(aBuf))
+			if(m_pMap->Load(pMenuMap, Storage(), aBuf, IStorage::TYPE_ALL))
 			{
 				m_Loaded = true;
 			}
@@ -245,7 +242,7 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 		if(!m_Loaded)
 		{
 			str_format(aBuf, sizeof(aBuf), "themes/%s.map", pMenuMap);
-			if(m_pMap->Load(aBuf))
+			if(m_pMap->Load(pMenuMap, Storage(), aBuf, IStorage::TYPE_ALL))
 			{
 				m_Loaded = true;
 			}
@@ -254,7 +251,7 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 		if(!m_Loaded && ((HasDayHint && !IsDaytime) || (HasNightHint && IsDaytime)))
 		{
 			str_format(aBuf, sizeof(aBuf), "themes/%s_%s.map", pMenuMap, IsDaytime ? "night" : "day");
-			if(m_pMap->Load(aBuf))
+			if(m_pMap->Load(pMenuMap, Storage(), aBuf, IStorage::TYPE_ALL))
 			{
 				m_Loaded = true;
 			}

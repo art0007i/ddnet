@@ -1,5 +1,9 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "infomessages.h"
+
+#include <base/time.h>
+
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol.h>
@@ -8,13 +12,11 @@
 #include <generated/client_data.h>
 #include <generated/protocol.h>
 
-#include <game/localization.h>
-
-#include "infomessages.h"
 #include <game/client/animstate.h>
 #include <game/client/gameclient.h>
 #include <game/client/prediction/entities/character.h>
 #include <game/client/prediction/gameworld.h>
+#include <game/localization.h>
 
 static constexpr float ROW_HEIGHT = 46.0f;
 static constexpr float FONT_SIZE = 36.0f;
@@ -226,7 +228,7 @@ void CInfoMessages::OnTeamKillMessage(const CNetMsg_Sv_KillMsgTeam *pMsg)
 			GameClient()->m_Teams.Team(ClientId) == pMsg->m_Team)
 		{
 			CCharacter *pChr = GameClient()->m_GameWorld.GetCharacterById(ClientId);
-			vStrongWeakSorted.emplace_back(ClientId, pMsg->m_First == ClientId ? MAX_CLIENTS : pChr ? pChr->GetStrongWeakId() : 0);
+			vStrongWeakSorted.emplace_back(ClientId, pMsg->m_First == ClientId ? MAX_CLIENTS : (pChr ? pChr->GetStrongWeakId() : 0));
 		}
 	}
 	std::stable_sort(vStrongWeakSorted.begin(), vStrongWeakSorted.end(), [](auto &Left, auto &Right) { return Left.second > Right.second; });
@@ -298,10 +300,10 @@ void CInfoMessages::OnRaceFinishMessage(const CNetMsg_Sv_RaceFinish *pMsg)
 	if(Finish.m_Diff)
 	{
 		char aBuf[64];
-		str_time_float(absolute(Finish.m_Diff) / 1000.0f, TIME_HOURS_CENTISECS, aBuf, sizeof(aBuf));
+		str_time_float(absolute(Finish.m_Diff) / 1000.0f, ETimeFormat::HOURS_CENTISECS, aBuf, sizeof(aBuf));
 		str_format(Finish.m_aDiffText, sizeof(Finish.m_aDiffText), "(%c%s)", Finish.m_Diff < 0 ? '-' : '+', aBuf);
 	}
-	str_time_float(pMsg->m_Time / 1000.0f, TIME_HOURS_CENTISECS, Finish.m_aTimeText, sizeof(Finish.m_aTimeText));
+	str_time_float(pMsg->m_Time / 1000.0f, ETimeFormat::HOURS_CENTISECS, Finish.m_aTimeText, sizeof(Finish.m_aTimeText));
 
 	AddInfoMsg(Finish);
 }

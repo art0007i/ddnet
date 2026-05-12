@@ -1,12 +1,14 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "menus_start.h"
+
+#include <engine/client/updater.h>
+#include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/keys.h>
 #include <engine/serverbrowser.h>
-#include <engine/textrender.h>
-
-#include <engine/client/updater.h>
 #include <engine/shared/config.h>
+#include <engine/textrender.h>
 
 #include <generated/client_data.h>
 
@@ -15,13 +17,9 @@
 #include <game/localization.h>
 #include <game/version.h>
 
-#include "menus_start.h"
-
 #if defined(CONF_PLATFORM_ANDROID)
 #include <android/android_main.h>
 #endif
-
-using namespace FontIcons;
 
 void CMenusStart::RenderStartMenu(CUIRect MainView)
 {
@@ -63,30 +61,9 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr); // little space
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_TutorialButton;
-	static float s_JoinTutorialTime = 0.0f;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_TutorialButton, Localize("Tutorial"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)) ||
-		(s_JoinTutorialTime != 0.0f && Client()->LocalTime() >= s_JoinTutorialTime))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_TutorialButton, Localize("Tutorial"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		// Activate internet tab before joining tutorial to make sure the server info
-		// for the tutorial servers is available.
-		GameClient()->m_Menus.SetMenuPage(CMenus::PAGE_INTERNET);
-		GameClient()->m_Menus.RefreshBrowserTab(true);
-		const char *pAddr = ServerBrowser()->GetTutorialServer();
-		if(pAddr)
-		{
-			Client()->Connect(pAddr);
-			s_JoinTutorialTime = 0.0f;
-		}
-		else if(s_JoinTutorialTime == 0.0f)
-		{
-			dbg_msg("menus", "couldn't find tutorial server, retrying in 5 seconds");
-			s_JoinTutorialTime = Client()->LocalTime() + 5.0f;
-		}
-		else
-		{
-			Client()->AddWarning(SWarning(Localize("Can't find a Tutorial server")));
-			s_JoinTutorialTime = 0.0f;
-		}
+		GameClient()->m_Menus.JoinTutorial();
 	}
 
 	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr); // little space
@@ -182,7 +159,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	static CButtonContainer s_ConsoleButton;
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 	TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
-	if(GameClient()->m_Menus.DoButton_Menu(&s_ConsoleButton, FONT_ICON_TERMINAL, 0, &ConsoleButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.1f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_ConsoleButton, FontIcon::TERMINAL, 0, &ConsoleButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.1f)))
 	{
 		GameClient()->m_GameConsole.Toggle(CGameConsole::CONSOLETYPE_LOCAL);
 	}
@@ -252,10 +229,21 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 #elif defined(CONF_INFORM_UPDATE)
 	if(str_comp(Client()->LatestVersion(), "0") != 0)
 	{
+		CUIRect DownloadButton;
+		VersionUpdate.VSplitRight(100.0f, &VersionUpdate, &DownloadButton);
+		VersionUpdate.VSplitRight(10.0f, &VersionUpdate, nullptr);
+
+		static CButtonContainer s_DownloadButton;
+		if(GameClient()->m_Menus.DoButton_Menu(&s_DownloadButton, Localize("Download"), 0, &DownloadButton, BUTTONFLAG_LEFT, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+		{
+			Client()->ViewLink("https://ddnet.org/downloads/");
+		}
+
 		char aBuf[64];
 		str_format(aBuf, sizeof(aBuf), Localize("DDNet %s is out!"), Client()->LatestVersion());
-		TextRender()->TextColor(TextRender()->DefaultTextColor());
-		Ui()->DoLabel(&VersionUpdate, aBuf, 14.0f, TEXTALIGN_MC);
+		SLabelProperties UpdateLabelProps;
+		UpdateLabelProps.SetColor(ColorRGBA(1.0f, 0.4f, 0.4f, 1.0f));
+		Ui()->DoLabel(&VersionUpdate, aBuf, 14.0f, TEXTALIGN_ML, UpdateLabelProps);
 	}
 #endif
 

@@ -1,9 +1,17 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "controls.h"
+
+#include <base/dbg.h>
 #include <base/math.h>
+#include <base/mem.h>
+#include <base/time.h>
+#include <base/vmath.h>
 
 #include <engine/client.h>
 #include <engine/shared/config.h>
+
+#include <generated/protocol.h>
 
 #include <game/client/components/camera.h>
 #include <game/client/components/chat.h>
@@ -12,16 +20,13 @@
 #include <game/client/gameclient.h>
 #include <game/collision.h>
 
-#include <base/vmath.h>
-
-#include "controls.h"
-
 CControls::CControls()
 {
 	mem_zero(&m_aLastData, sizeof(m_aLastData));
-	mem_zero(m_aMousePos, sizeof(m_aMousePos));
-	mem_zero(m_aMousePosOnAction, sizeof(m_aMousePosOnAction));
-	mem_zero(m_aTargetPos, sizeof(m_aTargetPos));
+	std::fill(std::begin(m_aMousePos), std::end(m_aMousePos), vec2(0.0f, 0.0f));
+	std::fill(std::begin(m_aMousePosOnAction), std::end(m_aMousePosOnAction), vec2(0.0f, 0.0f));
+	std::fill(std::begin(m_aTargetPos), std::end(m_aTargetPos), vec2(0.0f, 0.0f));
+	std::fill(std::begin(m_aMouseInputType), std::end(m_aMouseInputType), EMouseInputType::ABSOLUTE);
 }
 
 void CControls::OnReset()
@@ -197,6 +202,19 @@ int CControls::SnapInput(int *pData)
 	if(Client()->ServerCapAnyPlayerFlag() && GameClient()->m_Camera.CamType() == CCamera::CAMTYPE_SPEC)
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_SPEC_CAM;
 
+	switch(m_aMouseInputType[g_Config.m_ClDummy])
+	{
+	case CControls::EMouseInputType::AUTOMATED:
+		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_INPUT_ABSOLUTE;
+		break;
+	case CControls::EMouseInputType::ABSOLUTE:
+		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_INPUT_ABSOLUTE | PLAYERFLAG_INPUT_MANUAL;
+		break;
+	case CControls::EMouseInputType::RELATIVE:
+		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags |= PLAYERFLAG_INPUT_MANUAL;
+		break;
+	}
+
 	bool Send = m_aLastData[g_Config.m_ClDummy].m_PlayerFlags != m_aInputData[g_Config.m_ClDummy].m_PlayerFlags;
 
 	m_aLastData[g_Config.m_ClDummy].m_PlayerFlags = m_aInputData[g_Config.m_ClDummy].m_PlayerFlags;
@@ -246,19 +264,24 @@ int CControls::SnapInput(int *pData)
 		if(g_Config.m_ClDummyCopyMoves)
 		{
 			CNetObj_PlayerInput *pDummyInput = &GameClient()->m_DummyInput;
-			pDummyInput->m_Direction = m_aInputData[g_Config.m_ClDummy].m_Direction;
-			pDummyInput->m_Hook = m_aInputData[g_Config.m_ClDummy].m_Hook;
-			pDummyInput->m_Jump = m_aInputData[g_Config.m_ClDummy].m_Jump;
-			pDummyInput->m_PlayerFlags = m_aInputData[g_Config.m_ClDummy].m_PlayerFlags;
-			pDummyInput->m_TargetX = m_aInputData[g_Config.m_ClDummy].m_TargetX;
-			pDummyInput->m_TargetY = m_aInputData[g_Config.m_ClDummy].m_TargetY;
-			pDummyInput->m_WantedWeapon = m_aInputData[g_Config.m_ClDummy].m_WantedWeapon;
 
-			if(!g_Config.m_ClDummyControl)
-				pDummyInput->m_Fire += m_aInputData[g_Config.m_ClDummy].m_Fire - m_aLastData[g_Config.m_ClDummy].m_Fire;
+			// Don't copy any input to dummy when spectating others
+			if(!GameClient()->m_Snap.m_SpecInfo.m_Active || GameClient()->m_Snap.m_SpecInfo.m_SpectatorId < 0)
+			{
+				pDummyInput->m_Direction = m_aInputData[g_Config.m_ClDummy].m_Direction;
+				pDummyInput->m_Hook = m_aInputData[g_Config.m_ClDummy].m_Hook;
+				pDummyInput->m_Jump = m_aInputData[g_Config.m_ClDummy].m_Jump;
+				pDummyInput->m_PlayerFlags = m_aInputData[g_Config.m_ClDummy].m_PlayerFlags;
+				pDummyInput->m_TargetX = m_aInputData[g_Config.m_ClDummy].m_TargetX;
+				pDummyInput->m_TargetY = m_aInputData[g_Config.m_ClDummy].m_TargetY;
+				pDummyInput->m_WantedWeapon = m_aInputData[g_Config.m_ClDummy].m_WantedWeapon;
 
-			pDummyInput->m_NextWeapon += m_aInputData[g_Config.m_ClDummy].m_NextWeapon - m_aLastData[g_Config.m_ClDummy].m_NextWeapon;
-			pDummyInput->m_PrevWeapon += m_aInputData[g_Config.m_ClDummy].m_PrevWeapon - m_aLastData[g_Config.m_ClDummy].m_PrevWeapon;
+				if(!g_Config.m_ClDummyControl)
+					pDummyInput->m_Fire += m_aInputData[g_Config.m_ClDummy].m_Fire - m_aLastData[g_Config.m_ClDummy].m_Fire;
+
+				pDummyInput->m_NextWeapon += m_aInputData[g_Config.m_ClDummy].m_NextWeapon - m_aLastData[g_Config.m_ClDummy].m_NextWeapon;
+				pDummyInput->m_PrevWeapon += m_aInputData[g_Config.m_ClDummy].m_PrevWeapon - m_aLastData[g_Config.m_ClDummy].m_PrevWeapon;
+			}
 
 			m_aInputData[!g_Config.m_ClDummy] = *pDummyInput;
 		}
@@ -274,10 +297,10 @@ int CControls::SnapInput(int *pData)
 				pDummyInput->m_Fire++;
 
 			pDummyInput->m_Hook = g_Config.m_ClDummyHook;
+			m_aInputData[!g_Config.m_ClDummy] = *pDummyInput;
 		}
 
 		// stress testing
-#ifdef CONF_DEBUG
 		if(g_Config.m_DbgStress)
 		{
 			float t = Client()->LocalTime();
@@ -291,7 +314,7 @@ int CControls::SnapInput(int *pData)
 			m_aInputData[g_Config.m_ClDummy].m_TargetX = (int)(std::sin(t * 3) * 100.0f);
 			m_aInputData[g_Config.m_ClDummy].m_TargetY = (int)(std::cos(t * 3) * 100.0f);
 		}
-#endif
+
 		// check if we need to send input
 		Send = Send || m_aInputData[g_Config.m_ClDummy].m_Direction != m_aLastData[g_Config.m_ClDummy].m_Direction;
 		Send = Send || m_aInputData[g_Config.m_ClDummy].m_Jump != m_aLastData[g_Config.m_ClDummy].m_Jump;
@@ -363,14 +386,17 @@ void CControls::OnRender()
 
 bool CControls::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 {
-	if(GameClient()->m_Snap.m_pGameInfoObj && (GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_PAUSED))
+	if(GameClient()->IsWorldPaused())
 		return false;
 
 	if(CursorType == IInput::CURSOR_JOYSTICK && g_Config.m_InpControllerAbsolute && GameClient()->m_Snap.m_pGameInfoObj && !GameClient()->m_Snap.m_SpecInfo.m_Active)
 	{
 		vec2 AbsoluteDirection;
 		if(Input()->GetActiveJoystick()->Absolute(&AbsoluteDirection.x, &AbsoluteDirection.y))
+		{
 			m_aMousePos[g_Config.m_ClDummy] = AbsoluteDirection * GetMaxMouseDistance();
+			GameClient()->m_Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::ABSOLUTE;
+		}
 		return true;
 	}
 
@@ -390,9 +416,7 @@ bool CControls::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 			Factor = g_Config.m_InpControllerSens / 100.0f;
 			break;
 		default:
-			dbg_msg("assert", "CControls::OnCursorMove CursorType %d", (int)CursorType);
-			dbg_break();
-			break;
+			dbg_assert_failed("CControls::OnCursorMove CursorType %d", (int)CursorType);
 		}
 	}
 
@@ -400,6 +424,7 @@ bool CControls::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 		Factor *= GameClient()->m_Camera.m_Zoom;
 
 	m_aMousePos[g_Config.m_ClDummy] += vec2(x, y) * Factor;
+	GameClient()->m_Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::RELATIVE;
 	ClampMousePos();
 	return true;
 }

@@ -1,11 +1,12 @@
 #ifndef GAME_EDITOR_PROMPT_H
 #define GAME_EDITOR_PROMPT_H
 
+#include "component.h"
+
 #include <game/client/lineinput.h>
 #include <game/client/ui_rect.h>
-#include <game/editor/quick_action.h>
 
-#include "component.h"
+class CQuickAction;
 
 class CPrompt : public CEditorComponent
 {
@@ -20,7 +21,7 @@ class CPrompt : public CEditorComponent
 public:
 	void OnInit(CEditor *pEditor) override;
 	bool OnInput(const IInput::CEvent &Event) override;
-	void OnRender(CUIRect _) override;
+	void Render();
 	bool IsActive();
 	void SetActive();
 	void SetInactive();

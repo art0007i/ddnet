@@ -27,7 +27,6 @@ public:
 
 class CNameBans
 {
-	IConsole *m_pConsole = nullptr;
 	std::vector<CNameBan> m_vNameBans;
 
 	static void ConNameBan(IConsole::IResult *pResult, void *pUser);
@@ -36,7 +35,7 @@ class CNameBans
 
 public:
 	void InitConsole(IConsole *pConsole);
-	void Ban(const char *pName, const char *pReason, const int Distance, const bool IsSubstring);
+	void Ban(const char *pName, const char *pReason, int Distance, bool IsSubstring);
 	void Unban(const char *pName);
 	void Dump() const;
 	const CNameBan *IsBanned(const char *pName) const;

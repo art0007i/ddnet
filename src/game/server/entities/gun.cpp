@@ -1,5 +1,6 @@
 /* copyright (c) 2007 magnus auvinen, see licence.txt for more info */
 #include "gun.h"
+
 #include "character.h"
 #include "plasma.h"
 
@@ -14,7 +15,7 @@
 #include <game/server/teams.h>
 
 CGun::CGun(CGameWorld *pGameWorld, vec2 Pos, bool Freeze, bool Explosive, int Layer, int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER)
+	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
 {
 	m_Core = vec2(0.0f, 0.0f);
 	m_Pos = Pos;
@@ -24,8 +25,8 @@ CGun::CGun(CGameWorld *pGameWorld, vec2 Pos, bool Freeze, bool Explosive, int La
 	m_Number = Number;
 	m_EvalTick = Server()->Tick();
 
-	mem_zero(m_aLastFireTeam, sizeof(m_aLastFireTeam));
-	mem_zero(m_aLastFireSolo, sizeof(m_aLastFireSolo));
+	std::fill(std::begin(m_aLastFireTeam), std::end(m_aLastFireTeam), 0);
+	std::fill(std::begin(m_aLastFireSolo), std::end(m_aLastFireSolo), 0);
 	GameWorld()->InsertEntity(this);
 }
 
@@ -47,7 +48,7 @@ void CGun::Fire()
 {
 	// Create a list of players who are in the range of the turret
 	CEntity *apPlayersInRange[MAX_CLIENTS];
-	mem_zero(apPlayersInRange, sizeof(apPlayersInRange));
+	std::fill(std::begin(apPlayersInRange), std::end(apPlayersInRange), nullptr);
 
 	int NumPlayersInRange = GameServer()->m_World.FindEntities(m_Pos, g_Config.m_SvPlasmaRange,
 		apPlayersInRange, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
@@ -56,12 +57,9 @@ void CGun::Fire()
 	int aTargetIdInTeam[MAX_CLIENTS];
 	bool aIsTarget[MAX_CLIENTS];
 	int aMinDistInTeam[MAX_CLIENTS];
-	mem_zero(aMinDistInTeam, sizeof(aMinDistInTeam));
-	mem_zero(aIsTarget, sizeof(aIsTarget));
-	for(int &TargetId : aTargetIdInTeam)
-	{
-		TargetId = -1;
-	}
+	std::fill(std::begin(aMinDistInTeam), std::end(aMinDistInTeam), 0);
+	std::fill(std::begin(aIsTarget), std::end(aIsTarget), false);
+	std::fill(std::begin(aTargetIdInTeam), std::end(aTargetIdInTeam), -1);
 
 	for(int i = 0; i < NumPlayersInRange; i++)
 	{
@@ -140,7 +138,7 @@ void CGun::Reset()
 
 void CGun::Snap(int SnappingClient)
 {
-	if(NetworkClipped(SnappingClient))
+	if(NetworkClipped(SnappingClient) || !GetId().has_value())
 		return;
 
 	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
@@ -171,6 +169,6 @@ void CGun::Snap(int SnappingClient)
 		StartTick = m_EvalTick;
 	}
 
-	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId(),
+	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
 		m_Pos, m_Pos, StartTick, -1, LASERTYPE_GUN, Subtype, m_Number);
 }

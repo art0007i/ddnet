@@ -2,6 +2,7 @@
 #define GAME_MAP_RENDER_MAP_H
 
 #include <base/color.h>
+
 #include <game/map/render_interfaces.h>
 #include <game/mapitems.h>
 
@@ -38,7 +39,6 @@ class CMapBasedEnvelopePointAccess : public IEnvelopePointAccess
 	CEnvPointBezier_upstream *m_pPointsBezierUpstream;
 
 public:
-	CMapBasedEnvelopePointAccess(class CDataFileReader *pReader);
 	CMapBasedEnvelopePointAccess(class IMap *pMap);
 	void SetPointsRange(int StartPoint, int NumPoints);
 	int StartPoint() const;

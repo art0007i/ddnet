@@ -1,14 +1,18 @@
+#include "save.h"
+
+#include "player.h"
+#include "teams.h"
+
+#include <engine/server.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol.h>
+
 #include <game/server/entities/character.h>
-#include <game/server/gamemodes/DDRace.h>
+#include <game/server/gamecontext.h>
+#include <game/server/gamemodes/ddnet.h>
 #include <game/team_state.h>
 
 #include <cstdio> // sscanf
-
-#include "player.h"
-#include "save.h"
-#include "teams.h"
 
 CSaveTee::CSaveTee() = default;
 
@@ -226,7 +230,7 @@ bool CSaveTee::Load(CCharacter *pChr, std::optional<int> Team)
 	pChr->m_Core.m_HookTick = m_HookTick;
 
 	pChr->m_Core.m_HookState = m_HookState;
-	if(m_HookedPlayer != -1 && pChr->Teams()->m_Core.Team(m_HookedPlayer) != Team)
+	if(m_HookedPlayer != -1 && Team.has_value() && pChr->Teams()->m_Core.Team(m_HookedPlayer) != Team.value())
 	{
 		pChr->m_Core.SetHookedPlayer(-1);
 		pChr->m_Core.m_HookState = HOOK_FLYING;
@@ -516,18 +520,18 @@ CSaveTeam::~CSaveTeam()
 
 ESaveResult CSaveTeam::Save(CGameContext *pGameServer, int Team, bool Dry, bool Force)
 {
-	if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && (Team <= 0 || MAX_CLIENTS <= Team) && !Force)
-		return ESaveResult::TEAM_FLOCK;
-
 	IGameController *pController = pGameServer->m_pController;
 	CGameTeams *pTeams = &pController->Teams();
+
+	if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && (Team == TEAM_FLOCK || !pTeams->IsValidTeamNumber(Team)) && !Force)
+		return ESaveResult::TEAM_FLOCK;
 
 	if(pTeams->TeamFlock(Team) && !Force)
 	{
 		return ESaveResult::TEAM_0_MODE;
 	}
 
-	m_MembersCount = pTeams->Count(Team);
+	m_MembersCount = pTeams->TeamSize(Team);
 	if(m_MembersCount <= 0)
 	{
 		return ESaveResult::TEAM_NOT_FOUND;
@@ -669,7 +673,7 @@ CCharacter *CSaveTeam::MatchCharacter(CGameContext *pGameServer, int ClientId, i
 
 char *CSaveTeam::GetString()
 {
-	str_format(m_aString, sizeof(m_aString), "%d\t%d\t%d\t%d\t%d", m_TeamState, m_MembersCount, m_HighestSwitchNumber, m_TeamLocked, m_Practice);
+	str_format(m_aString, sizeof(m_aString), "%d\t%d\t%d\t%d\t%d", static_cast<int>(m_TeamState), m_MembersCount, m_HighestSwitchNumber, m_TeamLocked, m_Practice);
 
 	for(int i = 0; i < m_MembersCount; i++)
 	{
@@ -724,7 +728,9 @@ int CSaveTeam::FromString(const char *pString)
 	if(StrSize < sizeof(aTeamStats))
 	{
 		str_copy(aTeamStats, pCopyPos, StrSize);
-		int Num = sscanf(aTeamStats, "%d\t%d\t%d\t%d\t%d", &m_TeamState, &m_MembersCount, &m_HighestSwitchNumber, &m_TeamLocked, &m_Practice);
+		int TeamState;
+		int Num = sscanf(aTeamStats, "%d\t%d\t%d\t%d\t%d", &TeamState, &m_MembersCount, &m_HighestSwitchNumber, &m_TeamLocked, &m_Practice);
+		m_TeamState = static_cast<ETeamState>(TeamState);
 		switch(Num) // Don't forget to update this when you save / load more / less.
 		{
 		case 4:

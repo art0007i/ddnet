@@ -1,8 +1,14 @@
 #if defined(CONF_BACKEND_VULKAN)
 
-#include <engine/client/backend/vulkan/backend_vulkan.h>
+#include <base/dbg.h>
+#include <base/log.h>
+#include <base/math.h>
+#include <base/mem.h>
+#include <base/str.h>
+#include <base/time.h>
 
 #include <engine/client/backend/backend_base.h>
+#include <engine/client/backend/vulkan/backend_vulkan.h>
 #include <engine/client/backend_sdl.h>
 #include <engine/client/graphics_threaded.h>
 #include <engine/gfx/image_manipulation.h>
@@ -11,9 +17,10 @@
 #include <engine/shared/localization.h>
 #include <engine/storage.h>
 
-#include <base/log.h>
-#include <base/math.h>
-#include <base/system.h>
+#include <SDL_video.h>
+#include <SDL_vulkan.h>
+#include <vulkan/vk_platform.h>
+#include <vulkan/vulkan_core.h>
 
 #include <algorithm>
 #include <array>
@@ -32,12 +39,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <SDL_video.h>
-#include <SDL_vulkan.h>
-
-#include <vulkan/vk_platform.h>
-#include <vulkan/vulkan_core.h>
 
 #ifndef VK_API_VERSION_MAJOR
 #define VK_API_VERSION_MAJOR VK_VERSION_MAJOR
@@ -65,58 +66,43 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 		return g_Config.m_DbgGfx == DEBUG_GFX_MODE_VERBOSE || g_Config.m_DbgGfx == DEBUG_GFX_MODE_ALL;
 	}
 
-	void VerboseAllocatedMemory(VkDeviceSize Size, size_t FrameImageIndex, EMemoryBlockUsage MemUsage) const
+	static const char *MemoryUsageName(EMemoryBlockUsage MemUsage)
 	{
-		const char *pUsage = "unknown";
 		switch(MemUsage)
 		{
 		case MEMORY_BLOCK_USAGE_TEXTURE:
-			pUsage = "texture";
-			break;
+			return "texture";
 		case MEMORY_BLOCK_USAGE_BUFFER:
-			pUsage = "buffer";
-			break;
+			return "buffer";
 		case MEMORY_BLOCK_USAGE_STREAM:
-			pUsage = "stream";
-			break;
+			return "stream";
 		case MEMORY_BLOCK_USAGE_STAGING:
-			pUsage = "staging buffer";
-			break;
-		default: break;
+			return "staging buffer";
+		default:
+			dbg_assert_failed("Invalid MemUsage: %d", (int)MemUsage);
 		}
-		dbg_msg("vulkan", "allocated chunk of memory with size: %" PRIzu " for frame %" PRIzu " (%s)", (size_t)Size, (size_t)m_CurImageIndex, pUsage);
+	}
+
+	void VerboseAllocatedMemory(VkDeviceSize Size, size_t FrameImageIndex, EMemoryBlockUsage MemUsage) const
+	{
+		log_debug("gfx/vulkan", "Allocated chunk of memory with size %" PRIzu " for frame %" PRIzu " (%s).",
+			(size_t)Size, (size_t)m_CurImageIndex, MemoryUsageName(MemUsage));
 	}
 
 	void VerboseDeallocatedMemory(VkDeviceSize Size, size_t FrameImageIndex, EMemoryBlockUsage MemUsage) const
 	{
-		const char *pUsage = "unknown";
-		switch(MemUsage)
-		{
-		case MEMORY_BLOCK_USAGE_TEXTURE:
-			pUsage = "texture";
-			break;
-		case MEMORY_BLOCK_USAGE_BUFFER:
-			pUsage = "buffer";
-			break;
-		case MEMORY_BLOCK_USAGE_STREAM:
-			pUsage = "stream";
-			break;
-		case MEMORY_BLOCK_USAGE_STAGING:
-			pUsage = "staging buffer";
-			break;
-		default: break;
-		}
-		dbg_msg("vulkan", "deallocated chunk of memory with size: %" PRIzu " for frame %" PRIzu " (%s)", (size_t)Size, (size_t)m_CurImageIndex, pUsage);
+		log_debug("gfx/vulkan", "Deallocated chunk of memory with size %" PRIzu " for frame %" PRIzu " (%s).",
+			(size_t)Size, (size_t)m_CurImageIndex, MemoryUsageName(MemUsage));
 	}
 
 	/************************
-	* STRUCT DEFINITIONS
-	************************/
+	 * STRUCT DEFINITIONS
+	 ************************/
 
-	static constexpr size_t s_StagingBufferCacheId = 0;
-	static constexpr size_t s_StagingBufferImageCacheId = 1;
-	static constexpr size_t s_VertexBufferCacheId = 2;
-	static constexpr size_t s_ImageBufferCacheId = 3;
+	static constexpr size_t STAGING_BUFFER_CACHE_ID = 0;
+	static constexpr size_t STAGING_BUFFER_IMAGE_CACHE_ID = 1;
+	static constexpr size_t VERTEX_BUFFER_CACHE_ID = 2;
+	static constexpr size_t IMAGE_BUFFER_CACHE_ID = 3;
 
 	struct SDeviceMemoryBlock
 	{
@@ -161,20 +147,15 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 			size_t m_OffsetToAlign;
 			SMemoryHeapElement *m_pElementInHeap;
 			[[nodiscard]] bool operator>(const SMemoryHeapQueueElement &Other) const { return m_AllocationSize > Other.m_AllocationSize; }
-			struct SMemoryHeapQueueElementFind
+			// respects alignment requirements
+			constexpr bool CanFitAllocation(size_t AllocSize, size_t AllocAlignment) const
 			{
-				// respects alignment requirements
-				constexpr bool operator()(const SMemoryHeapQueueElement &Val, const std::pair<size_t, size_t> &Other) const
-				{
-					auto AllocSize = Other.first;
-					auto AllocAlignment = Other.second;
-					size_t ExtraSizeAlign = Val.m_OffsetInHeap % AllocAlignment;
-					if(ExtraSizeAlign != 0)
-						ExtraSizeAlign = AllocAlignment - ExtraSizeAlign;
-					size_t RealAllocSize = AllocSize + ExtraSizeAlign;
-					return Val.m_AllocationSize < RealAllocSize;
-				}
-			};
+				size_t ExtraSizeAlign = m_OffsetInHeap % AllocAlignment;
+				if(ExtraSizeAlign != 0)
+					ExtraSizeAlign = AllocAlignment - ExtraSizeAlign;
+				size_t RealAllocSize = AllocSize + ExtraSizeAlign;
+				return m_AllocationSize >= RealAllocSize;
+			}
 		};
 
 		typedef std::multiset<SMemoryHeapQueueElement, std::greater<>> TMemoryHeapQueue;
@@ -218,7 +199,7 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 			else
 			{
 				// check if there is enough space in this instance
-				if(SMemoryHeapQueueElement::SMemoryHeapQueueElementFind{}(*m_Elements.begin(), std::make_pair(AllocSize, AllocAlignment)))
+				if(!m_Elements.begin()->CanFitAllocation(AllocSize, AllocAlignment))
 				{
 					return false;
 				}
@@ -230,7 +211,15 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 					// find upper bound for a allocation size
 					auto Upper = m_Elements.upper_bound(FindAllocSize);
 					// then find the first entry that respects alignment, this is a linear search!
-					auto FoundEl = std::lower_bound(std::make_reverse_iterator(Upper), m_Elements.rend(), std::make_pair(AllocSize, AllocAlignment), SMemoryHeapQueueElement::SMemoryHeapQueueElementFind{});
+					auto FoundEl = m_Elements.rend();
+					for(auto AllocIterator = std::make_reverse_iterator(Upper); AllocIterator != m_Elements.rend(); ++AllocIterator)
+					{
+						if(AllocIterator->CanFitAllocation(AllocSize, AllocAlignment))
+						{
+							FoundEl = AllocIterator;
+							break;
+						}
+					}
 
 					auto TopEl = *FoundEl;
 					m_Elements.erase(TopEl.m_pElementInHeap->m_InQueue);
@@ -382,9 +371,9 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 
 		void Destroy(VkDevice &Device)
 		{
-			for(auto it = m_MemoryCaches.m_vpMemoryHeaps.begin(); it != m_MemoryCaches.m_vpMemoryHeaps.end();)
+			for(auto HeapIterator = m_MemoryCaches.m_vpMemoryHeaps.begin(); HeapIterator != m_MemoryCaches.m_vpMemoryHeaps.end();)
 			{
-				auto *pHeap = *it;
+				auto *pHeap = *HeapIterator;
 				if(pHeap->m_pMappedBuffer != nullptr)
 					vkUnmapMemory(Device, pHeap->m_BufferMem.m_Mem);
 				if(pHeap->m_Buffer != VK_NULL_HANDLE)
@@ -392,7 +381,7 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 				vkFreeMemory(Device, pHeap->m_BufferMem.m_Mem, nullptr);
 
 				delete pHeap;
-				it = m_MemoryCaches.m_vpMemoryHeaps.erase(it);
+				HeapIterator = m_MemoryCaches.m_vpMemoryHeaps.erase(HeapIterator);
 			}
 
 			m_MemoryCaches.m_vpMemoryHeaps.clear();
@@ -419,15 +408,15 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 		// returns the total free'd memory
 		size_t Shrink(VkDevice &Device)
 		{
-			size_t FreeedMemory = 0;
+			size_t FreedMemory = 0;
 			if(m_CanShrink)
 			{
 				m_CanShrink = false;
 				if(m_MemoryCaches.m_vpMemoryHeaps.size() > 1)
 				{
-					for(auto it = m_MemoryCaches.m_vpMemoryHeaps.begin(); it != m_MemoryCaches.m_vpMemoryHeaps.end();)
+					for(auto HeapIterator = m_MemoryCaches.m_vpMemoryHeaps.begin(); HeapIterator != m_MemoryCaches.m_vpMemoryHeaps.end();)
 					{
-						auto *pHeap = *it;
+						auto *pHeap = *HeapIterator;
 						if(pHeap->m_Heap.IsUnused())
 						{
 							if(pHeap->m_pMappedBuffer != nullptr)
@@ -435,32 +424,32 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 							if(pHeap->m_Buffer != VK_NULL_HANDLE)
 								vkDestroyBuffer(Device, pHeap->m_Buffer, nullptr);
 							vkFreeMemory(Device, pHeap->m_BufferMem.m_Mem, nullptr);
-							FreeedMemory += pHeap->m_BufferMem.m_Size;
+							FreedMemory += pHeap->m_BufferMem.m_Size;
 
 							delete pHeap;
-							it = m_MemoryCaches.m_vpMemoryHeaps.erase(it);
+							HeapIterator = m_MemoryCaches.m_vpMemoryHeaps.erase(HeapIterator);
 							if(m_MemoryCaches.m_vpMemoryHeaps.size() == 1)
 								break;
 						}
 						else
-							++it;
+							++HeapIterator;
 					}
 				}
 			}
 
-			return FreeedMemory;
+			return FreedMemory;
 		}
 	};
 
 	struct CTexture
 	{
 		VkImage m_Img = VK_NULL_HANDLE;
-		SMemoryImageBlock<s_ImageBufferCacheId> m_ImgMem;
+		SMemoryImageBlock<IMAGE_BUFFER_CACHE_ID> m_ImgMem;
 		VkImageView m_ImgView = VK_NULL_HANDLE;
 		VkSampler m_aSamplers[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
 
 		VkImage m_Img3D = VK_NULL_HANDLE;
-		SMemoryImageBlock<s_ImageBufferCacheId> m_Img3DMem;
+		SMemoryImageBlock<IMAGE_BUFFER_CACHE_ID> m_Img3DMem;
 		VkImageView m_Img3DView = VK_NULL_HANDLE;
 		VkSampler m_Sampler3D = VK_NULL_HANDLE;
 
@@ -477,7 +466,7 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 
 	struct SBufferObject
 	{
-		SMemoryBlock<s_VertexBufferCacheId> m_Mem;
+		SMemoryBlock<VERTEX_BUFFER_CACHE_ID> m_Mem;
 	};
 
 	struct SBufferObjectFrame
@@ -708,8 +697,8 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 	};
 
 	/*******************************
-	* UNIFORM PUSH CONSTANT LAYOUTS
-	********************************/
+	 * UNIFORM PUSH CONSTANT LAYOUTS
+	 ********************************/
 
 	struct SUniformGPos
 	{
@@ -806,7 +795,7 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 
 	struct SUniformQuadPushGBufferObject
 	{
-		vec4 m_VertColor;
+		ColorRGBA m_VertColor;
 		vec2 m_Offset;
 		float m_Rotation;
 		float m_Padding;
@@ -864,20 +853,20 @@ class CCommandProcessorFragment_Vulkan : public CCommandProcessorFragment_GLBase
 	struct SSwapChainMultiSampleImage
 	{
 		VkImage m_Image = VK_NULL_HANDLE;
-		SMemoryImageBlock<s_ImageBufferCacheId> m_ImgMem;
+		SMemoryImageBlock<IMAGE_BUFFER_CACHE_ID> m_ImgMem;
 		VkImageView m_ImgView = VK_NULL_HANDLE;
 	};
 
 	/************************
-	* MEMBER VARIABLES
-	************************/
+	 * MEMBER VARIABLES
+	 ************************/
 
 	std::unordered_map<std::string, SShaderFileCache> m_ShaderFiles;
 
-	SMemoryBlockCache<s_StagingBufferCacheId> m_StagingBufferCache;
-	SMemoryBlockCache<s_StagingBufferImageCacheId> m_StagingBufferCacheImage;
-	SMemoryBlockCache<s_VertexBufferCacheId> m_VertexBufferCache;
-	std::map<uint32_t, SMemoryBlockCache<s_ImageBufferCacheId>> m_ImageBufferCaches;
+	SMemoryBlockCache<STAGING_BUFFER_CACHE_ID> m_StagingBufferCache;
+	SMemoryBlockCache<STAGING_BUFFER_IMAGE_CACHE_ID> m_StagingBufferCacheImage;
+	SMemoryBlockCache<VERTEX_BUFFER_CACHE_ID> m_VertexBufferCache;
+	std::map<uint32_t, SMemoryBlockCache<IMAGE_BUFFER_CACHE_ID>> m_ImageBufferCaches;
 
 	std::vector<VkMappedMemoryRange> m_vNonFlushedStagingBufferRange;
 
@@ -1098,12 +1087,12 @@ private:
 		// command should be considered handled after it executed
 		bool m_CMDIsHandled = true;
 	};
-	std::array<SCommandCallback, CCommandBuffer::CMD_COUNT - CCommandBuffer::CMD_FIRST> m_aCommandCallbacks;
+	std::array<SCommandCallback, static_cast<int>(CCommandBuffer::CMD_COUNT) - static_cast<int>(CCommandBuffer::CMD_FIRST)> m_aCommandCallbacks;
 
 protected:
 	/************************
-	* ERROR MANAGEMENT
-	************************/
+	 * ERROR MANAGEMENT
+	 ************************/
 	std::mutex m_ErrWarnMutex;
 	std::string m_ErrorHelper;
 
@@ -1129,9 +1118,9 @@ protected:
 		if(m_CanAssert)
 		{
 			if(pErrStrExtra != nullptr)
-				dbg_msg("vulkan", "vulkan error: %s: %s", pErr, pErrStrExtra);
+				log_error("gfx/vulkan", "%s: %s", pErr, pErrStrExtra);
 			else
-				dbg_msg("vulkan", "vulkan error: %s", pErr);
+				log_error("gfx/vulkan", "%s", pErr);
 			m_HasError = true;
 			m_Error.m_ErrorType = ErrType;
 		}
@@ -1154,7 +1143,7 @@ protected:
 	void SetWarning(EGfxWarningType WarningType, const char *pWarning)
 	{
 		std::unique_lock<std::mutex> Lock(m_ErrWarnMutex);
-		dbg_msg("vulkan", "vulkan warning: %s", pWarning);
+		log_warn("gfx/vulkan", "%s", pWarning);
 		if(std::find(m_Warning.m_vWarnings.begin(), m_Warning.m_vWarnings.end(), pWarning) == m_Warning.m_vWarnings.end())
 			m_Warning.m_vWarnings.emplace_back(pWarning);
 		m_Warning.m_WarningType = WarningType;
@@ -1166,62 +1155,60 @@ protected:
 		switch(CallResult)
 		{
 		case VK_ERROR_OUT_OF_HOST_MEMORY:
-			pCriticalError = "host ran out of memory";
-			dbg_msg("vulkan", "%s", pCriticalError);
+			pCriticalError = "Host ran out of memory.";
+			log_error("gfx/vulkan", "%s", pCriticalError);
 			break;
 		case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-			pCriticalError = "device ran out of memory";
-			dbg_msg("vulkan", "%s", pCriticalError);
+			pCriticalError = "Device ran out of memory.";
+			log_error("gfx/vulkan", "%s", pCriticalError);
 			break;
 		case VK_ERROR_DEVICE_LOST:
-			pCriticalError = "device lost";
-			dbg_msg("vulkan", "%s", pCriticalError);
+			pCriticalError = "Device lost.";
+			log_error("gfx/vulkan", "%s", pCriticalError);
 			break;
 		case VK_ERROR_OUT_OF_DATE_KHR:
 		{
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "queueing swap chain recreation because the current is out of date");
+				log_debug("gfx/vulkan", "Queueing swap chain recreation because the current is out of date.");
 			}
 			m_RecreateSwapChain = true;
 			break;
 		}
 		case VK_ERROR_SURFACE_LOST_KHR:
-			dbg_msg("vulkan", "surface lost");
+			log_error("gfx/vulkan", "Surface lost.");
 			break;
-		/*case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
-			dbg_msg("vulkan", "fullscreen exclusive mode lost");
-			break;*/
 		case VK_ERROR_INCOMPATIBLE_DRIVER:
-			pCriticalError = "no compatible driver found. Vulkan 1.1 is required.";
-			dbg_msg("vulkan", "%s", pCriticalError);
+			pCriticalError = "No compatible driver found. Vulkan 1.1 is required.";
+			log_error("gfx/vulkan", "%s", pCriticalError);
 			break;
 		case VK_ERROR_INITIALIZATION_FAILED:
-			pCriticalError = "initialization failed for unknown reason.";
-			dbg_msg("vulkan", "%s", pCriticalError);
+			pCriticalError = "Initialization failed for unknown reason.";
+			log_error("gfx/vulkan", "%s", pCriticalError);
 			break;
 		case VK_ERROR_LAYER_NOT_PRESENT:
-			SetWarning(EGfxWarningType::GFX_WARNING_MISSING_EXTENSION, "One Vulkan layer was not present. (try to disable them)");
+			SetWarning(EGfxWarningType::GFX_WARNING_MISSING_EXTENSION, "At least one Vulkan layer was not present. (Try to disable them.)");
 			break;
 		case VK_ERROR_EXTENSION_NOT_PRESENT:
-			SetWarning(EGfxWarningType::GFX_WARNING_MISSING_EXTENSION, "One Vulkan extension was not present. (try to disable them)");
+			SetWarning(EGfxWarningType::GFX_WARNING_MISSING_EXTENSION, "At least one Vulkan extension was not present. (Try to disable them.)");
 			break;
 		case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
-			dbg_msg("vulkan", "native window in use");
+			log_error("gfx/vulkan", "Native window in use.");
 			break;
 		case VK_SUCCESS:
 			break;
 		case VK_SUBOPTIMAL_KHR:
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "queueing swap chain recreation because the current is sub optimal");
+				log_debug("gfx/vulkan", "Queueing swap chain recreation because the current is suboptimal.");
 			}
 			m_RecreateSwapChain = true;
 			break;
 		default:
-			m_ErrorHelper = "unknown error: ";
+			m_ErrorHelper = "Unknown error: ";
 			m_ErrorHelper.append(std::to_string(CallResult));
 			pCriticalError = m_ErrorHelper.c_str();
+			log_error("gfx/vulkan", "%s", pCriticalError);
 			break;
 		}
 
@@ -1234,12 +1221,12 @@ protected:
 	}
 
 	/************************
-	* COMMAND CALLBACKS
-	************************/
+	 * COMMAND CALLBACKS
+	 ************************/
 
 	size_t CommandBufferCMDOff(CCommandBuffer::ECommandBufferCMD CommandBufferCMD)
 	{
-		return (size_t)CommandBufferCMD - CCommandBuffer::ECommandBufferCMD::CMD_FIRST;
+		return (size_t)CommandBufferCMD - CCommandBuffer::CMD_FIRST;
 	}
 
 	void RegisterCommands()
@@ -1295,8 +1282,8 @@ protected:
 	}
 
 	/*****************************
-	* VIDEO AND SCREENSHOT HELPER
-	******************************/
+	 * VIDEO AND SCREENSHOT HELPER
+	 ******************************/
 
 	[[nodiscard]] bool PreparePresentedImageDataImage(uint8_t *&pResImageData, uint32_t Width, uint32_t Height)
 	{
@@ -1534,11 +1521,11 @@ protected:
 		{
 			if(!UsesRGBALikeFormat)
 			{
-				dbg_msg("vulkan", "swap chain image was not in a RGBA like format.");
+				log_error("gfx/vulkan", "Swap chain image was not in an RGBA-like format.");
 			}
 			else
 			{
-				dbg_msg("vulkan", "swap chain image was not ready to be copied.");
+				log_error("gfx/vulkan", "Swap chain image was not ready to be copied.");
 			}
 			return false;
 		}
@@ -1550,18 +1537,18 @@ protected:
 	}
 
 	/************************
-	* MEMORY MANAGEMENT
-	************************/
+	 * MEMORY MANAGEMENT
+	 ************************/
 
 	[[nodiscard]] bool AllocateVulkanMemory(const VkMemoryAllocateInfo *pAllocateInfo, VkDeviceMemory *pMemory)
 	{
 		VkResult Res = vkAllocateMemory(m_VKDevice, pAllocateInfo, nullptr, pMemory);
 		if(Res != VK_SUCCESS)
 		{
-			dbg_msg("vulkan", "vulkan memory allocation failed, trying to recover.");
+			log_warn("gfx/vulkan", "Memory allocation failed, trying to recover.");
 			if(Res == VK_ERROR_OUT_OF_HOST_MEMORY || Res == VK_ERROR_OUT_OF_DEVICE_MEMORY)
 			{
-				// aggressivly try to get more memory
+				// aggressively try to get more memory
 				vkDeviceWaitIdle(m_VKDevice);
 				for(size_t i = 0; i < m_SwapChainImageCount + 1; ++i)
 				{
@@ -1572,7 +1559,7 @@ protected:
 			}
 			if(Res != VK_SUCCESS)
 			{
-				dbg_msg("vulkan", "vulkan memory allocation failed.");
+				log_error("gfx/vulkan", "Memory allocation and recovery failed.");
 				return false;
 			}
 		}
@@ -1695,14 +1682,14 @@ protected:
 		return Res;
 	}
 
-	[[nodiscard]] bool GetStagingBuffer(SMemoryBlock<s_StagingBufferCacheId> &ResBlock, const void *pBufferData, VkDeviceSize RequiredSize)
+	[[nodiscard]] bool GetStagingBuffer(SMemoryBlock<STAGING_BUFFER_CACHE_ID> &ResBlock, const void *pBufferData, VkDeviceSize RequiredSize)
 	{
-		return GetBufferBlockImpl<s_StagingBufferCacheId, 8 * 1024 * 1024, 3, true>(ResBlock, m_StagingBufferCache, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, pBufferData, RequiredSize, maximum<VkDeviceSize>(m_NonCoherentMemAlignment, 16));
+		return GetBufferBlockImpl<STAGING_BUFFER_CACHE_ID, 8 * 1024 * 1024, 3, true>(ResBlock, m_StagingBufferCache, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, pBufferData, RequiredSize, maximum<VkDeviceSize>(m_NonCoherentMemAlignment, 16));
 	}
 
-	[[nodiscard]] bool GetStagingBufferImage(SMemoryBlock<s_StagingBufferImageCacheId> &ResBlock, const void *pBufferData, VkDeviceSize RequiredSize)
+	[[nodiscard]] bool GetStagingBufferImage(SMemoryBlock<STAGING_BUFFER_IMAGE_CACHE_ID> &ResBlock, const void *pBufferData, VkDeviceSize RequiredSize)
 	{
-		return GetBufferBlockImpl<s_StagingBufferImageCacheId, 8 * 1024 * 1024, 3, true>(ResBlock, m_StagingBufferCacheImage, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, pBufferData, RequiredSize, maximum<VkDeviceSize>(m_OptimalImageCopyMemAlignment, maximum<VkDeviceSize>(m_NonCoherentMemAlignment, 16)));
+		return GetBufferBlockImpl<STAGING_BUFFER_IMAGE_CACHE_ID, 8 * 1024 * 1024, 3, true>(ResBlock, m_StagingBufferCacheImage, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, pBufferData, RequiredSize, maximum<VkDeviceSize>(m_OptimalImageCopyMemAlignment, maximum<VkDeviceSize>(m_NonCoherentMemAlignment, 16)));
 	}
 
 	template<size_t Id>
@@ -1725,7 +1712,7 @@ protected:
 		m_vNonFlushedStagingBufferRange.push_back(UploadRange);
 	}
 
-	void UploadAndFreeStagingMemBlock(SMemoryBlock<s_StagingBufferCacheId> &Block)
+	void UploadAndFreeStagingMemBlock(SMemoryBlock<STAGING_BUFFER_CACHE_ID> &Block)
 	{
 		PrepareStagingMemRange(Block);
 		if(!Block.m_IsCached)
@@ -1738,7 +1725,7 @@ protected:
 		}
 	}
 
-	void UploadAndFreeStagingImageMemBlock(SMemoryBlock<s_StagingBufferImageCacheId> &Block)
+	void UploadAndFreeStagingImageMemBlock(SMemoryBlock<STAGING_BUFFER_IMAGE_CACHE_ID> &Block)
 	{
 		PrepareStagingMemRange(Block);
 		if(!Block.m_IsCached)
@@ -1751,12 +1738,12 @@ protected:
 		}
 	}
 
-	[[nodiscard]] bool GetVertexBuffer(SMemoryBlock<s_VertexBufferCacheId> &ResBlock, VkDeviceSize RequiredSize)
+	[[nodiscard]] bool GetVertexBuffer(SMemoryBlock<VERTEX_BUFFER_CACHE_ID> &ResBlock, VkDeviceSize RequiredSize)
 	{
-		return GetBufferBlockImpl<s_VertexBufferCacheId, 8 * 1024 * 1024, 3, false>(ResBlock, m_VertexBufferCache, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, RequiredSize, 16);
+		return GetBufferBlockImpl<VERTEX_BUFFER_CACHE_ID, 8 * 1024 * 1024, 3, false>(ResBlock, m_VertexBufferCache, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, RequiredSize, 16);
 	}
 
-	void FreeVertexMemBlock(SMemoryBlock<s_VertexBufferCacheId> &Block)
+	void FreeVertexMemBlock(SMemoryBlock<VERTEX_BUFFER_CACHE_ID> &Block)
 	{
 		if(!Block.m_IsCached)
 		{
@@ -1779,7 +1766,7 @@ protected:
 	}
 
 	// good approximation of 1024x1024 image with mipmaps
-	static constexpr int64_t s_1024x1024ImgSize = (1024 * 1024 * 4) * 2;
+	static constexpr int64_t IMAGE_SIZE_1024X1024_APPROXIMATION = (1024 * 1024 * 4) * 2;
 
 	[[nodiscard]] bool GetImageMemoryImpl(VkDeviceSize RequiredSize, uint32_t RequiredMemoryTypeBits, SDeviceMemoryBlock &BufferMemory, VkMemoryPropertyFlags BufferProperties)
 	{
@@ -1848,7 +1835,7 @@ protected:
 				Heaps.back()->m_Heap.Init(MemoryBlockSize * BlockCount, 0);
 				if(!Heaps.back()->m_Heap.Allocate(RequiredSize, RequiredAlignment, AllocatedMem))
 				{
-					dbg_assert(false, "Heap allocation failed directly after creating fresh heap for image");
+					dbg_assert_failed("Heap allocation failed directly after creating fresh heap for image");
 				}
 			}
 
@@ -1889,19 +1876,19 @@ protected:
 		return true;
 	}
 
-	[[nodiscard]] bool GetImageMemory(SMemoryImageBlock<s_ImageBufferCacheId> &RetBlock, VkDeviceSize RequiredSize, VkDeviceSize RequiredAlignment, uint32_t RequiredMemoryTypeBits)
+	[[nodiscard]] bool GetImageMemory(SMemoryImageBlock<IMAGE_BUFFER_CACHE_ID> &RetBlock, VkDeviceSize RequiredSize, VkDeviceSize RequiredAlignment, uint32_t RequiredMemoryTypeBits)
 	{
-		auto it = m_ImageBufferCaches.find(RequiredMemoryTypeBits);
-		if(it == m_ImageBufferCaches.end())
+		auto BufferCacheIterator = m_ImageBufferCaches.find(RequiredMemoryTypeBits);
+		if(BufferCacheIterator == m_ImageBufferCaches.end())
 		{
-			it = m_ImageBufferCaches.insert({RequiredMemoryTypeBits, {}}).first;
+			BufferCacheIterator = m_ImageBufferCaches.insert({RequiredMemoryTypeBits, {}}).first;
 
-			it->second.Init(m_SwapChainImageCount);
+			BufferCacheIterator->second.Init(m_SwapChainImageCount);
 		}
-		return GetImageMemoryBlockImpl<s_ImageBufferCacheId, s_1024x1024ImgSize, 2>(RetBlock, it->second, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, RequiredSize, RequiredAlignment, RequiredMemoryTypeBits);
+		return GetImageMemoryBlockImpl<IMAGE_BUFFER_CACHE_ID, IMAGE_SIZE_1024X1024_APPROXIMATION, 2>(RetBlock, BufferCacheIterator->second, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, RequiredSize, RequiredAlignment, RequiredMemoryTypeBits);
 	}
 
-	void FreeImageMemBlock(SMemoryImageBlock<s_ImageBufferCacheId> &Block)
+	void FreeImageMemBlock(SMemoryImageBlock<IMAGE_BUFFER_CACHE_ID> &Block)
 	{
 		if(!Block.m_IsCached)
 		{
@@ -2057,36 +2044,36 @@ protected:
 
 	void ShrinkUnusedCaches()
 	{
-		size_t FreeedMemory = 0;
-		FreeedMemory += m_StagingBufferCache.Shrink(m_VKDevice);
-		FreeedMemory += m_StagingBufferCacheImage.Shrink(m_VKDevice);
-		if(FreeedMemory > 0)
+		size_t FreedMemory = 0;
+		FreedMemory += m_StagingBufferCache.Shrink(m_VKDevice);
+		FreedMemory += m_StagingBufferCacheImage.Shrink(m_VKDevice);
+		if(FreedMemory > 0)
 		{
-			m_pStagingMemoryUsage->store(m_pStagingMemoryUsage->load(std::memory_order_relaxed) - FreeedMemory, std::memory_order_relaxed);
+			m_pStagingMemoryUsage->store(m_pStagingMemoryUsage->load(std::memory_order_relaxed) - FreedMemory, std::memory_order_relaxed);
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "deallocated chunks of memory with size: %" PRIzu " from all frames (staging buffer)", FreeedMemory);
+				log_debug("gfx/vulkan", "Deallocated chunks of memory with size %" PRIzu " from all frames (staging buffer).", FreedMemory);
 			}
 		}
-		FreeedMemory = 0;
-		FreeedMemory += m_VertexBufferCache.Shrink(m_VKDevice);
-		if(FreeedMemory > 0)
+		FreedMemory = 0;
+		FreedMemory += m_VertexBufferCache.Shrink(m_VKDevice);
+		if(FreedMemory > 0)
 		{
-			m_pBufferMemoryUsage->store(m_pBufferMemoryUsage->load(std::memory_order_relaxed) - FreeedMemory, std::memory_order_relaxed);
+			m_pBufferMemoryUsage->store(m_pBufferMemoryUsage->load(std::memory_order_relaxed) - FreedMemory, std::memory_order_relaxed);
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "deallocated chunks of memory with size: %" PRIzu " from all frames (buffer)", FreeedMemory);
+				log_debug("gfx/vulkan", "Deallocated chunks of memory with size %" PRIzu " from all frames (buffer).", FreedMemory);
 			}
 		}
-		FreeedMemory = 0;
+		FreedMemory = 0;
 		for(auto &ImageBufferCache : m_ImageBufferCaches)
-			FreeedMemory += ImageBufferCache.second.Shrink(m_VKDevice);
-		if(FreeedMemory > 0)
+			FreedMemory += ImageBufferCache.second.Shrink(m_VKDevice);
+		if(FreedMemory > 0)
 		{
-			m_pTextureMemoryUsage->store(m_pTextureMemoryUsage->load(std::memory_order_relaxed) - FreeedMemory, std::memory_order_relaxed);
+			m_pTextureMemoryUsage->store(m_pTextureMemoryUsage->load(std::memory_order_relaxed) - FreedMemory, std::memory_order_relaxed);
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "deallocated chunks of memory with size: %" PRIzu " from all frames (texture)", FreeedMemory);
+				log_debug("gfx/vulkan", "Deallocated chunks of memory with size %" PRIzu " from all frames (texture).", FreedMemory);
 			}
 		}
 	}
@@ -2138,8 +2125,8 @@ protected:
 	}
 
 	/************************
-	* SWAPPING MECHANISM
-	************************/
+	 * SWAPPING MECHANISM
+	 ************************/
 
 	void StartRenderThread(size_t ThreadIndex)
 	{
@@ -2338,7 +2325,7 @@ protected:
 			m_RecreateSwapChain = false;
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "recreating swap chain requested by user (prepare frame).");
+				log_debug("gfx/vulkan", "Recreating swap chain requested by user (prepare frame).");
 			}
 			RecreateSwapChain();
 		}
@@ -2351,16 +2338,13 @@ protected:
 				m_RecreateSwapChain = false;
 				if(IsVerbose())
 				{
-					dbg_msg("vulkan", "recreating swap chain requested by acquire next image (prepare frame).");
+					log_debug("gfx/vulkan", "Recreating swap chain requested by acquire next image (prepare frame).");
 				}
 				RecreateSwapChain();
 				return PrepareFrame();
 			}
 			else
 			{
-				if(AcqResult != VK_SUBOPTIMAL_KHR)
-					dbg_msg("vulkan", "acquire next image failed %d", (int)AcqResult);
-
 				const char *pCritErrorMsg = CheckVulkanCriticalError(AcqResult);
 				if(pCritErrorMsg != nullptr)
 				{
@@ -2484,8 +2468,8 @@ protected:
 	}
 
 	/************************
-	* TEXTURES
-	************************/
+	 * TEXTURES
+	 ************************/
 
 	size_t VulkanFormatToPixelSize(VkFormat Format)
 	{
@@ -2501,7 +2485,7 @@ protected:
 	[[nodiscard]] bool UpdateTexture(size_t TextureSlot, VkFormat Format, uint8_t *&pData, int64_t XOff, int64_t YOff, size_t Width, size_t Height)
 	{
 		const size_t ImageSize = Width * Height * VulkanFormatToPixelSize(Format);
-		SMemoryBlock<s_StagingBufferImageCacheId> StagingBuffer;
+		SMemoryBlock<STAGING_BUFFER_IMAGE_CACHE_ID> StagingBuffer;
 		if(!GetStagingBufferImage(StagingBuffer, pData, ImageSize))
 			return false;
 
@@ -2577,9 +2561,9 @@ protected:
 			pData = pTmpData;
 		}
 
-		bool Requires2DTexture = (Flags & CCommandBuffer::TEXFLAG_NO_2D_TEXTURE) == 0;
-		bool Requires2DTextureArray = (Flags & (CCommandBuffer::TEXFLAG_TO_2D_ARRAY_TEXTURE)) != 0;
-		bool RequiresMipMaps = (Flags & CCommandBuffer::TEXFLAG_NOMIPMAPS) == 0;
+		bool Requires2DTexture = (Flags & TextureFlag::NO_2D_TEXTURE) == 0;
+		bool Requires2DTextureArray = (Flags & TextureFlag::TO_2D_ARRAY_TEXTURE) != 0;
+		bool RequiresMipMaps = (Flags & TextureFlag::NO_MIPMAPS) == 0;
 		size_t MipMapLevelCount = 1;
 		if(RequiresMipMaps)
 		{
@@ -2624,10 +2608,13 @@ protected:
 
 			if(ConvertWidth == 0 || (ConvertWidth % 16) != 0 || ConvertHeight == 0 || (ConvertHeight % 16) != 0)
 			{
-				dbg_msg("vulkan", "3D/2D array texture was resized");
 				int NewWidth = maximum<int>(HighestBit(ConvertWidth), 16);
 				int NewHeight = maximum<int>(HighestBit(ConvertHeight), 16);
 				uint8_t *pNewTexData = ResizeImage(pData, ConvertWidth, ConvertHeight, NewWidth, NewHeight, PixelSize);
+				if(IsVerbose())
+				{
+					log_debug("gfx/vulkan", "3D/2D array texture was resized. Slot=%d Size=(%d, %d) Resized=(%d, %d)", Slot, ConvertWidth, ConvertHeight, NewWidth, NewHeight);
+				}
 
 				ConvertWidth = NewWidth;
 				ConvertHeight = NewHeight;
@@ -2637,15 +2624,15 @@ protected:
 			}
 
 			bool Needs3DTexDel = false;
-			uint8_t *p3DTexData = static_cast<uint8_t *>(malloc((size_t)PixelSize * ConvertWidth * ConvertHeight));
-			if(!Texture2DTo3D(pData, ConvertWidth, ConvertHeight, PixelSize, 16, 16, p3DTexData, Image3DWidth, Image3DHeight))
+			uint8_t *pTexData3D = static_cast<uint8_t *>(malloc((size_t)PixelSize * ConvertWidth * ConvertHeight));
+			if(!Texture2DTo3D(pData, ConvertWidth, ConvertHeight, PixelSize, 16, 16, pTexData3D, Image3DWidth, Image3DHeight))
 			{
-				free(p3DTexData);
-				p3DTexData = nullptr;
+				free(pTexData3D);
+				pTexData3D = nullptr;
 			}
 			Needs3DTexDel = true;
 
-			if(p3DTexData != nullptr)
+			if(pTexData3D != nullptr)
 			{
 				const size_t ImageDepth2DArray = (size_t)16 * 16;
 				VkExtent3D ImgSize{(uint32_t)Image3DWidth, (uint32_t)Image3DHeight, 1};
@@ -2656,7 +2643,7 @@ protected:
 						MipMapLevelCount = 1;
 				}
 
-				if(!CreateTextureImage(ImageIndex, Texture.m_Img3D, Texture.m_Img3DMem, p3DTexData, Format, Image3DWidth, Image3DHeight, ImageDepth2DArray, PixelSize, MipMapLevelCount))
+				if(!CreateTextureImage(ImageIndex, Texture.m_Img3D, Texture.m_Img3DMem, pTexData3D, Format, Image3DWidth, Image3DHeight, ImageDepth2DArray, PixelSize, MipMapLevelCount))
 					return false;
 				VkFormat ImgFormat = Format;
 				VkImageView ImgView = CreateTextureImageView(Texture.m_Img3D, ImgFormat, VK_IMAGE_VIEW_TYPE_2D_ARRAY, ImageDepth2DArray, MipMapLevelCount);
@@ -2668,7 +2655,7 @@ protected:
 					return false;
 
 				if(Needs3DTexDel)
-					free(p3DTexData);
+					free(pTexData3D);
 			}
 		}
 		return true;
@@ -2756,11 +2743,11 @@ protected:
 		return true;
 	}
 
-	[[nodiscard]] bool CreateTextureImage(size_t ImageIndex, VkImage &NewImage, SMemoryImageBlock<s_ImageBufferCacheId> &NewImgMem, const uint8_t *pData, VkFormat Format, size_t Width, size_t Height, size_t Depth, size_t PixelSize, size_t MipMapLevelCount)
+	[[nodiscard]] bool CreateTextureImage(size_t ImageIndex, VkImage &NewImage, SMemoryImageBlock<IMAGE_BUFFER_CACHE_ID> &NewImgMem, const uint8_t *pData, VkFormat Format, size_t Width, size_t Height, size_t Depth, size_t PixelSize, size_t MipMapLevelCount)
 	{
 		VkDeviceSize ImageSize = Width * Height * Depth * PixelSize;
 
-		SMemoryBlock<s_StagingBufferImageCacheId> StagingBuffer;
+		SMemoryBlock<STAGING_BUFFER_IMAGE_CACHE_ID> StagingBuffer;
 		if(!GetStagingBufferImage(StagingBuffer, pData, ImageSize))
 			return false;
 
@@ -2817,7 +2804,7 @@ protected:
 
 		if(vkCreateSampler(m_VKDevice, &SamplerInfo, nullptr, &CreatedSampler) != VK_SUCCESS)
 		{
-			dbg_msg("vulkan", "failed to create texture sampler!");
+			log_error("gfx/vulkan", "Failed to create texture sampler.");
 			return false;
 		}
 		return true;
@@ -2866,7 +2853,7 @@ protected:
 		return ImageView;
 	}
 
-	[[nodiscard]] bool CreateImage(uint32_t Width, uint32_t Height, uint32_t Depth, size_t MipMapLevelCount, VkFormat Format, VkImageTiling Tiling, VkImage &Image, SMemoryImageBlock<s_ImageBufferCacheId> &ImageMemory, VkImageUsageFlags ImageUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
+	[[nodiscard]] bool CreateImage(uint32_t Width, uint32_t Height, uint32_t Depth, size_t MipMapLevelCount, VkFormat Format, VkImageTiling Tiling, VkImage &Image, SMemoryImageBlock<IMAGE_BUFFER_CACHE_ID> &ImageMemory, VkImageUsageFlags ImageUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)
 	{
 		VkImageCreateInfo ImageInfo{};
 		ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -2885,7 +2872,8 @@ protected:
 
 		if(vkCreateImage(m_VKDevice, &ImageInfo, nullptr, &Image) != VK_SUCCESS)
 		{
-			dbg_msg("vulkan", "failed to create image!");
+			log_error("gfx/vulkan", "Failed to create image.");
+			return false;
 		}
 
 		VkMemoryRequirements MemRequirements;
@@ -2988,7 +2976,7 @@ protected:
 		}
 		else
 		{
-			dbg_msg("vulkan", "unsupported layout transition!");
+			dbg_assert_failed("Unsupported layout transition. OldLayout=%d NewLayout=%d", (int)OldLayout, (int)NewLayout);
 		}
 
 		vkCmdPipelineBarrier(
@@ -3029,8 +3017,8 @@ protected:
 	}
 
 	/************************
-	* BUFFERS
-	************************/
+	 * BUFFERS
+	 ************************/
 
 	[[nodiscard]] bool CreateBufferObject(size_t BufferIndex, const void *pUploadData, VkDeviceSize BufferDataSize, bool IsOneFrameBuffer)
 	{
@@ -3051,11 +3039,11 @@ protected:
 		size_t BufferOffset = 0;
 		if(!IsOneFrameBuffer)
 		{
-			SMemoryBlock<s_StagingBufferCacheId> StagingBuffer;
+			SMemoryBlock<STAGING_BUFFER_CACHE_ID> StagingBuffer;
 			if(!GetStagingBuffer(StagingBuffer, pUploadData, BufferDataSize))
 				return false;
 
-			SMemoryBlock<s_VertexBufferCacheId> Mem;
+			SMemoryBlock<VERTEX_BUFFER_CACHE_ID> Mem;
 			if(!GetVertexBuffer(Mem, BufferDataSize))
 				return false;
 
@@ -3110,8 +3098,8 @@ protected:
 	}
 
 	/************************
-	* RENDER STATES
-	************************/
+	 * RENDER STATES
+	 ************************/
 
 	void GetStateMatrix(const CCommandBuffer::SState &State, std::array<float, (size_t)4 * 2> &Matrix)
 	{
@@ -3138,12 +3126,30 @@ protected:
 
 	size_t GetAddressModeIndex(const CCommandBuffer::SState &State)
 	{
-		return State.m_WrapMode == CCommandBuffer::WRAP_REPEAT ? VULKAN_BACKEND_ADDRESS_MODE_REPEAT : VULKAN_BACKEND_ADDRESS_MODE_CLAMP_EDGES;
+		switch(State.m_WrapMode)
+		{
+		case EWrapMode::REPEAT:
+			return VULKAN_BACKEND_ADDRESS_MODE_REPEAT;
+		case EWrapMode::CLAMP:
+			return VULKAN_BACKEND_ADDRESS_MODE_CLAMP_EDGES;
+		default:
+			dbg_assert_failed("Invalid wrap mode: %d", (int)State.m_WrapMode);
+		};
 	}
 
 	size_t GetBlendModeIndex(const CCommandBuffer::SState &State)
 	{
-		return State.m_BlendMode == CCommandBuffer::BLEND_ADDITIVE ? VULKAN_BACKEND_BLEND_MODE_ADDITATIVE : (State.m_BlendMode == CCommandBuffer::BLEND_NONE ? VULKAN_BACKEND_BLEND_MODE_NONE : VULKAN_BACKEND_BLEND_MODE_ALPHA);
+		switch(State.m_BlendMode)
+		{
+		case EBlendMode::NONE:
+			return VULKAN_BACKEND_BLEND_MODE_NONE;
+		case EBlendMode::ALPHA:
+			return VULKAN_BACKEND_BLEND_MODE_ALPHA;
+		case EBlendMode::ADDITIVE:
+			return VULKAN_BACKEND_BLEND_MODE_ADDITATIVE;
+		default:
+			dbg_assert_failed("Invalid blend mode: %d", (int)State.m_BlendMode);
+		};
 	}
 
 	size_t GetDynamicModeIndexFromState(const CCommandBuffer::SState &State) const
@@ -3208,8 +3214,15 @@ protected:
 
 	void ExecBufferFillDynamicStates(const CCommandBuffer::SState &State, SRenderCommandExecuteBuffer &ExecBuffer)
 	{
+		// Workaround for a bug in molten-vk: https://github.com/KhronosGroup/MoltenVK/issues/2304
+#ifdef CONF_PLATFORM_MACOS
+		auto HasDynamicState = true;
+#else
 		size_t DynamicStateIndex = GetDynamicModeIndexFromState(State);
-		if(DynamicStateIndex == VULKAN_BACKEND_CLIP_MODE_DYNAMIC_SCISSOR_AND_VIEWPORT)
+		auto HasDynamicState = DynamicStateIndex == VULKAN_BACKEND_CLIP_MODE_DYNAMIC_SCISSOR_AND_VIEWPORT;
+#endif
+
+		if(HasDynamicState)
 		{
 			VkViewport Viewport;
 			if(m_HasDynamicViewport)
@@ -3302,8 +3315,8 @@ protected:
 	}
 
 	/**************************
-	* RENDERING IMPLEMENTATION
-	***************************/
+	 * RENDERING IMPLEMENTATION
+	 ***************************/
 
 	void RenderTileLayer_FillExecuteBuffer(SRenderCommandExecuteBuffer &ExecBuffer, size_t DrawCalls, const CCommandBuffer::SState &State, size_t BufferContainerIndex)
 	{
@@ -3386,12 +3399,12 @@ protected:
 	}
 
 	template<typename TName, bool Is3DTextured>
-	[[nodiscard]] bool RenderStandard(SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SState &State, int PrimType, const TName *pVertices, int PrimitiveCount)
+	[[nodiscard]] bool RenderStandard(SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SState &State, EPrimitiveType PrimType, const TName *pVertices, int PrimitiveCount)
 	{
 		std::array<float, (size_t)4 * 2> m;
 		GetStateMatrix(State, m);
 
-		bool IsLineGeometry = PrimType == CCommandBuffer::PRIMTYPE_LINES;
+		bool IsLineGeometry = PrimType == EPrimitiveType::LINES;
 
 		bool IsTextured;
 		size_t BlendModeIndex;
@@ -3410,12 +3423,12 @@ protected:
 
 		size_t VertPerPrim = 2;
 		bool IsIndexed = false;
-		if(PrimType == CCommandBuffer::PRIMTYPE_QUADS)
+		if(PrimType == EPrimitiveType::QUADS)
 		{
 			VertPerPrim = 4;
 			IsIndexed = true;
 		}
-		else if(PrimType == CCommandBuffer::PRIMTYPE_TRIANGLES)
+		else if(PrimType == EPrimitiveType::TRIANGLES)
 		{
 			VertPerPrim = 3;
 		}
@@ -3455,8 +3468,8 @@ public:
 	}
 
 	/************************
-	* VULKAN SETUP CODE
-	************************/
+	 * VULKAN SETUP CODE
+	 ************************/
 
 	[[nodiscard]] bool GetVulkanExtensions(SDL_Window *pWindow, std::vector<std::string> &vVKExtensions)
 	{
@@ -3520,7 +3533,7 @@ public:
 		VkResult Res = vkEnumerateInstanceLayerProperties(&LayerCount, NULL);
 		if(Res != VK_SUCCESS)
 		{
-			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Could not get vulkan layers.");
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Could not get Vulkan layers.");
 			return false;
 		}
 
@@ -3528,7 +3541,7 @@ public:
 		Res = vkEnumerateInstanceLayerProperties(&LayerCount, vVKInstanceLayers.data());
 		if(Res != VK_SUCCESS)
 		{
-			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Could not get vulkan layers.");
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Could not get Vulkan layers.");
 			return false;
 		}
 
@@ -3646,39 +3659,71 @@ public:
 		return STWGraphicGpu::ETWGraphicsGpuType::GRAPHICS_GPU_TYPE_CPU;
 	}
 
-	// from: https://github.com/SaschaWillems/vulkan.gpuinfo.org/blob/5c3986798afc39d736b825bf8a5fbf92b8d9ed49/includes/functions.php#L364
-	const char *GetDriverVerson(char (&aBuff)[256], uint32_t DriverVersion, uint32_t VendorId)
+	static void GetVendorString(uint32_t VendorId, char *pVendorStr, size_t Size)
 	{
-		// NVIDIA
-		if(VendorId == 4318)
+		switch(VendorId)
 		{
-			str_format(aBuff, std::size(aBuff), "%d.%d.%d.%d",
+		case 0x1002:
+		case 0x1022:
+			str_copy(pVendorStr, "AMD", Size);
+			break;
+		case 0x1010:
+			str_copy(pVendorStr, "ImgTec", Size);
+			break;
+		case 0x106B:
+			str_copy(pVendorStr, "Apple", Size);
+			break;
+		case 0x10DE:
+			str_copy(pVendorStr, "NVIDIA", Size);
+			break;
+		case 0x13B5:
+			str_copy(pVendorStr, "ARM", Size);
+			break;
+		case 0x5143:
+			str_copy(pVendorStr, "Qualcomm", Size);
+			break;
+		case 0x8086:
+			str_copy(pVendorStr, "Intel", Size);
+			break;
+		case 0x10005:
+			str_copy(pVendorStr, "Mesa", Size);
+			break;
+		default:
+			log_warn("gfx/vulkan", "Unknown GPU vendor ID %08X.", VendorId);
+			str_format(pVendorStr, Size, "Unknown (%08X)", VendorId);
+			break;
+		}
+	}
+
+	// from: https://github.com/SaschaWillems/vulkan.gpuinfo.org/blob/5c3986798afc39d736b825bf8a5fbf92b8d9ed49/includes/functions.php#L364
+	void FormatDriverVersion(char (&aDriverVersion)[256], uint32_t DriverVersion, uint32_t VendorId)
+	{
+		if(VendorId == 0x10DE) // NVIDIA
+		{
+			str_format(aDriverVersion, std::size(aDriverVersion), "%d.%d.%d.%d",
 				(DriverVersion >> 22) & 0x3ff,
 				(DriverVersion >> 14) & 0x0ff,
 				(DriverVersion >> 6) & 0x0ff,
-				(DriverVersion)&0x003f);
+				(DriverVersion) & 0x003f);
 		}
 #ifdef CONF_FAMILY_WINDOWS
-		// windows only
-		else if(VendorId == 0x8086)
+		else if(VendorId == 0x8086) // Windows with Intel only
 		{
-			str_format(aBuff, std::size(aBuff),
+			str_format(aDriverVersion, std::size(aDriverVersion),
 				"%d.%d",
 				(DriverVersion >> 14),
-				(DriverVersion)&0x3fff);
+				(DriverVersion) & 0x3fff);
 		}
 #endif
 		else
 		{
 			// Use Vulkan version conventions if vendor mapping is not available
-			str_format(aBuff, std::size(aBuff),
+			str_format(aDriverVersion, std::size(aDriverVersion),
 				"%d.%d.%d",
 				(DriverVersion >> 22),
 				(DriverVersion >> 12) & 0x3ff,
 				DriverVersion & 0xfff);
 		}
-
-		return aBuff;
 	}
 
 	[[nodiscard]] bool SelectGpu(char *pRendererName, char *pVendorName, char *pVersionName)
@@ -3692,7 +3737,7 @@ public:
 		}
 		if(DevicesCount == 0)
 		{
-			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "No vulkan compatible devices found.");
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "No Vulkan compatible devices found.");
 			return false;
 		}
 
@@ -3705,7 +3750,7 @@ public:
 		}
 		if(DevicesCount == 0)
 		{
-			SetWarning(EGfxWarningType::GFX_WARNING_TYPE_INIT_FAILED_MISSING_INTEGRATED_GPU_DRIVER, "No vulkan compatible devices found.");
+			SetWarning(EGfxWarningType::GFX_WARNING_TYPE_INIT_FAILED_MISSING_INTEGRATED_GPU_DRIVER, "No Vulkan compatible devices found.");
 			return false;
 		}
 		// make sure to use the correct amount of devices available
@@ -3737,7 +3782,7 @@ public:
 			int DevApiPatch = (int)VK_API_VERSION_PATCH(DeviceProp.apiVersion);
 
 			auto IsDenied = CCommandProcessorFragment_Vulkan::IsGpuDenied(DeviceProp.vendorID, DeviceProp.driverVersion, DevApiMajor, DevApiMinor, DevApiPatch);
-			if((DevApiMajor > gs_BackendVulkanMajor || (DevApiMajor == gs_BackendVulkanMajor && DevApiMinor >= gs_BackendVulkanMinor)) && !IsDenied)
+			if((DevApiMajor > BACKEND_VULKAN_VERSION_MAJOR || (DevApiMajor == BACKEND_VULKAN_VERSION_MAJOR && DevApiMinor >= BACKEND_VULKAN_VERSION_MINOR)) && !IsDenied)
 			{
 				STWGraphicGpu::STWGraphicGpuItem NewGpu;
 				str_copy(NewGpu.m_aName, DeviceProp.deviceName);
@@ -3769,7 +3814,7 @@ public:
 
 		if(m_pGpuList->m_vGpus.empty())
 		{
-			SetWarning(EGfxWarningType::GFX_WARNING_TYPE_INIT_FAILED_NO_DEVICE_WITH_REQUIRED_VERSION, "No devices with required vulkan version found.");
+			SetWarning(EGfxWarningType::GFX_WARNING_TYPE_INIT_FAILED_NO_DEVICE_WITH_REQUIRED_VERSION, "No devices with required Vulkan version found.");
 			return false;
 		}
 
@@ -3780,43 +3825,12 @@ public:
 			int DevApiMinor = (int)VK_API_VERSION_MINOR(DeviceProp.apiVersion);
 			int DevApiPatch = (int)VK_API_VERSION_PATCH(DeviceProp.apiVersion);
 
-			str_copy(pRendererName, DeviceProp.deviceName, gs_GpuInfoStringSize);
-			const char *pVendorNameStr = NULL;
-			switch(DeviceProp.vendorID)
-			{
-			case 0x1002:
-				pVendorNameStr = "AMD";
-				break;
-			case 0x1010:
-				pVendorNameStr = "ImgTec";
-				break;
-			case 0x106B:
-				pVendorNameStr = "Apple";
-				break;
-			case 0x10DE:
-				pVendorNameStr = "NVIDIA";
-				break;
-			case 0x13B5:
-				pVendorNameStr = "ARM";
-				break;
-			case 0x5143:
-				pVendorNameStr = "Qualcomm";
-				break;
-			case 0x8086:
-				pVendorNameStr = "INTEL";
-				break;
-			case 0x10005:
-				pVendorNameStr = "Mesa";
-				break;
-			default:
-				dbg_msg("vulkan", "unknown gpu vendor %u", DeviceProp.vendorID);
-				pVendorNameStr = "unknown";
-				break;
-			}
-
-			char aBuff[256];
-			str_copy(pVendorName, pVendorNameStr, gs_GpuInfoStringSize);
-			str_format(pVersionName, gs_GpuInfoStringSize, "Vulkan %d.%d.%d (driver: %s)", DevApiMajor, DevApiMinor, DevApiPatch, GetDriverVerson(aBuff, DeviceProp.driverVersion, DeviceProp.vendorID));
+			str_copy(pRendererName, DeviceProp.deviceName, GPU_INFO_STRING_SIZE);
+			GetVendorString(DeviceProp.vendorID, pVendorName, GPU_INFO_STRING_SIZE);
+			char aDriverVersion[256];
+			FormatDriverVersion(aDriverVersion, DeviceProp.driverVersion, DeviceProp.vendorID);
+			str_format(pVersionName, GPU_INFO_STRING_SIZE, "Vulkan %d.%d.%d (driver: %s)",
+				DevApiMajor, DevApiMinor, DevApiPatch, aDriverVersion);
 
 			// get important device limits
 			m_NonCoherentMemAlignment = DeviceProp.limits.nonCoherentAtomSize;
@@ -3829,8 +3843,10 @@ public:
 
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "device prop: non-coherent align: %" PRIzu ", optimal image copy align: %" PRIzu ", max texture size: %u, max sampler anisotropy: %u", (size_t)m_NonCoherentMemAlignment, (size_t)m_OptimalImageCopyMemAlignment, m_MaxTextureSize, m_MaxSamplerAnisotropy);
-				dbg_msg("vulkan", "device prop: min uniform align: %u, multi sample: %u", m_MinUniformAlign, (uint32_t)m_MaxMultiSample);
+				log_debug("gfx/vulkan", "Device prop: non-coherent align: %" PRIzu ", optimal image copy align: %" PRIzu ", max texture size: %u, max sampler anisotropy: %u",
+					(size_t)m_NonCoherentMemAlignment, (size_t)m_OptimalImageCopyMemAlignment, m_MaxTextureSize, m_MaxSamplerAnisotropy);
+				log_debug("gfx/vulkan", "Device prop: min uniform align: %u, multi sample: %u",
+					m_MinUniformAlign, (uint32_t)m_MaxMultiSample);
 			}
 		}
 
@@ -3840,7 +3856,7 @@ public:
 		vkGetPhysicalDeviceQueueFamilyProperties(CurDevice, &FamQueueCount, nullptr);
 		if(FamQueueCount == 0)
 		{
-			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "No vulkan queue family properties found.");
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "No Vulkan queue family properties found.");
 			return false;
 		}
 
@@ -3862,7 +3878,7 @@ public:
 
 		if(QueueNodeIndex == std::numeric_limits<uint32_t>::max())
 		{
-			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "No vulkan queue found that matches the requirements: graphics queue.");
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "No Vulkan queue found that matches the requirements: graphics queue.");
 			return false;
 		}
 
@@ -3924,8 +3940,7 @@ public:
 		VKCreateInfo.pEnabledFeatures = NULL;
 		VKCreateInfo.flags = 0;
 
-		VkResult res = vkCreateDevice(m_VKGPU, &VKCreateInfo, nullptr, &m_VKDevice);
-		if(res != VK_SUCCESS)
+		if(vkCreateDevice(m_VKGPU, &VKCreateInfo, nullptr, &m_VKDevice) != VK_SUCCESS)
 		{
 			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Logical device could not be created.");
 			return false;
@@ -3938,8 +3953,8 @@ public:
 	{
 		if(!SDL_Vulkan_CreateSurface(pWindow, m_VKInstance, &m_VKPresentSurface))
 		{
-			dbg_msg("vulkan", "error from sdl: %s", SDL_GetError());
-			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Creating a vulkan surface for the SDL window failed.");
+			log_error("gfx/vulkan", "Failed to create surface. SDL error: %s", SDL_GetError());
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Creating a Vulkan surface for the SDL window failed.");
 			return false;
 		}
 
@@ -3947,7 +3962,7 @@ public:
 		vkGetPhysicalDeviceSurfaceSupportKHR(m_VKGPU, m_VKGraphicsQueueIndex, m_VKPresentSurface, &IsSupported);
 		if(!IsSupported)
 		{
-			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "The device surface does not support presenting the framebuffer to a screen. (maybe the wrong GPU was selected?)");
+			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "The device surface does not support presenting the framebuffer to a screen. Maybe the wrong GPU was selected?");
 			return false;
 		}
 
@@ -3982,7 +3997,7 @@ public:
 				return true;
 		}
 
-		dbg_msg("vulkan", "warning: requested presentation mode was not available. falling back to mailbox / fifo relaxed.");
+		log_warn("gfx/vulkan", "Requested presentation mode was not available. Falling back to mailbox / FIFO relaxed.");
 		VKIOMode = g_Config.m_GfxVsync ? VK_PRESENT_MODE_FIFO_RELAXED_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
 		for(const auto &Mode : vPresentModeList)
 		{
@@ -3990,7 +4005,7 @@ public:
 				return true;
 		}
 
-		dbg_msg("vulkan", "warning: requested presentation mode was not available. using first available.");
+		log_warn("gfx/vulkan", "Requested presentation mode was not available. Using first available.");
 		if(PresentModeCount > 0)
 			VKIOMode = vPresentModeList[0];
 
@@ -4012,7 +4027,7 @@ public:
 		uint32_t ImgNumber = VKCapabilities.minImageCount + 1;
 		if(IsVerbose())
 		{
-			dbg_msg("vulkan", "minimal swap image count %u", VKCapabilities.minImageCount);
+			log_debug("gfx/vulkan", "Minimal swap image count: %u", VKCapabilities.minImageCount);
 		}
 		return (VKCapabilities.maxImageCount > 0 && ImgNumber > VKCapabilities.maxImageCount) ? VKCapabilities.maxImageCount : ImgNumber;
 	}
@@ -4101,14 +4116,14 @@ public:
 
 		if(Res == VK_INCOMPLETE)
 		{
-			dbg_msg("vulkan", "warning: not all surface formats are requestable with your current settings.");
+			log_warn("gfx/vulkan", "Not all surface formats are requestable with your current settings.");
 		}
 
 		if(vSurfFormatList.size() == 1 && vSurfFormatList[0].format == VK_FORMAT_UNDEFINED)
 		{
 			m_VKSurfFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
 			m_VKSurfFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-			dbg_msg("vulkan", "warning: surface format was undefined. This can potentially cause bugs.");
+			log_warn("gfx/vulkan", "Surface format was undefined. This can potentially cause bugs.");
 			return true;
 		}
 
@@ -4126,7 +4141,7 @@ public:
 			}
 		}
 
-		dbg_msg("vulkan", "warning: surface format was not RGBA(or variants of it). This can potentially cause weird looking images(too bright etc.).");
+		log_warn("gfx/vulkan", "Surface format was not RGBA (or variants of it). This can potentially cause weird looking images (too bright etc.).");
 		m_VKSurfFormat = vSurfFormatList[0];
 		return true;
 	}
@@ -4202,8 +4217,7 @@ public:
 	[[nodiscard]] bool GetSwapChainImageHandles()
 	{
 		uint32_t ImgCount = 0;
-		VkResult res = vkGetSwapchainImagesKHR(m_VKDevice, m_VKSwapChain, &ImgCount, nullptr);
-		if(res != VK_SUCCESS)
+		if(vkGetSwapchainImagesKHR(m_VKDevice, m_VKSwapChain, &ImgCount, nullptr) != VK_SUCCESS)
 		{
 			SetError(EGfxErrorType::GFX_ERROR_TYPE_INIT, "Could not get swap chain images.");
 			return false;
@@ -4237,11 +4251,11 @@ public:
 	{
 		if((MessageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0)
 		{
-			dbg_msg("vulkan_debug", "validation error: %s", pCallbackData->pMessage);
+			log_error("gfx/vulkan", "Validation error: %s", pCallbackData->pMessage);
 		}
 		else
 		{
-			dbg_msg("vulkan_debug", "%s", pCallbackData->pMessage);
+			log_info("gfx/vulkan", "Validation info: %s", pCallbackData->pMessage);
 		}
 
 		return VK_FALSE;
@@ -4249,10 +4263,10 @@ public:
 
 	VkResult CreateDebugUtilsMessengerEXT(const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger)
 	{
-		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_VKInstance, "vkCreateDebugUtilsMessengerEXT");
-		if(func != nullptr)
+		auto pfnVulkanCreateDebugUtilsFunction = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_VKInstance, "vkCreateDebugUtilsMessengerEXT");
+		if(pfnVulkanCreateDebugUtilsFunction != nullptr)
 		{
-			return func(m_VKInstance, pCreateInfo, pAllocator, pDebugMessenger);
+			return pfnVulkanCreateDebugUtilsFunction(m_VKInstance, pCreateInfo, pAllocator, pDebugMessenger);
 		}
 		else
 		{
@@ -4262,10 +4276,10 @@ public:
 
 	void DestroyDebugUtilsMessengerEXT(VkDebugUtilsMessengerEXT &DebugMessenger)
 	{
-		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_VKInstance, "vkDestroyDebugUtilsMessengerEXT");
-		if(func != nullptr)
+		auto pfnVulkanDestroyDebugUtilsFunction = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_VKInstance, "vkDestroyDebugUtilsMessengerEXT");
+		if(pfnVulkanDestroyDebugUtilsFunction != nullptr)
 		{
-			func(m_VKInstance, DebugMessenger, nullptr);
+			pfnVulkanDestroyDebugUtilsFunction(m_VKInstance, DebugMessenger, nullptr);
 		}
 	}
 #endif
@@ -4282,11 +4296,11 @@ public:
 		if(CreateDebugUtilsMessengerEXT(&CreateInfo, nullptr, &m_DebugMessenger) != VK_SUCCESS)
 		{
 			m_DebugMessenger = VK_NULL_HANDLE;
-			dbg_msg("vulkan", "didn't find vulkan debug layer.");
+			log_warn("gfx/vulkan", "Could not find Vulkan debug layer.");
 		}
 		else
 		{
-			dbg_msg("vulkan", "enabled vulkan debug context.");
+			log_info("gfx/vulkan", "Enabled Vulkan debug context.");
 		}
 #endif
 	}
@@ -4371,13 +4385,13 @@ public:
 		m_vSwapChainMultiSamplingImages.clear();
 	}
 
-	[[nodiscard]] bool CreateRenderPass(bool ClearAttachs)
+	[[nodiscard]] bool CreateRenderPass(bool ClearAttachments)
 	{
 		bool HasMultiSamplingTargets = HasMultiSampling();
 		VkAttachmentDescription MultiSamplingColorAttachment{};
 		MultiSamplingColorAttachment.format = m_VKSurfFormat.format;
 		MultiSamplingColorAttachment.samples = GetSampleCount();
-		MultiSamplingColorAttachment.loadOp = ClearAttachs ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		MultiSamplingColorAttachment.loadOp = ClearAttachments ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		MultiSamplingColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		MultiSamplingColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		MultiSamplingColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -4387,7 +4401,7 @@ public:
 		VkAttachmentDescription ColorAttachment{};
 		ColorAttachment.format = m_VKSurfFormat.format;
 		ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		ColorAttachment.loadOp = ClearAttachs && !HasMultiSamplingTargets ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		ColorAttachment.loadOp = ClearAttachments && !HasMultiSamplingTargets ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -4535,14 +4549,14 @@ public:
 		vkDestroyDescriptorSetLayout(m_VKDevice, m_Standard3DTexturedDescriptorSetLayout, nullptr);
 	}
 
-	[[nodiscard]] bool LoadShader(const char *pFileName, std::vector<uint8_t> *&pvShaderData)
+	[[nodiscard]] bool LoadShader(const char *pFilename, std::vector<uint8_t> *&pvShaderData)
 	{
-		auto it = m_ShaderFiles.find(pFileName);
-		if(it == m_ShaderFiles.end())
+		auto ShaderFileIterator = m_ShaderFiles.find(pFilename);
+		if(ShaderFileIterator == m_ShaderFiles.end())
 		{
 			void *pShaderBuff;
 			unsigned FileSize;
-			if(!m_pStorage->ReadFile(pFileName, IStorage::TYPE_ALL, &pShaderBuff, &FileSize))
+			if(!m_pStorage->ReadFile(pFilename, IStorage::TYPE_ALL, &pShaderBuff, &FileSize))
 				return false;
 
 			std::vector<uint8_t> vShaderBuff;
@@ -4550,10 +4564,10 @@ public:
 			mem_copy(vShaderBuff.data(), pShaderBuff, FileSize);
 			free(pShaderBuff);
 
-			it = m_ShaderFiles.insert({pFileName, {std::move(vShaderBuff)}}).first;
+			ShaderFileIterator = m_ShaderFiles.insert({pFilename, {std::move(vShaderBuff)}}).first;
 		}
 
-		pvShaderData = &it->second.m_vBinary;
+		pvShaderData = &ShaderFileIterator->second.m_vBinary;
 
 		return true;
 	}
@@ -5390,8 +5404,8 @@ public:
 	}
 
 	/*************
-	* SWAP CHAIN
-	**************/
+	 * SWAP CHAIN
+	 **************/
 
 	void CleanupVulkanSwapChain(bool ForceSwapChainDestruct)
 	{
@@ -5435,7 +5449,7 @@ public:
 			{
 				if(Texture.m_VKTextDescrSet.m_Descriptor != VK_NULL_HANDLE && IsVerbose())
 				{
-					dbg_msg("vulkan", "text textures not cleared over cmd.");
+					log_warn("gfx/vulkan", "Text textures were not cleared over command.");
 				}
 				DestroyTexture(Texture);
 			}
@@ -5531,7 +5545,7 @@ public:
 
 		if(IsVerbose())
 		{
-			dbg_msg("vulkan", "recreating swap chain.");
+			log_info("gfx/vulkan", "Recreating swap chain.");
 		}
 
 		VkSwapchainKHR OldSwapChain = VK_NULL_HANDLE;
@@ -5563,7 +5577,7 @@ public:
 
 		if(Ret != 0 && IsVerbose())
 		{
-			dbg_msg("vulkan", "recreating swap chain failed.");
+			log_warn("gfx/vulkan", "Recreating swap chain failed.");
 		}
 
 		return Ret;
@@ -5592,7 +5606,7 @@ public:
 
 			for(auto &VKLayer : vVKLayers)
 			{
-				dbg_msg("vulkan", "Validation layer: %s", VKLayer.c_str());
+				log_info("gfx/vulkan", "Validation layer: %s", VKLayer.c_str());
 			}
 		}
 
@@ -5611,8 +5625,8 @@ public:
 	}
 
 	/************************
-	* MEMORY MANAGEMENT
-	************************/
+	 * MEMORY MANAGEMENT
+	 ************************/
 
 	uint32_t FindMemoryType(VkPhysicalDevice PhyDevice, uint32_t TypeFilter, VkMemoryPropertyFlags Properties)
 	{
@@ -6235,14 +6249,14 @@ public:
 				BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 				BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 
-				VkCommandBufferInheritanceInfo InheretInfo{};
-				InheretInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-				InheretInfo.framebuffer = m_vFramebufferList[m_CurImageIndex];
-				InheretInfo.occlusionQueryEnable = VK_FALSE;
-				InheretInfo.renderPass = m_VKRenderPass;
-				InheretInfo.subpass = 0;
+				VkCommandBufferInheritanceInfo InheritanceInfo{};
+				InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+				InheritanceInfo.framebuffer = m_vFramebufferList[m_CurImageIndex];
+				InheritanceInfo.occlusionQueryEnable = VK_FALSE;
+				InheritanceInfo.renderPass = m_VKRenderPass;
+				InheritanceInfo.subpass = 0;
 
-				BeginInfo.pInheritanceInfo = &InheretInfo;
+				BeginInfo.pInheritanceInfo = &InheritanceInfo;
 
 				if(vkBeginCommandBuffer(DrawCommandBuffer, &BeginInfo) != VK_SUCCESS)
 				{
@@ -6261,8 +6275,8 @@ public:
 	}
 
 	/************************
-	* STREAM BUFFERS SETUP
-	************************/
+	 * STREAM BUFFERS SETUP
+	 ************************/
 
 	typedef std::function<bool(SFrameBuffers &, VkBuffer, VkDeviceSize)> TNewMemFunc;
 
@@ -6276,12 +6290,12 @@ public:
 
 		uint8_t *pMem = nullptr;
 
-		size_t it = 0;
+		size_t BufferCountOffset = 0;
 		if(UsesCurrentCountOffset)
-			it = StreamUniformBuffer.GetUsedCount(m_CurImageIndex);
-		for(; it < StreamUniformBuffer.GetBuffers(m_CurImageIndex).size(); ++it)
+			BufferCountOffset = StreamUniformBuffer.GetUsedCount(m_CurImageIndex);
+		for(; BufferCountOffset < StreamUniformBuffer.GetBuffers(m_CurImageIndex).size(); ++BufferCountOffset)
 		{
-			auto &BufferOfFrame = StreamUniformBuffer.GetBuffers(m_CurImageIndex)[it];
+			auto &BufferOfFrame = StreamUniformBuffer.GetBuffers(m_CurImageIndex)[BufferCountOffset];
 			if(BufferOfFrame.m_Size >= DataSize + BufferOfFrame.m_UsedSize)
 			{
 				if(BufferOfFrame.m_UsedSize == 0)
@@ -6388,7 +6402,7 @@ public:
 	{
 		VkDeviceSize BufferDataSize = DataSize;
 
-		SMemoryBlock<s_StagingBufferCacheId> StagingBuffer;
+		SMemoryBlock<STAGING_BUFFER_CACHE_ID> StagingBuffer;
 		if(!GetStagingBuffer(StagingBuffer, pData, DataSize))
 			return false;
 
@@ -6417,8 +6431,8 @@ public:
 	}
 
 	/************************
-	* COMMAND IMPLEMENTATION
-	************************/
+	 * COMMAND IMPLEMENTATION
+	 ************************/
 	template<typename TName>
 	[[nodiscard]] static bool IsInCommandRange(TName CMD, TName Min, TName Max)
 	{
@@ -6664,9 +6678,9 @@ public:
 		uint8_t *pTmpData = pCommand->m_pTextData;
 		uint8_t *pTmpData2 = pCommand->m_pTextOutlineData;
 
-		if(!CreateTextureCMD(Slot, Width, Height, VK_FORMAT_R8_UNORM, VK_FORMAT_R8_UNORM, CCommandBuffer::TEXFLAG_NOMIPMAPS, pTmpData))
+		if(!CreateTextureCMD(Slot, Width, Height, VK_FORMAT_R8_UNORM, VK_FORMAT_R8_UNORM, TextureFlag::NO_MIPMAPS, pTmpData))
 			return false;
-		if(!CreateTextureCMD(SlotOutline, Width, Height, VK_FORMAT_R8_UNORM, VK_FORMAT_R8_UNORM, CCommandBuffer::TEXFLAG_NOMIPMAPS, pTmpData2))
+		if(!CreateTextureCMD(SlotOutline, Width, Height, VK_FORMAT_R8_UNORM, VK_FORMAT_R8_UNORM, TextureFlag::NO_MIPMAPS, pTmpData2))
 			return false;
 
 		if(!CreateNewTextDescriptorSets(Slot, SlotOutline))
@@ -6794,19 +6808,22 @@ public:
 		uint32_t Width;
 		uint32_t Height;
 		CImageInfo::EImageFormat Format;
+
 		if(GetPresentedImageDataImpl(Width, Height, Format, m_vScreenshotHelper, true, {}))
 		{
-			const size_t ImgSize = (size_t)Width * (size_t)Height * CImageInfo::PixelSize(Format);
-			pCommand->m_pImage->m_pData = static_cast<uint8_t *>(malloc(ImgSize));
-			mem_copy(pCommand->m_pImage->m_pData, m_vScreenshotHelper.data(), ImgSize);
+			pCommand->m_pImage->m_Width = (int)Width;
+			pCommand->m_pImage->m_Height = (int)Height;
+			pCommand->m_pImage->m_Format = Format;
+			pCommand->m_pImage->Allocate();
+			mem_copy(pCommand->m_pImage->m_pData, m_vScreenshotHelper.data(), pCommand->m_pImage->DataSize());
 		}
 		else
 		{
+			pCommand->m_pImage->m_Width = 0;
+			pCommand->m_pImage->m_Height = 0;
+			pCommand->m_pImage->m_Format = CImageInfo::FORMAT_UNDEFINED;
 			pCommand->m_pImage->m_pData = nullptr;
 		}
-		pCommand->m_pImage->m_Width = (int)Width;
-		pCommand->m_pImage->m_Height = (int)Height;
-		pCommand->m_pImage->m_Format = Format;
 
 		return true;
 	}
@@ -6842,11 +6859,13 @@ public:
 		{
 			if(IsVerbose())
 			{
-				dbg_msg("vulkan", "queueing swap chain recreation because the viewport changed");
+				log_debug("gfx/vulkan", "Got resize event.");
 			}
 			m_CanvasWidth = (uint32_t)pCommand->m_Width;
 			m_CanvasHeight = (uint32_t)pCommand->m_Height;
+#ifndef CONF_PLATFORM_MACOS
 			m_RecreateSwapChain = true;
+#endif
 		}
 		else
 		{
@@ -6874,7 +6893,7 @@ public:
 	{
 		if(IsVerbose())
 		{
-			dbg_msg("vulkan", "queueing swap chain recreation because vsync was changed");
+			log_info("gfx/vulkan", "Queueing swap chain recreation because V-Sync was changed.");
 		}
 		m_RecreateSwapChain = true;
 		*pCommand->m_pRetOk = true;
@@ -6886,7 +6905,7 @@ public:
 	{
 		if(IsVerbose())
 		{
-			dbg_msg("vulkan", "queueing swap chain recreation because multi sampling was changed");
+			log_info("gfx/vulkan", "Queueing swap chain recreation because multi sampling was changed.");
 		}
 		m_RecreateSwapChain = true;
 
@@ -6923,7 +6942,7 @@ public:
 		void *pUploadData = pCommand->m_pUploadData;
 		VkDeviceSize DataSize = (VkDeviceSize)pCommand->m_DataSize;
 
-		SMemoryBlock<s_StagingBufferCacheId> StagingBuffer;
+		SMemoryBlock<STAGING_BUFFER_CACHE_ID> StagingBuffer;
 		if(!GetStagingBuffer(StagingBuffer, pUploadData, DataSize))
 			return false;
 
@@ -7087,7 +7106,7 @@ public:
 
 		ExecBuffer.m_IndexBuffer = m_RenderIndexBuffer;
 
-		ExecBuffer.m_EstimatedRenderCallCount = ((pCommand->m_QuadNum - 1) / gs_GraphicsMaxQuadsRenderCount) + 1;
+		ExecBuffer.m_EstimatedRenderCallCount = ((pCommand->m_QuadNum - 1) / GRAPHICS_MAX_QUADS_RENDER_COUNT) + 1;
 
 		ExecBufferFillDynamicStates(pCommand->m_State, ExecBuffer);
 	}
@@ -7149,7 +7168,7 @@ public:
 			size_t RenderOffset = 0;
 			while(DrawCount > 0)
 			{
-				uint32_t RealDrawCount = (DrawCount > gs_GraphicsMaxQuadsRenderCount ? gs_GraphicsMaxQuadsRenderCount : DrawCount);
+				uint32_t RealDrawCount = (DrawCount > GRAPHICS_MAX_QUADS_RENDER_COUNT ? GRAPHICS_MAX_QUADS_RENDER_COUNT : DrawCount);
 				VkDeviceSize IndexOffset = (VkDeviceSize)((ptrdiff_t)(pCommand->m_QuadOffset + RenderOffset) * 6);
 
 				// create uniform buffer
@@ -7370,7 +7389,7 @@ public:
 
 	void Cmd_RenderQuadContainerAsSpriteMultiple_FillExecuteBuffer(SRenderCommandExecuteBuffer &ExecBuffer, const CCommandBuffer::SCommand_RenderQuadContainerAsSpriteMultiple *pCommand)
 	{
-		BufferContainer_FillExecuteBuffer(ExecBuffer, pCommand->m_State, (size_t)pCommand->m_BufferContainerIndex, ((pCommand->m_DrawCount - 1) / gs_GraphicsMaxParticlesRenderCount) + 1);
+		BufferContainer_FillExecuteBuffer(ExecBuffer, pCommand->m_State, (size_t)pCommand->m_BufferContainerIndex, ((pCommand->m_DrawCount - 1) / GRAPHICS_MAX_PARTICLES_RENDER_COUNT) + 1);
 	}
 
 	[[nodiscard]] bool Cmd_RenderQuadContainerAsSpriteMultiple(const CCommandBuffer::SCommand_RenderQuadContainerAsSpriteMultiple *pCommand, SRenderCommandExecuteBuffer &ExecBuffer)
@@ -7463,7 +7482,10 @@ public:
 
 	[[nodiscard]] bool Cmd_WindowCreateNtf(const CCommandBuffer::SCommand_WindowCreateNtf *pCommand)
 	{
-		log_debug("vulkan", "creating new surface.");
+		if(IsVerbose())
+		{
+			log_debug("gfx/vulkan", "Creating new surface.");
+		}
 		m_pWindow = SDL_GetWindowFromID(pCommand->m_WindowId);
 		if(m_RenderingPaused)
 		{
@@ -7484,7 +7506,10 @@ public:
 
 	[[nodiscard]] bool Cmd_WindowDestroyNtf(const CCommandBuffer::SCommand_WindowDestroyNtf *pCommand)
 	{
-		log_debug("vulkan", "surface got destroyed.");
+		if(IsVerbose())
+		{
+			log_debug("gfx/vulkan", "Surface got destroyed.");
+		}
 		if(!m_RenderingPaused)
 		{
 			if(!WaitFrame())
@@ -7582,8 +7607,8 @@ public:
 	}
 
 	/****************
-	* RENDER THREADS
-	*****************/
+	 * RENDER THREADS
+	 *****************/
 
 	void RunThread(size_t ThreadIndex)
 	{
@@ -7598,9 +7623,9 @@ public:
 			pThread->m_Cond.notify_one();
 
 			// set this to true, if you want to benchmark the render thread times
-			static constexpr bool s_BenchmarkRenderThreads = false;
+			static constexpr bool BENCHMARK_RENDER_THREADS = false;
 			std::chrono::nanoseconds ThreadRenderTime = 0ns;
-			if(IsVerbose() && s_BenchmarkRenderThreads)
+			if(IsVerbose() && BENCHMARK_RENDER_THREADS)
 			{
 				ThreadRenderTime = time_get_nanoseconds();
 			}
@@ -7626,9 +7651,9 @@ public:
 				}
 			}
 
-			if(IsVerbose() && s_BenchmarkRenderThreads)
+			if(IsVerbose() && BENCHMARK_RENDER_THREADS)
 			{
-				dbg_msg("vulkan", "render thread %" PRIzu " took %d ns to finish", ThreadIndex, (int)(time_get_nanoseconds() - ThreadRenderTime).count());
+				log_debug("gfx/vulkan", "Render thread %" PRIzu " took %" PRId64 " ns to finish.", ThreadIndex, (int64_t)(time_get_nanoseconds() - ThreadRenderTime).count());
 			}
 
 			pThread->m_IsRendering = false;

@@ -1,8 +1,11 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include <base/dbg.h>
 #include <base/log.h>
 #include <base/math.h>
-#include <base/system.h>
+#include <base/mem.h>
+#include <base/str.h>
+#include <base/time.h>
 
 #include <engine/console.h>
 #include <engine/graphics.h>
@@ -1187,7 +1190,7 @@ public:
 		// parse json data
 		json_settings JsonSettings{};
 		char aError[256];
-		json_value *pJsonData = json_parse_ex(&JsonSettings, static_cast<const json_char *>(pFileData), JsonFileSize, aError);
+		json_value *pJsonData = JsonParseEx(&JsonSettings, static_cast<const json_char *>(pFileData), JsonFileSize, aError);
 		free(pFileData);
 		if(pJsonData == nullptr)
 		{
@@ -1476,7 +1479,7 @@ public:
 		TextContainer.m_Y = pCursor->m_Y;
 		TextContainer.m_Flags = pCursor->m_Flags;
 
-		if(pCursor->m_LineWidth <= 0)
+		if(pCursor->m_LineWidth <= 0.0f)
 			TextContainer.m_RenderFlags = m_RenderFlags | ETextRenderFlags::TEXT_RENDER_FLAG_NO_FIRST_CHARACTER_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_LAST_CHARACTER_ADVANCE;
 		else
 			TextContainer.m_RenderFlags = m_RenderFlags;
@@ -1537,7 +1540,7 @@ public:
 		const SGlyph *pEllipsisGlyph = nullptr;
 		if(pCursor->m_Flags & TEXTFLAG_ELLIPSIS_AT_END)
 		{
-			if(pCursor->m_LineWidth != -1 && pCursor->m_LineWidth < TextWidth(pCursor->m_FontSize, pText, -1, -1.0f))
+			if(pCursor->m_LineWidth > 0.0f && pCursor->m_LineWidth < TextWidth(pCursor->m_FontSize, pText))
 			{
 				pEllipsisGlyph = m_pGlyphMap->GetGlyph(0x2026, ActualSize); // …
 				if(pEllipsisGlyph == nullptr)
@@ -1660,7 +1663,7 @@ public:
 		{
 			bool NewLine = false;
 			const char *pBatchEnd = pEnd;
-			if(pCursor->m_LineWidth > 0 && !(pCursor->m_Flags & TEXTFLAG_STOP_AT_END) && !(pCursor->m_Flags & TEXTFLAG_ELLIPSIS_AT_END))
+			if(pCursor->m_LineWidth > 0.0f && !(pCursor->m_Flags & TEXTFLAG_STOP_AT_END) && !(pCursor->m_Flags & TEXTFLAG_ELLIPSIS_AT_END))
 			{
 				int Wlen = minimum(WordLength(pCurrent), (int)(pEnd - pCurrent));
 				CTextCursor Compare = *pCursor;
@@ -1670,7 +1673,7 @@ public:
 				Compare.m_Y = DrawY;
 				Compare.m_Flags &= ~TEXTFLAG_RENDER;
 				Compare.m_Flags |= TEXTFLAG_DISALLOW_NEWLINE;
-				Compare.m_LineWidth = -1;
+				Compare.m_LineWidth = -1.0f;
 				TextEx(&Compare, pCurrent, Wlen);
 
 				if(Compare.m_X - DrawX > pCursor->m_LineWidth)
@@ -1717,10 +1720,17 @@ public:
 				{
 					if((pCursor->m_Flags & TEXTFLAG_DISALLOW_NEWLINE) == 0)
 					{
-						pLastGlyph = nullptr;
-						if(!StartNewLine())
+						if(StartNewLine())
+						{
+							pLastGlyph = nullptr;
+							continue;
+						}
+						else
+						{
+							pCurrent = pEnd;
+							pCursor->m_Truncated = true;
 							break;
-						continue;
+						}
 					}
 					else
 					{
@@ -1751,19 +1761,24 @@ public:
 						{
 							CharKerningEllipsis = m_pGlyphMap->Kerning(pGlyph, pEllipsisGlyph).x * Scale * pCursor->m_AlignedFontSize;
 						}
-						if(DrawX + CharKerning + Advance + CharKerningEllipsis + AdvanceEllipsis - pCursor->m_StartX > pCursor->m_LineWidth)
+						if(pCursor->m_LineWidth > 0.0f &&
+							DrawX + CharKerning + Advance + CharKerningEllipsis + AdvanceEllipsis - pCursor->m_StartX > pCursor->m_LineWidth)
 						{
 							// we hit the end, only render ellipsis and finish
 							pTmp = pEllipsis;
 							NextCharacter = 0x2026;
+							pCursor->m_Truncated = true;
 							continue;
 						}
 					}
 
-					if(pCursor->m_Flags & TEXTFLAG_STOP_AT_END && (DrawX + CharKerning) + Advance - pCursor->m_StartX > pCursor->m_LineWidth)
+					if(pCursor->m_LineWidth > 0.0f &&
+						(pCursor->m_Flags & TEXTFLAG_STOP_AT_END) != 0 &&
+						(DrawX + CharKerning) + Advance - pCursor->m_StartX > pCursor->m_LineWidth)
 					{
 						// we hit the end of the line, no more to render or count
 						pCurrent = pEnd;
+						pCursor->m_Truncated = true;
 						break;
 					}
 
@@ -2306,7 +2321,7 @@ public:
 			if(pTextContainer->m_ContainerIndex.Valid() && pTextContainer->m_ContainerIndex.m_UseCount.use_count() <= 1)
 			{
 				log_error("textrender", "Found non empty text container with index %d with %" PRIzu " quads '%s'", pTextContainer->m_StringInfo.m_QuadBufferContainerIndex, pTextContainer->m_StringInfo.m_vCharacterQuads.size(), pTextContainer->m_aDebugText);
-				dbg_assert(false, "Text container was forgotten by the implementation (the index was overwritten).");
+				dbg_assert_failed("Text container was forgotten by the implementation (the index was overwritten).");
 			}
 		}
 	}

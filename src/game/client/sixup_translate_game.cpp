@@ -1,4 +1,5 @@
-#include <base/system.h>
+#include <base/dbg.h>
+#include <base/str.h>
 
 #include <engine/shared/protocol7.h>
 
@@ -287,6 +288,18 @@ void *CGameClient::TranslateGameMsg(int *pMsgId, CUnpacker *pUnpacker, int Conn)
 		pMsg->m_Diff = pMsg7->m_Diff;
 		pMsg->m_RecordPersonal = pMsg7->m_RecordPersonal;
 		pMsg->m_RecordServer = pMsg7->m_RecordServer;
+
+		return s_aRawMsg;
+	}
+	else if(*pMsgId == protocol7::NETMSGTYPE_SV_CHECKPOINT)
+	{
+		*pMsgId = NETMSGTYPE_SV_DDRACETIME;
+		protocol7::CNetMsg_Sv_Checkpoint *pMsg7 = (protocol7::CNetMsg_Sv_Checkpoint *)pRawMsg;
+		::CNetMsg_Sv_DDRaceTime *pMsg = (::CNetMsg_Sv_DDRaceTime *)s_aRawMsg;
+
+		pMsg->m_Time = 1;
+		pMsg->m_Finish = 0;
+		pMsg->m_Check = pMsg7->m_Diff / 10;
 
 		return s_aRawMsg;
 	}

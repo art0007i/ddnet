@@ -3,6 +3,9 @@
 #ifndef ENGINE_CLIENT_CLIENT_H
 #define ENGINE_CLIENT_CLIENT_H
 
+#include "graph.h"
+#include "smooth_time.h"
+
 #include <base/hash.h>
 #include <base/types.h>
 
@@ -22,9 +25,6 @@
 #include <engine/textrender.h>
 #include <engine/warning.h>
 
-#include "graph.h"
-#include "smooth_time.h"
-
 #include <chrono>
 #include <deque>
 #include <memory>
@@ -38,7 +38,6 @@ class IConfigManager;
 class IDiscord;
 class IEngine;
 class IEngineInput;
-class IEngineMap;
 class IEngineSound;
 class IFriends;
 class ILogger;
@@ -69,19 +68,23 @@ class CClient : public IClient, public CDemoPlayer::IListener
 	IFavorites *m_pFavorites = nullptr;
 	IGameClient *m_pGameClient = nullptr;
 	IEngineGraphics *m_pGraphics = nullptr;
+	IEngineHttp *m_pHttp = nullptr;
 	IEngineInput *m_pInput = nullptr;
-	IEngineMap *m_pMap = nullptr;
 	IEngineSound *m_pSound = nullptr;
 	ISteam *m_pSteam = nullptr;
 	INotifications *m_pNotifications = nullptr;
 	IStorage *m_pStorage = nullptr;
 	IEngineTextRender *m_pTextRender = nullptr;
 	IUpdater *m_pUpdater = nullptr;
-	CHttp m_Http;
+
+	rust::Box<CSnapshotDelta> m_pSnapshotDelta;
+	rust::Box<CSnapshotDelta> m_pSnapshotDeltaSixup;
+	CSnapshotDelta *SnapshotDelta();
 
 	CNetClient m_aNetClient[NUM_CONNS];
 	CDemoPlayer m_DemoPlayer;
-	CDemoRecorder m_aDemoRecorder[RECORDER_MAX];
+	CDemoRecorder m_aDemoRecorders[RECORDER_MAX];
+	CDemoRecorder m_aDemoRecordersSixup[RECORDER_MAX];
 	CDemoEditor m_DemoEditor;
 	CGhostRecorder m_GhostRecorder;
 	CGhostLoader m_GhostLoader;
@@ -132,11 +135,8 @@ class CClient : public IClient, public CDemoPlayer::IListener
 	// pinging
 	int64_t m_PingStartTime = 0;
 
-	char m_aCurrentMap[IO_MAX_PATH_LENGTH] = "";
-	char m_aCurrentMapPath[IO_MAX_PATH_LENGTH] = "";
-
 	char m_aTimeoutCodes[NUM_DUMMIES][32] = {"", ""};
-	bool m_aCodeRunAfterJoin[NUM_DUMMIES] = {false, false};
+	bool m_aDidPostConnect[NUM_DUMMIES] = {false, false};
 	bool m_GenerateTimeoutSeed = true;
 
 	char m_aCmdConnect[256] = "";
@@ -154,14 +154,18 @@ class CClient : public IClient, public CDemoPlayer::IListener
 	int m_MapdownloadCrc = 0;
 	int m_MapdownloadAmount = -1;
 	int m_MapdownloadTotalsize = -1;
-	bool m_MapdownloadSha256Present = false;
-	SHA256_DIGEST m_MapdownloadSha256 = SHA256_ZEROED;
+	std::optional<SHA256_DIGEST> m_MapdownloadSha256;
 
-	bool m_MapDetailsPresent = false;
-	char m_aMapDetailsName[256] = "";
-	int m_MapDetailsCrc = 0;
-	SHA256_DIGEST m_MapDetailsSha256 = SHA256_ZEROED;
-	char m_aMapDetailsUrl[256] = "";
+	class CMapDetails
+	{
+	public:
+		char m_aName[256];
+		int m_Size;
+		int m_Crc;
+		SHA256_DIGEST m_Sha256;
+		char m_aUrl[256];
+	};
+	std::optional<CMapDetails> m_MapDetails;
 
 	EInfoState m_InfoState = EInfoState::ERROR;
 	std::shared_ptr<CHttpRequest> m_pDDNetInfoTask = nullptr;
@@ -203,9 +207,7 @@ class CClient : public IClient, public CDemoPlayer::IListener
 	int m_aSnapshotIncomingDataSize[NUM_DUMMIES] = {0, 0};
 
 	CSnapshotStorage::CHolder m_aDemorecSnapshotHolders[NUM_SNAPSHOT_TYPES];
-	char m_aaaDemorecSnapshotData[NUM_SNAPSHOT_TYPES][2][CSnapshot::MAX_SIZE];
-
-	CSnapshotDelta m_SnapshotDelta;
+	CSnapshotBuffer m_aaDemorecSnapshotData[NUM_SNAPSHOT_TYPES][2];
 
 	std::deque<std::shared_ptr<CDemoEdit>> m_EditJobs;
 
@@ -279,6 +281,7 @@ public:
 	IDiscord *Discord() { return m_pDiscord; }
 	IEngine *Engine() { return m_pEngine; }
 	IGameClient *GameClient() { return m_pGameClient; }
+	const IGameClient *GameClient() const { return m_pGameClient; }
 	IEngineGraphics *Graphics() { return m_pGraphics; }
 	IEngineInput *Input() { return m_pInput; }
 	IEngineSound *Sound() { return m_pSound; }
@@ -287,7 +290,7 @@ public:
 	IStorage *Storage() { return m_pStorage; }
 	IEngineTextRender *TextRender() { return m_pTextRender; }
 	IUpdater *Updater() { return m_pUpdater; }
-	IHttp *Http() { return &m_Http; }
+	IHttp *Http() { return m_pHttp; }
 
 	CClient();
 
@@ -329,6 +332,9 @@ public:
 	void OnEnterGame(bool Dummy);
 	void EnterGame(int Conn) override;
 
+	// called once after being ingame for 1 second
+	void OnPostConnect(int Conn);
+
 	void Connect(const char *pAddress, const char *pPassword = nullptr) override;
 	void DisconnectWithReason(const char *pReason);
 	void Disconnect() override;
@@ -342,6 +348,7 @@ public:
 
 	void GetServerInfo(CServerInfo *pServerInfo) const override;
 	void ServerInfoRequest();
+	void SetCurrentServerInfo(const CServerInfo &ServerInfo);
 
 	void LoadDebugFont();
 
@@ -361,13 +368,14 @@ public:
 
 	void Restart() override;
 	void Quit() override;
+	void ResetSocket();
 
 	const char *PlayerName() const override;
 	const char *DummyName() override;
 	const char *ErrorString() const override;
 
-	const char *LoadMap(const char *pName, const char *pFilename, SHA256_DIGEST *pWantedSha256, unsigned WantedCrc);
-	const char *LoadMapSearch(const char *pMapName, SHA256_DIGEST *pWantedSha256, int WantedCrc);
+	const char *LoadMap(const char *pName, const char *pFilename, const std::optional<SHA256_DIGEST> &WantedSha256, unsigned WantedCrc);
+	const char *LoadMapSearch(const char *pMapName, const std::optional<SHA256_DIGEST> &WantedSha256, int WantedCrc);
 
 	int TranslateSysMsg(int *pMsgId, bool System, CUnpacker *pUnpacker, CPacker *pPacker, CNetChunk *pPacket, bool *pIsExMsg);
 
@@ -376,7 +384,7 @@ public:
 	void ProcessServerInfo(int Type, NETADDR *pFrom, const void *pData, int DataSize);
 	void ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy);
 
-	int UnpackAndValidateSnapshot(CSnapshot *pFrom, CSnapshot *pTo);
+	int UnpackAndValidateSnapshot(CSnapshot *pFrom, CSnapshotBuffer *pTo);
 
 	void ResetMapDownload(bool ResetActive);
 	void FinishMapDownload();
@@ -408,6 +416,7 @@ public:
 	void Run();
 
 	bool InitNetworkClient(char *pError, size_t ErrorSize);
+	bool InitNetworkClientImpl(NETADDR BindAddr, int Conn, char *pError, size_t ErrorSize);
 	bool CtrlShiftKey(int Key, bool &Last);
 
 	static void Con_Connect(IConsole::IResult *pResult, void *pUserData);
@@ -423,6 +432,7 @@ public:
 	static void Con_DemoSpeed(IConsole::IResult *pResult, void *pUserData);
 	static void Con_Minimize(IConsole::IResult *pResult, void *pUserData);
 	static void Con_Ping(IConsole::IResult *pResult, void *pUserData);
+	static void ConNetReset(IConsole::IResult *pResult, void *pUserData);
 	static void Con_Screenshot(IConsole::IResult *pResult, void *pUserData);
 
 #if defined(CONF_VIDEORECORDER)
@@ -454,6 +464,7 @@ public:
 	static void ConchainPassword(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainReplays(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainInputFifo(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
+	static void ConchainNetReset(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainLoglevel(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainStdoutOutputLevel(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
@@ -465,11 +476,12 @@ public:
 	void RegisterCommands();
 
 	const char *DemoPlayer_Play(const char *pFilename, int StorageType) override;
-	void DemoRecorder_Start(const char *pFilename, bool WithTimestamp, int Recorder, bool Verbose = false) override;
+	void DemoRecorder_Start(const char *pFilename, bool WithTimestamp, int Recorder) override;
 	void DemoRecorder_HandleAutoStart() override;
 	void DemoRecorder_UpdateReplayRecorder() override;
 	void DemoRecorder_AddDemoMarker(int Recorder);
 	IDemoRecorder *DemoRecorder(int Recorder) override;
+	CDemoRecorder (&DemoRecorders())[RECORDER_MAX];
 
 	void AutoScreenshot_Start() override;
 	void AutoStatScreenshot_Start() override;
@@ -500,11 +512,6 @@ public:
 
 	void GenerateTimeoutSeed() override;
 	void GenerateTimeoutCodes(const NETADDR *pAddrs, int NumAddrs);
-
-	const char *GetCurrentMap() const override;
-	const char *GetCurrentMapPath() const override;
-	SHA256_DIGEST GetCurrentMapSha256() const override;
-	unsigned GetCurrentMapCrc() const override;
 
 	void RaceRecord_Start(const char *pFilename) override;
 	void RaceRecord_Stop() override;

@@ -1,8 +1,9 @@
+#include "map_renderer.h"
+
+#include <base/dbg.h>
 #include <base/log.h>
 
 #include <game/map/envelope_manager.h>
-
-#include "map_renderer.h"
 
 const int LAYER_DEFAULT_TILESET = -1;
 
@@ -111,8 +112,7 @@ void CMapRenderer::Load(ERenderType Type, CLayers *pLayers, IMapImages *pMapImag
 						pTileLayer);
 					break;
 				default:
-					dbg_assert(false, "Unknown LayerType %d", LayerType);
-					break;
+					dbg_assert_failed("Unknown LayerType %d", LayerType);
 				}
 			}
 			else if(pLayer->m_Type == LAYERTYPE_QUADS)

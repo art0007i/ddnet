@@ -1,14 +1,22 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "skins7.h"
+
+#include "menus.h"
+
 #include <base/color.h>
+#include <base/dbg.h>
+#include <base/io.h>
 #include <base/log.h>
 #include <base/math.h>
-#include <base/system.h>
+#include <base/str.h>
+#include <base/time.h>
 
 #include <engine/external/json-parser/json.h>
 #include <engine/gfx/image_manipulation.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
+#include <engine/shared/json.h>
 #include <engine/shared/jsonwriter.h>
 #include <engine/shared/localization.h>
 #include <engine/shared/protocol7.h>
@@ -16,9 +24,6 @@
 
 #include <game/client/gameclient.h>
 #include <game/localization.h>
-
-#include "menus.h"
-#include "skins7.h"
 
 const char *const CSkins7::ms_apSkinPartNames[protocol7::NUM_SKINPARTS] = {"body", "marking", "decoration", "hands", "feet", "eyes"};
 const char *const CSkins7::ms_apSkinPartNamesLocalized[protocol7::NUM_SKINPARTS] = {Localizable("Body", "skins"), Localizable("Marking", "skins"), Localizable("Decoration", "skins"), Localizable("Hands", "skins"), Localizable("Feet", "skins"), Localizable("Eyes", "skins")};
@@ -113,7 +118,8 @@ static ColorRGBA DetermineBloodColor(int PartType, const CImageInfo &Info)
 		}
 	}
 
-	return ColorRGBA(normalize(vec3(aColors[0], aColors[1], aColors[2])));
+	const vec3 NormalizedColor = normalize(vec3(aColors[0], aColors[1], aColors[2]));
+	return ColorRGBA(NormalizedColor.x, NormalizedColor.y, NormalizedColor.z);
 }
 
 bool CSkins7::LoadSkinPart(int PartType, const char *pName, int DirType)
@@ -211,7 +217,7 @@ bool CSkins7::LoadSkin(const char *pName, int DirType)
 
 	json_settings JsonSettings{};
 	char aError[256];
-	json_value *pJsonData = json_parse_ex(&JsonSettings, static_cast<const json_char *>(pFileData), JsonFileSize, aError);
+	json_value *pJsonData = JsonParseEx(&JsonSettings, static_cast<const json_char *>(pFileData), JsonFileSize, aError);
 	free(pFileData);
 	if(pJsonData == nullptr)
 	{

@@ -1,8 +1,8 @@
 #include "map_grid.h"
 
-#include <engine/keys.h>
-
 #include "editor.h"
+
+#include <engine/keys.h>
 
 static constexpr int MIN_GRID_FACTOR = 1;
 static constexpr int MAX_GRID_FACTOR = 15;
@@ -13,14 +13,14 @@ void CMapGrid::OnReset()
 	m_GridFactor = 1;
 }
 
-void CMapGrid::OnRender(CUIRect View)
+void CMapGrid::Render()
 {
 	if(!m_GridActive)
 	{
 		return;
 	}
 
-	std::shared_ptr<CLayerGroup> pGroup = Editor()->GetSelectedGroup();
+	std::shared_ptr<CLayerGroup> pGroup = Map()->SelectedGroup();
 	if(!pGroup)
 	{
 		return;

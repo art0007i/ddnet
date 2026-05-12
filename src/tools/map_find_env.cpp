@@ -1,7 +1,11 @@
+#include <base/dbg.h>
 #include <base/logger.h>
-#include <base/system.h>
+#include <base/os.h>
+#include <base/str.h>
+
 #include <engine/shared/datafile.h>
 #include <engine/storage.h>
+
 #include <game/mapitems.h>
 
 class CEnvelopedQuad

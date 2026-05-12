@@ -22,9 +22,6 @@ Abort
 Add
 == Добавить
 
-Add Friend
-== Добавить друга
-
 Address
 == Адрес
 
@@ -401,7 +398,7 @@ Time limit: %d min
 == Лимит времени: %d
 
 Try again
-== ОК
+== Попробовать снова
 
 Type
 == Тип
@@ -838,9 +835,6 @@ Show text entities
 Show others (own team only)
 == Показ. только вашу команду
 
-Show quads
-== Показ. квады
-
 AntiPing
 == Антипинг
 
@@ -1047,7 +1041,7 @@ Dummy
 == Дамми
 
 Preview
-== Превью
+== Предпросмотр
 
 Background
 == Фон
@@ -1138,9 +1132,6 @@ Chat command (e.g. showall 1)
 
 Tutorial
 == Туториал
-
-Can't find a Tutorial server
-== Обучающий сервер не найден
 
 Position:
 == Позиция
@@ -1330,20 +1321,8 @@ Hook collision line
 Hook collision line opacity
 == Прозрачность линии
 
-Colors of the hook collision line, in case of a possible collision with:
-== Цвет линии коллизии крюка если
-
 Your movements are not taken into account when calculating the line colors
 == Ваше перемещение не учитывается при расчете цвета линии коллизии
-
-Nothing hookable
-== Невозможно зацепиться
-
-Something hookable
-== Можно зацепиться
-
-A Tee
-== Задевает игрока
 
 Loading assets
 == Загрузка ресурсов
@@ -1478,9 +1457,6 @@ Could not initialize the given graphics backend, reverting to the default backen
 Open the directory that contains the demo files
 == Открыть папку с демо записями
 
-Save power by lowering refresh rate (higher input latency)
-== Режим экономии энергии
-
 Open the settings file
 == Открытие файла настроек
 
@@ -1530,9 +1506,6 @@ Click to remove this player from your friends list.
 
 Click to remove this clan from your friends list.
 == Нажмите, чтобы исключить клан из списка.
-
-Add Clan
-== Добавить клан
 
 A demo with this name already exists
 == Демо с таким именем уже существует
@@ -1604,7 +1577,7 @@ Moved ingame
 == Перемещены в игре
 
 Go back the specified duration
-== Отмотать назад на заданное время 
+== Отмотать назад на заданное время
 
 [Demo player duration]
 %s min.
@@ -1908,7 +1881,7 @@ Online friends (%d)
 == Друзья в сети (%d)
 
 Add friends by entering their name below or by clicking their name in the player list.
-== Чтобы добавить друзей, впишите их имена ниже или нажимите по их имени в списке игроков.
+== Чтобы добавить друзей, впишите их имена ниже или нажмите по их имени в списке игроков.
 
 Add clanmates by entering their clan below and leaving the name blank.
 == Чтобы добавить соклановцев, впишите их клан и оставьте имя пустым.
@@ -2142,7 +2115,7 @@ Name plates offset
 Show friend icon in name plates
 == Показывать иконку друга в именах
 
-Show client IDs on a seperate line
+Show client IDs on a separate line
 == Показывать ID клиента на отдельной линии
 
 Client IDs size
@@ -2169,9 +2142,6 @@ All
 
 Preview dummy's name plate
 == Просмотр дамми
-
-AntiPing: prediction margin
-== Антипинг: Предел предсказаний
 
 [Graphics error]
 Out of VRAM. Try setting 'cl_skins_loaded_max' to a lower value or remove custom assets (skins, entities, etc.), especially those with high resolution.
@@ -2215,269 +2185,481 @@ Could not check for existing player with your name. Check your internet connecti
 == Не удалось проверить, существует ли игрок с вашим именем. Проверьте подключение к Интернету.
 
 Press Ctrl+Shift+G to disable debug graphs.
-== 
+== Нажмите Ctrl+Shift+G, чтобы отключить графики отладки.
 
 Server could not be started
-== 
+== Не удалось запустить сервер
 
 Could not get server list from master server
-== 
+== Не удалось получить список серверов от мастер-сервера
 
 [Demo playback]
 Live
-== 
+== В реальном времени
 
 [Demo playback]
 Go to Live
-== 
+== Перейти к реальному времени
 
 Save all changes before turning off the editor?
-== 
+== Сохранить все изменения перед выходом из редактора?
 
 Layout
-== 
+== Макет
 
 Visibility
-== 
+== Видимость
 
 Behavior
-== 
+== Поведение
 
 Delete button
-== 
+== Удалить кнопку
 
 Are you sure that you want to delete this button?
-== 
+== Вы уверены, что хотите удалить эту кнопку?
 
 Duplicate
-== 
-
-New button already created
-== 
-
-A new button has already been created, please save or delete it before creating another one.
-== 
+== Дублировать
 
 Please save your changes before duplicating a button.
-== 
+== Пожалуйста, сохраните изменения перед дублированием кнопки.
 
 No space for button
-== 
+== Нет места для кнопки
 
 There is not enough space available to place another button.
-== 
-
-There is not enough space available to place another button with this size. The button has been resized.
-== 
+== Недостаточно места для размещения другой кнопки.
 
 Deselect
-== 
+== Снять выделение
 
 You'll lose unsaved changes after deselecting.
-== 
+== Несохранённые изменения будут потеряны после снятия выделения.
 
 Width
-== 
+== Ширина
 
 Height
-== 
+== Высота
 
 Shape
-== 
+== Форма
 
 [Touch button shape]
 Rectangle
-== 
+== Прямоугольник
 
 [Touch button shape]
 Circle
-== 
+== Круг
 
 [Touch button label type]
 Plain
-== 
+== Обычный
 
 [Touch button label type]
 Localized
-== 
+== Локализованный
 
 [Touch button label type]
 Icon
-== 
+== Иконка
 
 Behavior type
-== 
+== Тип поведения
 
 [Touch button behavior]
 Bind
-== 
+== Привязка
 
 [Touch button behavior]
 Bind Toggle
-== 
+== Переключение привязки
 
 [Touch button behavior]
 Predefined
-== 
+== Предустановленное
 
 Command
-== 
+== Команда
 
 Label
-== 
+== Метка
 
 Label type
-== 
+== Тип метки
 
 Add command
-== 
+== Добавить команду
 
 Delete command
-== 
+== Удалить команду
 
 [Touch button visibility preview]
 Included
-== 
+== Включено
 
 [Touch button visibility preview]
 Excluded
-== 
+== Исключено
 
 [Touch button visibility preview]
 Ignore
-== 
-
-Long press on a touch button to select it.
-== 
+== Игнорировать
 
 New button
-== 
+== Новая кнопка
 
 Select button by touch
-== 
+== Выбрать кнопку касанием
 
 No buttons match your filter criteria
-== 
+== Нет кнопок, подходящих под ваш фильтр
 
 File
-== 
+== Файл
 
 Buttons
-== 
+== Кнопки
 
 Active color
-== 
+== Активный цвет
 
 Inactive color
-== 
+== Неактивный цвет
 
 Preview button visibility while the editor is active.
-== 
+== Предпросмотр отображения кнопки во время работы редактора.
 
 Show all buttons
-== 
+== Показать все кнопки
 
 Save all changes before switching selected button?
-== 
+== Сохранить все изменения перед переключением выбранной кнопки?
 
 Discard
-== 
+== Отменить
 
 There is not enough space available for the button. Check its visibilities and size.
-== 
+== Недостаточно места для кнопки. Проверьте её видимость и размер.
 
 Selected button not visible
-== 
+== Выбранная кнопка не видна
 
 The selected button is not visible. Do you want to deselect it or edit its visibility?
-== 
+== Выбранная кнопка не видна. Хотите снять выделение или изменить её видимость?
 
 Edit
-== 
+== Редактировать
 
 Width and height are required to be within the range from %d to %d.
-== 
+== Ширина и высота должны быть в диапазоне от %d до %d.
 
 Button position is outside of the screen.
-== 
+== Положение кнопки вне экрана.
 
 The selected button is overlapping with other buttons.
-== 
+== Выбранная кнопка перекрывает другие кнопки.
 
 Wrong button settings
-== 
+== Неправильные настройки кнопки
 
 [Touch button visibilities]
 Ingame
-== 
+== В игре
 
 [Touch button visibilities]
 Zoom Allowed
-== 
+== Разрешён зум
 
 [Touch button visibilities]
 Vote Active
-== 
+== Голосование активно
 
 [Touch button visibilities]
 Dummy Allowed
-== 
+== Дамми разрешён
 
 [Touch button visibilities]
 Dummy Connected
-== 
+== Дамми подключён
 
 [Touch button visibilities]
 Rcon Authed
-== 
+== Rcon авторизован
 
 [Touch button visibilities]
 Demo Player
-== 
+== Проигрыватель демо
 
 [Touch button visibilities]
 Extra Menu
-== 
+== Дополнительное меню
 
 [Predefined touch button behaviors]
 Ingame Menu
-== 
+== Меню в игре
 
 [Predefined touch button behaviors]
 Extra Menu
-== 
+== Дополнительное меню
 
 [Predefined touch button behaviors]
 Emoticon
-== 
+== Эмоция
 
 [Predefined touch button behaviors]
 Spectate
-== 
+== Наблюдать
 
 [Predefined touch button behaviors]
 Swap Action
-== 
+== Сменить действие
 
 [Predefined touch button behaviors]
 Use Action
-== 
+== Использовать действие
 
 [Predefined touch button behaviors]
 Joystick Action
-== 
+== Действие джойстика
 
 [Predefined touch button behaviors]
 Joystick Aim
-== 
+== Прицеливание джойстиком
 
 [Predefined touch button behaviors]
 Joystick Fire
-== 
+== Стрельба джойстиком
 
 [Predefined touch button behaviors]
 Joystick Hook
-== 
+== Крюк джойстиком
 
 Chat background color
+== Цвет фона
+
+Censor profanity
+== Фильтровать нецензурную лексику
+
+Download
+== Скачать
+
+Team save in progress. You'll be able to load with '/load %s'
+== Сохранение команды выполняется. Вы сможете загрузить с помощью команды '/load %s'
+
+Team save in progress. You'll be able to load with '/load %s' if save is successful or with '/load %s' if it fails
+== Сохранение команды выполняется. Вы сможете загрузить с помощью '/load %s', если сохранение прошло успешно, или с помощью '/load %s', если оно не удалось
+
+Team successfully saved by %s. The database connection failed, using generated save code instead to avoid collisions. Use '/load %s' to continue
+== Команда успешно сохранена пользователем %s. Соединение с базой данных не удалось, используется сгенерированный код сохранения, чтобы избежать конфликтов. Используйте '/load %s' для продолжения
+
+Team successfully saved by %s. The database connection failed, using generated save code instead to avoid collisions. Use '/load %s' on %s to continue
+== Команда успешно сохранена пользователем %s. Соединение с базой данных не удалось, используется сгенерированный код сохранения, чтобы избежать конфликтов. Используйте '/load %s' на %s для продолжения
+
+Save failed!
+== Сохранение не удалось!
+
+[Important alert message]
+Press Esc or Tab to dismiss…
+== Нажмите Esc или Tab, чтобы закрыть…
+
+Server alert
+== Серверное предупреждение
+
+Moderator alert
+== Предупреждение модератора
+
+You will be disconnected from the server.
+== Вы будете отключены от сервера.
+
+Are you sure that you want to disconnect and play this demo?
+== Вы уверены, что хотите отключиться и запустить демо?
+
+Show background quads
+== Показать фоновые квады
+
+Scoreboard cursor
+== Курсор табло
+
+Add friend
+== Добавить в друзья
+
+Unmute
+== Разглушить
+
+Mute
+== Заглушить
+
+Unmute emoticons
+== Включить эмоции
+
+Mute emoticons
+== Выключить эмоции
+
+There's an unsaved change in the touch controls editor, you might want to save it.
+== В настройках сенсорного управления есть несохраненные изменения, возможно, вы хотите их сохранить.
+
+Info
+== Информация
+
+Preview visibilities
+== Предпросмотр отображения
+
+Joining Tutorial server
+== Подключение к обучающему серверу
+
+There are no Tutorial servers available
+== Обучающие сервера недоступны
+
+Retrying…
+== Повторная попытка…
+
+Error joining Tutorial server
+== Ошибка подключения к обучающему серверу
+
+Could not find a Tutorial server. Check your internet connection.
+== Не удалось найти обучающий сервер. Проверьте подключение к интернету.
+
+You're playing on a local server because no online Tutorial server could be found.\n\nYour record will only be saved locally.
+== Вы играете на локальном сервере, так как онлайн-обучающий сервер не найден.\n\nВаш рекорд будет сохранён только локально.
+
+Could not find online Tutorial server.\nStarting and connecting to local server…
+== Не удалось найти онлайн-обучающий сервер.\nЗапуск и подключение к локальному серверу…
+
+Waiting for local server to stop…
+== Ожидание остановки локального сервера…
+
+Waiting for local server to start…
+== Ожидание запуска локального сервера…
+
+Start and connect to local server
+== Запустить и подключиться к локальному серверу
+
+Error loading communities
+== Ошибка загрузки сообществ
+
+Click to remove this community from your favorites.
+== Нажмите, чтобы удалить это сообщество из избранного.
+
+Click to add this community to your favorites.
+== Нажмите, чтобы добавить это сообщество в избранное.
+
+Add clan
+== Добавить клан
+
+Button browser
+== Браузер кнопок
+
+You can select buttons directly in the list below, or long press on a touch button on the screen to select it. You can also move and resize buttons by touch.
+== Вы можете выбирать кнопки прямо в списке ниже или долго нажимать на кнопку на экране, чтобы выбрать её. Также можно перемещать и изменять размер кнопок с помощью сенсорного управления.
+
+You can manage your touch controls settings on this page. Only changes that are saved will be available after restarting the client. You can share your touch controls with others by exporting them to the clipboard.\n\nYou can find more detailed information about the touch controls on the DDNet Wiki.
+== На этой странице вы можете управлять настройками сенсорного управления. Только сохранённые изменения будут доступны после перезапуска клиента. Вы можете поделиться своими настройками сенсорного управления с другими, экспортировав их в буфер обмена. \n\nБолее подробную информацию о сенсорном управлении вы можете найти на DDNet Wiki.
+
+Open DDNet Wiki
+== Открыть DDNet Wiki
+
+Buttons with this behavior execute console commands like regular key binds.
+== Кнопки с этим поведением выполняют консольные команды так же, как обычные клавиши.
+
+Buttons with this behavior cycle between executing one of two or more specified commands.
+== Кнопки с этим поведением последовательно выполняют одну из двух или более заданных команд.
+
+Buttons with this behavior execute some predefined actions.
+== Кнопки с этим поведением выполняют заранее определённые действия.
+
+Opens the ingame menu immediately when released.
+== Немедленно открывает внутриигровое меню при отпускании.
+
+The extra menu button which toggles visibility of buttons with "Extra Menu" visibilities. Also opens the ingame menu on long press.
+== Дополнительная кнопка меню, которая переключает видимость кнопок с настройкой "Доп. меню". Также открывает внутриигровое меню при долгом нажатии.
+
+Opens the emoticon selector (this does not work with binds).
+== Открывает выбор эмодзи (не работает с биндами).
+
+Opens the spectator menu (this does not work with binds).
+== Открывает меню наблюдателя (не работает с биндами).
+
+Swaps the active action (fire and hook) for direct touch input and virtual joysticks.
+== Меняет активное действие (стрельба и крюк) для прямого сенсорного управления и виртуальных джойстиков.
+
+Uses the active action with the current aiming position.
+== Выполняет активное действие в направлении текущей прицельной позиции.
+
+Virtual joystick which uses the active action.
+== Виртуальный джойстик, использующий активное действие.
+
+Virtual joystick which only aims without using an action.
+== Виртуальный джойстик, который целится без выполнения действия.
+
+Virtual joystick which always uses fire.
+== Виртуальный джойстик, который всегда выполняет выстрел.
+
+Virtual joystick which always uses hook.
+== Виртуальный джойстик, который всегда использует крюк.
+
+Player is ingame, i.e. not spectating.
+== Игрок находится в игре, т.е. не наблюдает.
+
+Zoom is allowed on this server.
+== Масштабирование разрешено на этом сервере.
+
+A vote is currently active.
+== В данный момент идёт голосование.
+
+Dummy is allowed on this server.
+== Использование дамми разрешено на этом сервере.
+
+Dummy is currently connected.
+== Дамми сейчас подключён.
+
+Player is currently authed in rcon.
+== Игрок в данный момент авторизован в rcon.
+
+Demo player is currently active.
+== Воспроизведение демо сейчас активно.
+
+The extra menu with the given number is activated.
+== Дополнительное меню с указанным номером активно.
+
+Update Rate
+== Частота обновления
+
+Save power by lowering update rate (higher input latency)
+== Экономия энергии за счёт снижения частоты обновления (увеличивается задержка ввода)
+
+Colors of the hook collision line:
+== Цвета линии столкновения крюка:
+
+[Hook collision line color]
+When nothing is hookable
+== Когда нет за что зацепиться
+
+[Hook collision line color]
+When something is hookable
+== Когда есть за что зацепиться
+
+[Hook collision line color]
+When a Tee is hookable
+== Когда можно зацепить Тии
+
+[Hook collision line color]
+Hook collision line tip
+== Кончик линии столкновения крюка
+
+Refresh the demo list
+== 
+
+Open the selected folder
+== 
+
+Play the selected demo
+== 
+
+Prediction margin
+== 
+
+Predict events (experimental)
 == 

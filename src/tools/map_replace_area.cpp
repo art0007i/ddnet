@@ -1,7 +1,12 @@
+#include <base/dbg.h>
 #include <base/logger.h>
-#include <base/system.h>
+#include <base/mem.h>
+#include <base/os.h>
+#include <base/str.h>
+
 #include <engine/shared/datafile.h>
 #include <engine/storage.h>
+
 #include <game/mapitems.h>
 
 // global new layers data (set by ReplaceAreaTiles and ReplaceAreaQuads)
@@ -86,7 +91,7 @@ int main(int argc, const char *argv[])
 
 	cmdline_free(argc, argv);
 
-	dbg_msg("map_replace_area", "from_map='%s'; to_map='%s'; from_area='%fx,%fy'; to_area='%fx,%fy'; area_width='%fpx'; area_heigth='%fpx'; output_map='%s'",
+	dbg_msg("map_replace_area", "from_map='%s'; to_map='%s'; from_area='%fx,%fy'; to_area='%fx,%fy'; area_width='%fpx'; area_height='%fpx'; output_map='%s'",
 		aaMapNames[0], aaMapNames[1], aaaGameAreas[0][0][0], aaaGameAreas[0][1][0], aaaGameAreas[1][0][0], aaaGameAreas[1][1][0],
 		aaaGameAreas[0][0][1] - aaaGameAreas[0][0][0], aaaGameAreas[0][1][1] - aaaGameAreas[0][1][0], aaMapNames[2]);
 

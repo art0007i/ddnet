@@ -1,16 +1,22 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
-#include <SDL.h>
+#include "input.h"
 
-#include <base/system.h>
+#include "keynames.h"
+
+#include <base/dbg.h>
+#include <base/log.h>
+#include <base/str.h>
+#include <base/time.h>
+#include <base/windows.h>
+
 #include <engine/console.h>
 #include <engine/graphics.h>
 #include <engine/input.h>
 #include <engine/keys.h>
 #include <engine/shared/config.h>
 
-#include "input.h"
-#include "keynames.h"
+#include <SDL.h>
 
 // support older SDL version (pre 2.0.6)
 #ifndef SDL_JOYSTICK_AXIS_MIN
@@ -35,7 +41,8 @@
 void CInput::AddKeyEvent(int Key, int Flags)
 {
 	dbg_assert(Key >= KEY_FIRST && Key < KEY_LAST, "Key invalid: %d", Key);
-	dbg_assert((Flags & (FLAG_PRESS | FLAG_RELEASE)) != 0 && (Flags & ~(FLAG_PRESS | FLAG_RELEASE)) == 0, "Flags invalid");
+	dbg_assert((Flags & (FLAG_PRESS | FLAG_RELEASE)) != 0 && (Flags & ~(FLAG_PRESS | FLAG_RELEASE | FLAG_REPEAT)) == 0, "Flags invalid (unknown flag): %d", Flags);
+	dbg_assert((Flags & FLAG_REPEAT) == 0 || (Flags & FLAG_PRESS) != 0, "Flags invalid (key repeat implies key press): %d", Flags);
 
 	CEvent Event;
 	Event.m_Key = Key;
@@ -109,13 +116,13 @@ void CInput::InitJoysticks()
 	{
 		if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0)
 		{
-			dbg_msg("joystick", "Unable to init SDL joystick system: %s", SDL_GetError());
+			log_error("joystick", "Unable to init SDL joystick system: %s", SDL_GetError());
 			return;
 		}
 	}
 
 	const int NumJoysticks = SDL_NumJoysticks();
-	dbg_msg("joystick", "%d joystick(s) found", NumJoysticks);
+	log_info("joystick", "%d joystick(s) found", NumJoysticks);
 	for(int i = 0; i < NumJoysticks; i++)
 		OpenJoystick(i);
 	UpdateActiveJoystick();
@@ -128,7 +135,7 @@ bool CInput::OpenJoystick(int JoystickIndex)
 	SDL_Joystick *pJoystick = SDL_JoystickOpen(JoystickIndex);
 	if(!pJoystick)
 	{
-		dbg_msg("joystick", "Could not open joystick %d: '%s'", JoystickIndex, SDL_GetError());
+		log_error("joystick", "Could not open joystick %d: '%s'", JoystickIndex, SDL_GetError());
 		return false;
 	}
 	if(std::find_if(m_vJoysticks.begin(), m_vJoysticks.end(), [pJoystick](const CJoystick &Joystick) -> bool { return Joystick.m_pDelegate == pJoystick; }) != m_vJoysticks.end())
@@ -138,7 +145,7 @@ bool CInput::OpenJoystick(int JoystickIndex)
 	}
 	m_vJoysticks.emplace_back(this, m_vJoysticks.size(), pJoystick);
 	const CJoystick &Joystick = m_vJoysticks[m_vJoysticks.size() - 1];
-	dbg_msg("joystick", "Opened joystick %d '%s' (%d axes, %d buttons, %d balls, %d hats)", JoystickIndex, Joystick.GetName(),
+	log_info("joystick", "Opened joystick %d '%s' (%d axes, %d buttons, %d balls, %d hats)", JoystickIndex, Joystick.GetName(),
 		Joystick.GetNumAxes(), Joystick.GetNumButtons(), Joystick.GetNumBalls(), Joystick.GetNumHats());
 	return true;
 }
@@ -521,7 +528,7 @@ void CInput::HandleJoystickRemovedEvent(const SDL_JoyDeviceEvent &Event)
 	auto RemovedJoystick = std::find_if(m_vJoysticks.begin(), m_vJoysticks.end(), [Event](const CJoystick &Joystick) -> bool { return Joystick.GetInstanceId() == Event.which; });
 	if(RemovedJoystick != m_vJoysticks.end())
 	{
-		dbg_msg("joystick", "Closed joystick %d '%s'", (*RemovedJoystick).GetIndex(), (*RemovedJoystick).GetName());
+		log_info("joystick", "Closed joystick %d '%s'", (*RemovedJoystick).GetIndex(), (*RemovedJoystick).GetName());
 		auto NextJoystick = m_vJoysticks.erase(RemovedJoystick);
 		// Adjust indices of following joysticks
 		while(NextJoystick != m_vJoysticks.end())
@@ -682,6 +689,18 @@ static int TranslateMouseWheelEventKey(const SDL_MouseWheelEvent &MouseWheelEven
 	}
 }
 
+#if defined(CONF_PLATFORM_EMSCRIPTEN)
+extern "C" {
+
+// This will be called from Emscripten JS code
+bool EmscriptenQuit = false;
+void EmscriptenCallbackQuit()
+{
+	EmscriptenQuit = true;
+}
+}
+#endif
+
 int CInput::Update()
 {
 	const int64_t Now = time_get();
@@ -704,6 +723,13 @@ int CInput::Update()
 			AddKeyEvent(Key, Flags);
 		}
 	};
+
+#if defined(CONF_PLATFORM_EMSCRIPTEN)
+	if(EmscriptenQuit)
+	{
+		return 1;
+	}
+#endif
 
 	while(SDL_PollEvent(&Event))
 	{
@@ -732,7 +758,7 @@ int CInput::Update()
 
 		// handle keys
 		case SDL_KEYDOWN:
-			AddKeyEventChecked(TranslateKeyEventKey(Event.key), IInput::FLAG_PRESS);
+			AddKeyEventChecked(TranslateKeyEventKey(Event.key), IInput::FLAG_PRESS | (Event.key.repeat != 0 ? FLAG_REPEAT : 0));
 			break;
 
 		case SDL_KEYUP:
@@ -791,6 +817,11 @@ int CInput::Update()
 			// shortcuts
 			switch(Event.window.event)
 			{
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+			case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+				Graphics()->SwitchWindowScreen(Event.display.data1, false);
+				break;
+#endif
 			case SDL_WINDOWEVENT_MOVED:
 				Graphics()->Move(Event.window.data1, Event.window.data2);
 				break;
@@ -900,8 +931,28 @@ void CInput::ProcessSystemMessage(SDL_SysWMmsg *pMsg)
 #endif
 }
 
+#if defined(CONF_PLATFORM_EMSCRIPTEN)
+extern "C" {
+
+// This will be called from Emscripten JS code
+char aEmscriptenDropFile[IO_MAX_PATH_LENGTH] = "";
+void EmscriptenCallbackDropFile(const char *pFile)
+{
+	str_copy(aEmscriptenDropFile, pFile);
+}
+}
+#endif
+
 bool CInput::GetDropFile(char *aBuf, int Len)
 {
+#if defined(CONF_PLATFORM_EMSCRIPTEN)
+	if(aEmscriptenDropFile[0] != '\0')
+	{
+		str_copy(aBuf, aEmscriptenDropFile, Len);
+		aEmscriptenDropFile[0] = '\0';
+		return true;
+	}
+#endif
 	if(m_aDropFile[0] != '\0')
 	{
 		str_copy(aBuf, m_aDropFile, Len);

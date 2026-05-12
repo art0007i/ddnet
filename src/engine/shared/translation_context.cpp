@@ -1,5 +1,3 @@
-#include <base/system.h>
-
 #include "translation_context.h"
 
 void CTranslationContext::Reset()

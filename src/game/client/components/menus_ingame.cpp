@@ -1,17 +1,28 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
-#include <base/color.h>
-#include <base/math.h>
-#include <base/system.h>
+#include "ghost.h"
+#include "menus.h"
+#include "motd.h"
+#include "voting.h"
 
+#include <base/color.h>
+#include <base/dbg.h>
+#include <base/math.h>
+#include <base/str.h>
+#include <base/time.h>
+
+#include <engine/console.h>
 #include <engine/demo.h>
 #include <engine/favorites.h>
+#include <engine/font_icons.h>
 #include <engine/friends.h>
 #include <engine/ghost.h>
 #include <engine/graphics.h>
+#include <engine/keys.h>
 #include <engine/serverbrowser.h>
 #include <engine/shared/config.h>
 #include <engine/shared/localization.h>
+#include <engine/storage.h>
 #include <engine/textrender.h>
 
 #include <generated/client_data.h>
@@ -26,17 +37,8 @@
 #include <game/client/ui_scrollregion.h>
 #include <game/localization.h>
 
-#include "menus.h"
-#include "motd.h"
-#include "voting.h"
-
-#include "ghost.h"
-#include <engine/keys.h>
-#include <engine/storage.h>
-
 #include <chrono>
 
-using namespace FontIcons;
 using namespace std::chrono_literals;
 
 void CMenus::RenderGame(CUIRect MainView)
@@ -57,9 +59,25 @@ void CMenus::RenderGame(CUIRect MainView)
 	static CButtonContainer s_DisconnectButton;
 	if(DoButton_Menu(&s_DisconnectButton, Localize("Disconnect"), 0, &Button))
 	{
-		if(GameClient()->CurrentRaceTime() / 60 >= g_Config.m_ClConfirmDisconnectTime && g_Config.m_ClConfirmDisconnectTime >= 0)
+		if((GameClient()->CurrentRaceTime() / 60 >= g_Config.m_ClConfirmDisconnectTime && g_Config.m_ClConfirmDisconnectTime >= 0) ||
+			GameClient()->m_TouchControls.HasEditingChanges() ||
+			GameClient()->m_Menus.m_MenusIngameTouchControls.UnsavedChanges())
 		{
-			PopupConfirm(Localize("Disconnect"), Localize("Are you sure that you want to disconnect?"), Localize("Yes"), Localize("No"), &CMenus::PopupConfirmDisconnect);
+			char aBuf[256] = {'\0'};
+			if(GameClient()->CurrentRaceTime() / 60 >= g_Config.m_ClConfirmDisconnectTime && g_Config.m_ClConfirmDisconnectTime >= 0)
+			{
+				str_copy(aBuf, Localize("Are you sure that you want to disconnect?"));
+			}
+			if(GameClient()->m_TouchControls.HasEditingChanges() ||
+				GameClient()->m_Menus.m_MenusIngameTouchControls.UnsavedChanges())
+			{
+				if(aBuf[0] != '\0')
+				{
+					str_append(aBuf, "\n\n");
+				}
+				str_append(aBuf, Localize("There's an unsaved change in the touch controls editor, you might want to save it."));
+			}
+			PopupConfirm(Localize("Disconnect"), aBuf, Localize("Yes"), Localize("No"), &CMenus::PopupConfirmDisconnect);
 		}
 		else
 		{
@@ -113,7 +131,7 @@ void CMenus::RenderGame(CUIRect MainView)
 	if(DoButton_Menu(&s_DemoButton, Recording ? Localize("Stop record") : Localize("Record demo"), 0, &Button))
 	{
 		if(!Recording)
-			Client()->DemoRecorder_Start(Client()->GetCurrentMap(), true, RECORDER_MANUAL);
+			Client()->DemoRecorder_Start(GameClient()->Map()->BaseName(), true, RECORDER_MANUAL);
 		else
 			Client()->DemoRecorder(RECORDER_MANUAL)->Stop(IDemoRecorder::EStopMode::KEEP_FILE);
 	}
@@ -171,14 +189,14 @@ void CMenus::RenderGame(CUIRect MainView)
 		}
 		else
 		{
-			if(GameClient()->m_Snap.m_pLocalInfo->m_Team != TEAM_RED)
+			if(GameClient()->m_Snap.m_pLocalInfo->m_Team != TEAM_GAME)
 			{
 				ButtonBar.VSplitLeft(120.0f, &Button, &ButtonBar);
 				ButtonBar.VSplitLeft(5.0f, nullptr, &ButtonBar);
 				static CButtonContainer s_JoinGameButton;
 				if(!Client()->DummyConnecting() && DoButton_Menu(&s_JoinGameButton, Localize("Join game"), 0, &Button))
 				{
-					GameClient()->SendSwitchTeam(TEAM_RED);
+					GameClient()->SendSwitchTeam(TEAM_GAME);
 					SetActive(false);
 				}
 			}
@@ -208,7 +226,7 @@ void CMenus::RenderGame(CUIRect MainView)
 			static CButtonContainer s_PauseButton;
 			if(DoButton_Menu(&s_PauseButton, (!Paused && !Spec) ? Localize("Pause") : Localize("Join game"), 0, &Button))
 			{
-				Console()->ExecuteLine("say /pause");
+				Console()->ExecuteLine("say /pause", IConsole::CLIENT_ID_UNSPECIFIED);
 				SetActive(false);
 			}
 		}
@@ -223,7 +241,7 @@ void CMenus::RenderGame(CUIRect MainView)
 
 		bool Active = GameClient()->m_Camera.m_AutoSpecCamera && GameClient()->m_Camera.SpectatingPlayer() && GameClient()->m_Camera.CanUseAutoSpecCamera();
 		bool Enabled = g_Config.m_ClSpecAutoSync;
-		if(Ui()->DoButton_FontIcon(&s_AutoCameraButton, FONT_ICON_CAMERA, !Active, &Button, BUTTONFLAG_LEFT, IGraphics::CORNER_ALL, Enabled))
+		if(Ui()->DoButton_FontIcon(&s_AutoCameraButton, FontIcon::CAMERA, !Active, &Button, BUTTONFLAG_LEFT, IGraphics::CORNER_ALL, Enabled))
 		{
 			GameClient()->m_Camera.ToggleAutoSpecCamera();
 		}
@@ -270,7 +288,7 @@ void CMenus::RenderGame(CUIRect MainView)
 		static CButtonContainer s_RemoveConsoleButton;
 		if(DoButton_Menu(&s_RemoveConsoleButton, Localize("Remote console"), 0, &Button))
 		{
-			Console()->ExecuteLine("toggle_remote_console");
+			Console()->ExecuteLine("toggle_remote_console", IConsole::CLIENT_ID_UNSPECIFIED);
 		}
 
 		ButtonBar2.VSplitRight(5.0f, &ButtonBar2, nullptr);
@@ -278,7 +296,7 @@ void CMenus::RenderGame(CUIRect MainView)
 		static CButtonContainer s_LocalConsoleButton;
 		if(DoButton_Menu(&s_LocalConsoleButton, Localize("Console"), 0, &Button))
 		{
-			Console()->ExecuteLine("toggle_local_console");
+			Console()->ExecuteLine("toggle_local_console", IConsole::CLIENT_ID_UNSPECIFIED);
 		}
 		// Only when these are all false, the preview page is rendered. Once the page is not rendered, update is needed upon next rendering.
 		if(!GameClient()->m_TouchControls.IsEditingActive() || m_MenusIngameTouchControls.m_CurrentMenu != CMenusIngameTouchControls::EMenuType::MENU_BUTTONS || GameClient()->m_TouchControls.IsButtonEditing())
@@ -318,7 +336,7 @@ void CMenus::RenderGame(CUIRect MainView)
 			case CMenusIngameTouchControls::EMenuType::MENU_BUTTONS: m_MenusIngameTouchControls.RenderTouchButtonEditor(MainView); break;
 			case CMenusIngameTouchControls::EMenuType::MENU_SETTINGS: m_MenusIngameTouchControls.RenderConfigSettings(MainView); break;
 			case CMenusIngameTouchControls::EMenuType::MENU_PREVIEW: m_MenusIngameTouchControls.RenderPreviewSettings(MainView); break;
-			default: dbg_assert(false, "Unknown selected tab value = %d.", (int)m_MenusIngameTouchControls.m_CurrentMenu);
+			default: dbg_assert_failed("Unknown selected tab value = %d.", (int)m_MenusIngameTouchControls.m_CurrentMenu);
 			}
 		}
 	}
@@ -428,10 +446,6 @@ void CMenus::PopupConfirmChangeSelectedButton()
 	if(m_MenusIngameTouchControls.CheckCachedSettings())
 	{
 		GameClient()->m_TouchControls.SetSelectedButton(m_MenusIngameTouchControls.m_pNewSelectedButton);
-		if(m_MenusIngameTouchControls.m_pOldSelectedButton == nullptr)
-		{
-			m_MenusIngameTouchControls.m_pOldSelectedButton = GameClient()->m_TouchControls.NewButton();
-		}
 		m_MenusIngameTouchControls.SaveCachedSettingsToTarget(m_MenusIngameTouchControls.m_pOldSelectedButton);
 		// Update wild pointer.
 		if(m_MenusIngameTouchControls.m_pNewSelectedButton != nullptr)
@@ -467,6 +481,11 @@ void CMenus::PopupConfirmTurnOffEditor()
 		GameClient()->m_TouchControls.SetEditingActive(!GameClient()->m_TouchControls.IsEditingActive());
 		m_MenusIngameTouchControls.ResetButtonPointers();
 	}
+}
+
+void CMenus::PopupConfirmOpenWiki()
+{
+	Client()->ViewLink(Localize("https://wiki.ddnet.org/wiki/Touch_controls"));
 }
 
 void CMenus::RenderPlayers(CUIRect MainView)
@@ -766,13 +785,13 @@ void CMenus::RenderServerInfo(CUIRect MainView)
 			pTeamMode = Localize("solo", "Team status");
 			break;
 		default:
-			dbg_assert(false, "unknown team mode");
+			dbg_assert_failed("unknown team mode");
 		}
-		if((Config()->m_SvTeam == SV_TEAM_ALLOWED || Config()->m_SvTeam == SV_TEAM_MANDATORY) && (Config()->m_SvMinTeamSize != CConfig::ms_SvMinTeamSize || Config()->m_SvMaxTeamSize != CConfig::ms_SvMaxTeamSize))
+		if((Config()->m_SvTeam == SV_TEAM_ALLOWED || Config()->m_SvTeam == SV_TEAM_MANDATORY) && (Config()->m_SvMinTeamSize != DefaultConfig::SvMinTeamSize || Config()->m_SvMaxTeamSize != DefaultConfig::SvMaxTeamSize))
 		{
-			if(Config()->m_SvMinTeamSize != CConfig::ms_SvMinTeamSize && Config()->m_SvMaxTeamSize != CConfig::ms_SvMaxTeamSize)
+			if(Config()->m_SvMinTeamSize != DefaultConfig::SvMinTeamSize && Config()->m_SvMaxTeamSize != DefaultConfig::SvMaxTeamSize)
 				str_format(aBuf, sizeof(aBuf), "%s: %s (%s %d, %s %d)", Localize("Teams"), pTeamMode, Localize("minimum", "Team size"), Config()->m_SvMinTeamSize, Localize("maximum", "Team size"), Config()->m_SvMaxTeamSize);
-			else if(Config()->m_SvMinTeamSize != CConfig::ms_SvMinTeamSize)
+			else if(Config()->m_SvMinTeamSize != DefaultConfig::SvMinTeamSize)
 				str_format(aBuf, sizeof(aBuf), "%s: %s (%s %d)", Localize("Teams"), pTeamMode, Localize("minimum", "Team size"), Config()->m_SvMinTeamSize);
 			else
 				str_format(aBuf, sizeof(aBuf), "%s: %s (%s %d)", Localize("Teams"), pTeamMode, Localize("maximum", "Team size"), Config()->m_SvMaxTeamSize);
@@ -805,11 +824,9 @@ void CMenus::RenderServerInfoMotd(CUIRect Motd)
 		return;
 
 	static CScrollRegion s_ScrollRegion;
-	vec2 ScrollOffset(0.0f, 0.0f);
 	CScrollRegionParams ScrollParams;
 	ScrollParams.m_ScrollUnit = 5 * MotdFontSize;
-	s_ScrollRegion.Begin(&Motd, &ScrollOffset, &ScrollParams);
-	Motd.y += ScrollOffset.y;
+	s_ScrollRegion.Begin(&Motd, &ScrollParams);
 
 	static float s_MotdHeight = 0.0f;
 	static int64_t s_MotdLastUpdateTime = -1;
@@ -842,7 +859,7 @@ bool CMenus::RenderServerControlServer(CUIRect MainView, bool UpdateScroll)
 	int TotalShown = 0;
 
 	int i = 0;
-	for(CVoteOptionClient *pOption = GameClient()->m_Voting.m_pFirst; pOption; pOption = pOption->m_pNext, i++)
+	for(const CVoteOptionClient *pOption = GameClient()->m_Voting.FirstOption(); pOption; pOption = pOption->m_pNext, i++)
 	{
 		if(!m_FilterInput.IsEmpty() && !str_utf8_find_nocase(pOption->m_aDescription, m_FilterInput.GetString()))
 			continue;
@@ -855,7 +872,7 @@ bool CMenus::RenderServerControlServer(CUIRect MainView, bool UpdateScroll)
 	s_ListBox.DoStart(19.0f, TotalShown, 1, 3, Selected, &List);
 
 	i = 0;
-	for(CVoteOptionClient *pOption = GameClient()->m_Voting.m_pFirst; pOption; pOption = pOption->m_pNext, i++)
+	for(const CVoteOptionClient *pOption = GameClient()->m_Voting.FirstOption(); pOption; pOption = pOption->m_pNext, i++)
 	{
 		if(!m_FilterInput.IsEmpty() && !str_utf8_find_nocase(pOption->m_aDescription, m_FilterInput.GetString()))
 			continue;
@@ -1004,7 +1021,7 @@ void CMenus::RenderServerControl(CUIRect MainView)
 	{
 		if(s_ControlPage == EServerControlTab::SETTINGS)
 		{
-			if(0 <= m_CallvoteSelectedOption && m_CallvoteSelectedOption < GameClient()->m_Voting.m_NumVoteOptions)
+			if(0 <= m_CallvoteSelectedOption && m_CallvoteSelectedOption < GameClient()->m_Voting.NumOptions())
 			{
 				GameClient()->m_Voting.CallvoteOption(m_CallvoteSelectedOption, m_CallvoteReasonInput.GetString());
 				if(g_Config.m_UiCloseWindowAfterChangingSetting)
@@ -1151,7 +1168,7 @@ void CMenus::RenderInGameNetwork(CUIRect MainView)
 
 	TabBar.VSplitLeft(75.0f, &Button, &TabBar);
 	static CButtonContainer s_InternetButton;
-	if(DoButton_MenuTab(&s_InternetButton, FONT_ICON_EARTH_AMERICAS, g_Config.m_UiPage == PAGE_INTERNET, &Button, IGraphics::CORNER_NONE))
+	if(DoButton_MenuTab(&s_InternetButton, FontIcon::EARTH_AMERICAS, g_Config.m_UiPage == PAGE_INTERNET, &Button, IGraphics::CORNER_NONE))
 	{
 		NewPage = PAGE_INTERNET;
 	}
@@ -1159,7 +1176,7 @@ void CMenus::RenderInGameNetwork(CUIRect MainView)
 
 	TabBar.VSplitLeft(75.0f, &Button, &TabBar);
 	static CButtonContainer s_LanButton;
-	if(DoButton_MenuTab(&s_LanButton, FONT_ICON_NETWORK_WIRED, g_Config.m_UiPage == PAGE_LAN, &Button, IGraphics::CORNER_NONE))
+	if(DoButton_MenuTab(&s_LanButton, FontIcon::NETWORK_WIRED, g_Config.m_UiPage == PAGE_LAN, &Button, IGraphics::CORNER_NONE))
 	{
 		NewPage = PAGE_LAN;
 	}
@@ -1167,7 +1184,7 @@ void CMenus::RenderInGameNetwork(CUIRect MainView)
 
 	TabBar.VSplitLeft(75.0f, &Button, &TabBar);
 	static CButtonContainer s_FavoritesButton;
-	if(DoButton_MenuTab(&s_FavoritesButton, FONT_ICON_STAR, g_Config.m_UiPage == PAGE_FAVORITES, &Button, IGraphics::CORNER_NONE))
+	if(DoButton_MenuTab(&s_FavoritesButton, FontIcon::STAR, g_Config.m_UiPage == PAGE_FAVORITES, &Button, IGraphics::CORNER_NONE))
 	{
 		NewPage = PAGE_FAVORITES;
 	}
@@ -1180,7 +1197,7 @@ void CMenus::RenderInGameNetwork(CUIRect MainView)
 	{
 		TabBar.VSplitLeft(75.0f, &Button, &TabBar);
 		const int Page = PAGE_FAVORITE_COMMUNITY_1 + FavoriteCommunityIndex;
-		if(DoButton_MenuTab(&s_aFavoriteCommunityButtons[FavoriteCommunityIndex], FONT_ICON_ELLIPSIS, g_Config.m_UiPage == Page, &Button, IGraphics::CORNER_NONE, nullptr, nullptr, nullptr, nullptr, 10.0f, m_CommunityIcons.Find(pCommunity->Id())))
+		if(DoButton_MenuTab(&s_aFavoriteCommunityButtons[FavoriteCommunityIndex], FontIcon::ELLIPSIS, g_Config.m_UiPage == Page, &Button, IGraphics::CORNER_NONE, nullptr, nullptr, nullptr, nullptr, 10.0f, m_CommunityIcons.Find(pCommunity->Id())))
 		{
 			NewPage = Page;
 		}
@@ -1206,7 +1223,7 @@ void CMenus::RenderInGameNetwork(CUIRect MainView)
 int CMenus::GhostlistFetchCallback(const CFsFileInfo *pInfo, int IsDir, int StorageType, void *pUser)
 {
 	CMenus *pSelf = (CMenus *)pUser;
-	const char *pMap = pSelf->Client()->GetCurrentMap();
+	const char *pMap = pSelf->GameClient()->Map()->BaseName();
 	if(IsDir || !str_endswith(pInfo->m_pName, ".gho") || !str_startswith(pInfo->m_pName, pMap))
 		return 0;
 
@@ -1214,7 +1231,7 @@ int CMenus::GhostlistFetchCallback(const CFsFileInfo *pInfo, int IsDir, int Stor
 	str_format(aFilename, sizeof(aFilename), "%s/%s", pSelf->GameClient()->m_Ghost.GetGhostDir(), pInfo->m_pName);
 
 	CGhostInfo Info;
-	if(!pSelf->GameClient()->m_Ghost.GhostLoader()->GetGhostInfo(aFilename, &Info, pMap, pSelf->Client()->GetCurrentMapSha256(), pSelf->Client()->GetCurrentMapCrc()))
+	if(!pSelf->GameClient()->m_Ghost.GhostLoader()->GetGhostInfo(aFilename, &Info, pMap, pSelf->GameClient()->Map()->Sha256(), pSelf->GameClient()->Map()->Crc()))
 		return 0;
 
 	CGhostItem Item;
@@ -1417,14 +1434,14 @@ void CMenus::RenderGhost(CUIRect MainView)
 		if(!Item.m_Visible)
 			continue;
 
-		ColorRGBA rgb = ColorRGBA(1.0f, 1.0f, 1.0f);
+		ColorRGBA Color = ColorRGBA(1.0f, 1.0f, 1.0f);
 		if(pGhost->m_Own)
-			rgb = color_cast<ColorRGBA>(ColorHSLA(0.33f, 1.0f, 0.75f));
+			Color = color_cast<ColorRGBA>(ColorHSLA(0.33f, 1.0f, 0.75f));
 
 		if(pGhost->m_Failed)
-			rgb = ColorRGBA(0.6f, 0.6f, 0.6f, 1.0f);
+			Color = ColorRGBA(0.6f, 0.6f, 0.6f, 1.0f);
 
-		TextRender()->TextColor(rgb.WithAlpha(pGhost->HasFile() ? 1.0f : 0.5f));
+		TextRender()->TextColor(Color.WithAlpha(pGhost->HasFile() ? 1.0f : 0.5f));
 
 		for(int c = 0; c < NumCols; c++)
 		{
@@ -1457,13 +1474,13 @@ void CMenus::RenderGhost(CUIRect MainView)
 			else if(Id == COL_TIME)
 			{
 				char aBuf[64];
-				str_time(pGhost->m_Time / 10, TIME_HOURS_CENTISECS, aBuf, sizeof(aBuf));
+				str_time(pGhost->m_Time / 10, ETimeFormat::HOURS_CENTISECS, aBuf, sizeof(aBuf));
 				Ui()->DoLabel(&Button, aBuf, 12.0f, TEXTALIGN_ML);
 			}
 			else if(Id == COL_DATE)
 			{
 				char aBuf[64];
-				str_timestamp_ex(pGhost->m_Date, aBuf, sizeof(aBuf), FORMAT_SPACE);
+				str_timestamp_ex(pGhost->m_Date, aBuf, sizeof(aBuf), TimestampFormat::SPACE);
 				Ui()->DoLabel(&Button, aBuf, 12.0f, TEXTALIGN_ML);
 			}
 		}
@@ -1483,7 +1500,7 @@ void CMenus::RenderGhost(CUIRect MainView)
 	static CButtonContainer s_DirectoryButton;
 	static CButtonContainer s_ActivateAll;
 
-	if(Ui()->DoButton_FontIcon(&s_ReloadButton, FONT_ICON_ARROW_ROTATE_RIGHT, 0, &Button, BUTTONFLAG_LEFT) || Input()->KeyPress(KEY_F5) || (Input()->KeyPress(KEY_R) && Input()->ModifierIsPressed()))
+	if(Ui()->DoButton_FontIcon(&s_ReloadButton, FontIcon::ARROW_ROTATE_RIGHT, 0, &Button, BUTTONFLAG_LEFT) || Input()->KeyPress(KEY_F5) || (Input()->KeyPress(KEY_R) && Input()->ModifierIsPressed()))
 	{
 		GameClient()->m_Ghost.UnloadAll();
 		GhostlistPopulate();

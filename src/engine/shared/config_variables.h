@@ -14,6 +14,7 @@
 // client
 MACRO_CONFIG_INT(ClPredict, cl_predict, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Predict client movements")
 MACRO_CONFIG_INT(ClPredictDummy, cl_predict_dummy, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Predict dummy movements")
+MACRO_CONFIG_INT(ClPredictEvents, cl_predict_events, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Predict events (sounds, particles)")
 MACRO_CONFIG_INT(ClAntiPingLimit, cl_antiping_limit, 0, 0, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Adds delay to antiping (0 to disable)")
 MACRO_CONFIG_INT(ClAntiPingPercent, cl_antiping_percent, 100, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How far ahead antiping predicts, ignored when antiping limit is used")
 MACRO_CONFIG_INT(ClAntiPing, cl_antiping, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable antiping, i. e. more aggressive prediction.")
@@ -40,7 +41,7 @@ MACRO_CONFIG_INT(ClNamePlatesClanSize, cl_nameplates_clan_size, 30, -50, 100, CF
 MACRO_CONFIG_INT(ClNamePlatesSkin, cl_nameplates_skin, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show skin names in name plates")
 MACRO_CONFIG_INT(ClNamePlatesIds, cl_nameplates_ids, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show client IDs in name plates")
 MACRO_CONFIG_INT(ClNamePlatesIdsSize, cl_nameplates_ids_size, 50, -50, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of the client IDs in name plates")
-MACRO_CONFIG_INT(ClNamePlatesIdsSeperateLine, cl_nameplates_ids_seperate_line, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show client IDs on a seperate line in name plates")
+MACRO_CONFIG_INT(ClNamePlatesIdsSeparateLine, cl_nameplates_ids_seperate_line, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show client IDs on a separate line in name plates")
 MACRO_CONFIG_INT(ClNamePlatesOffset, cl_nameplates_offset, 30, 10, 50, CFGFLAG_CLIENT | CFGFLAG_SAVE, "The size of the gap between the tee and the name plate")
 
 MACRO_CONFIG_INT(ClNamePlatesOwn, cl_nameplates_own, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show own name plate (useful for demo recording)")
@@ -50,7 +51,7 @@ MACRO_CONFIG_INT(ClNamePlatesStrongSize, cl_nameplates_strong_size, 30, -50, 100
 
 MACRO_CONFIG_INT(ClAfkEmote, cl_afk_emote, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show zzz emote next to afk players")
 MACRO_CONFIG_INT(ClTextEntities, cl_text_entities, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Render textual entity data")
-MACRO_CONFIG_INT(ClTextEntitiesSize, cl_text_entities_size, 100, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of textual entity data from 1 to 100%")
+MACRO_CONFIG_INT(ClTextEntitiesSize, cl_text_entities_size, 100, 20, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Size of textual entity data from 20 to 100%")
 MACRO_CONFIG_INT(ClTextEntitiesEditor, cl_text_entities_editor, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Render textual entity data in editor")
 MACRO_CONFIG_INT(ClStreamerMode, cl_streamer_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Censor sensitive information such as /save password")
 
@@ -73,6 +74,7 @@ MACRO_CONFIG_INT(ClShowhudPlayerSpeed, cl_showhud_player_speed, 0, 0, 1, CFGFLAG
 MACRO_CONFIG_INT(ClShowhudPlayerAngle, cl_showhud_player_angle, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ingame HUD (Player Aim Angle)")
 MACRO_CONFIG_INT(ClShowhudDDRace, cl_showhud_ddrace, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Show ingame HUD (DDRace HUD)")
 MACRO_CONFIG_INT(ClShowhudJumpsIndicator, cl_showhud_jumps_indicator, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Show ingame HUD (Jumps you have and have used)")
+MACRO_CONFIG_INT(ClShowhudSpectator, cl_showhud_spectator, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Show ingame HUD (Spectator HUD)")
 MACRO_CONFIG_INT(ClShowFreezeBars, cl_show_freeze_bars, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Whether to show a freeze bar under frozen players to indicate the thaw time")
 MACRO_CONFIG_INT(ClFreezeBarsAlphaInsideFreeze, cl_freezebars_alpha_inside_freeze, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Opacity of freeze bars inside freeze (0 invisible, 100 fully visible)")
 MACRO_CONFIG_INT(ClShowRecord, cl_showrecord, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show old style DDRace client records")
@@ -213,6 +215,10 @@ MACRO_CONFIG_STR(ClDummy7SkinHands, dummy7_skin_hands, protocol7::MAX_SKIN_ARRAY
 MACRO_CONFIG_STR(ClDummy7SkinFeet, dummy7_skin_feet, protocol7::MAX_SKIN_ARRAY_SIZE, "standard", CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Dummy skin feet")
 MACRO_CONFIG_STR(ClDummy7SkinEyes, dummy7_skin_eyes, protocol7::MAX_SKIN_ARRAY_SIZE, "standard", CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Dummy skin eyes")
 
+// Client-side word censoring
+// MACRO_CONFIG_INT(ClCensorChat, cl_censor_chat, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggles chat censoring")
+// MACRO_CONFIG_STR(ClCensorUrl, cl_censor_url, 100, "https://info.ddnet.org/censor.json", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download words to censor (must start with https://)")
+
 MACRO_CONFIG_INT(UiPage, ui_page, 6, 6, 13, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Interface page")
 MACRO_CONFIG_INT(UiSettingsPage, ui_settings_page, 0, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Interface settings page")
 MACRO_CONFIG_INT(UiToolboxPage, ui_toolbox_page, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toolbox page")
@@ -273,6 +279,7 @@ MACRO_CONFIG_INT(SvVoteSpectateRejoindelay, sv_vote_spectate_rejoindelay, 3, 0, 
 MACRO_CONFIG_INT(SvVoteKick, sv_vote_kick, 1, 0, 1, CFGFLAG_SERVER, "Allow voting to kick players")
 MACRO_CONFIG_INT(SvVoteKickMin, sv_vote_kick_min, 0, 0, SERVER_MAX_CLIENTS, CFGFLAG_SERVER, "Minimum number of players required to start a kick vote")
 MACRO_CONFIG_INT(SvVoteKickBantime, sv_vote_kick_bantime, 5, 0, 1440, CFGFLAG_SERVER, "The time in minutes to ban a player if kicked by vote. 0 makes it just use kick")
+MACRO_CONFIG_INT(SvVoteKickMuteTime, sv_vote_kick_mutetime, 300, 0, 86400, CFGFLAG_SERVER, "The time in seconds to mute a player if they are voted from a different team. 0 disables muting")
 MACRO_CONFIG_INT(SvJoinVoteDelay, sv_join_vote_delay, 300, 0, 1000, CFGFLAG_SERVER, "Add a delay before recently joined players can call any vote or participate in a kick/spec vote (in seconds)")
 MACRO_CONFIG_INT(SvOldTeleportWeapons, sv_old_teleport_weapons, 0, 0, 1, CFGFLAG_SERVER | CFGFLAG_GAME, "Teleporting of all weapons (deprecated, use special entities instead)")
 MACRO_CONFIG_INT(SvOldTeleportHook, sv_old_teleport_hook, 0, 0, 1, CFGFLAG_SERVER | CFGFLAG_GAME, "Hook through teleporter (deprecated, use special entities instead)")
@@ -299,13 +306,12 @@ MACRO_CONFIG_INT(ClVideoShowChat, cl_video_showchat, 1, 0, 1, CFGFLAG_CLIENT | C
 MACRO_CONFIG_INT(ClVideoSndEnable, cl_video_sound_enable, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use sound when rendering video")
 MACRO_CONFIG_INT(ClVideoShowHookCollOther, cl_video_show_hook_coll_other, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show other players' hook collision lines when rendering video")
 MACRO_CONFIG_INT(ClVideoShowDirection, cl_video_show_direction, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show players' key presses when rendering video (1 = other players', 2 = also your own, 3 = only your own)")
-MACRO_CONFIG_INT(ClVideoX264Crf, cl_video_crf, 18, 0, 51, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Set crf when encode video with libx264 (0 for highest quality, 51 for lowest)")
-MACRO_CONFIG_INT(ClVideoX264Preset, cl_video_preset, 5, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Set preset when encode video with libx264, default is 5 (medium), 0 is ultrafast, 9 is placebo (the slowest, not recommend)")
+MACRO_CONFIG_INT(ClVideoShowImportantAlerts, cl_video_show_important_alerts, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show important alerts when rendering video")
+MACRO_CONFIG_INT(ClVideoX264Crf, cl_video_crf, 18, 0, 51, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Constant Rate Factor (CRF) for encoding videos with libx264 (0 for highest quality, 51 for lowest)")
+MACRO_CONFIG_INT(ClVideoX264Preset, cl_video_preset, 5, 0, 9, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Preset for encoding videos with libx264 (0 is ultrafast, 5 is medium, 9 is placebo (the slowest, not recommend))")
 
 // debug
-#ifdef CONF_DEBUG
-MACRO_CONFIG_INT(DbgDummies, dbg_dummies, 0, 0, SERVER_MAX_CLIENTS, CFGFLAG_SERVER, "Add debug dummies to server (Debug build only)")
-#endif
+MACRO_CONFIG_INT(DbgDummies, dbg_dummies, 0, 0, SERVER_MAX_CLIENTS, CFGFLAG_DEBUG_SERVER, "Add debug dummies to server (Debug build only)")
 
 MACRO_CONFIG_INT(DbgTuning, dbg_tuning, 0, 0, 2, CFGFLAG_CLIENT, "Display information about the tuning parameters that affect the own player (0 = off, 1 = show changed, 2 = show all)")
 
@@ -325,14 +331,14 @@ MACRO_CONFIG_INT(ConsoleOutputLevel, console_output_level, 0, -3, 2, CFGFLAG_SAV
 MACRO_CONFIG_INT(ConsoleEnableColors, console_enable_colors, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT | CFGFLAG_SERVER, "Enable colors in console output")
 
 MACRO_CONFIG_INT(ClSaveSettings, cl_save_settings, 1, 0, 1, CFGFLAG_CLIENT, "Write the settings file on exit")
-MACRO_CONFIG_INT(ClRefreshRate, cl_refresh_rate, 0, 0, 10000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Refresh rate for updating the game (in Hz)")
-MACRO_CONFIG_INT(ClRefreshRateInactive, cl_refresh_rate_inactive, 120, 0, 10000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Refresh rate for updating the game when the window is inactive (in Hz)")
+MACRO_CONFIG_INT(ClRefreshRate, cl_refresh_rate, 0, 0, 10000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Update rate for the game (in Hz)")
+MACRO_CONFIG_INT(ClRefreshRateInactive, cl_refresh_rate_inactive, 120, 0, 10000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Update rate for the game when the window is inactive (in Hz)")
 MACRO_CONFIG_INT(ClEditor, cl_editor, 0, 0, 1, CFGFLAG_CLIENT, "Open the map editor")
 MACRO_CONFIG_STR(ClSkinFilterString, cl_skin_filter_string, 25, "", CFGFLAG_SAVE | CFGFLAG_CLIENT, "Skin filtering string")
 MACRO_CONFIG_INT(ClEditorMaxHistory, cl_editor_max_history, 50, 1, 500, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Maximum number of undo actions in the editor history (not shared between editor, envelope editor and server settings editor)")
 
 MACRO_CONFIG_INT(ClAutoDemoRecord, cl_auto_demo_record, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Automatically record demos")
-MACRO_CONFIG_INT(ClAutoDemoOnConnect, cl_auto_demo_on_connect, 0, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Only start a new demo when connect while automatically record demos")
+MACRO_CONFIG_INT(ClAutoDemoOnConnect, cl_auto_demo_on_connect, 0, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "If 1, start recording a demo automatically only once when connecting. If 0, also restart automatic demo recording after every game over")
 MACRO_CONFIG_INT(ClAutoDemoMax, cl_auto_demo_max, 10, 0, 1000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Maximum number of automatically recorded demos (0 = no limit)")
 MACRO_CONFIG_INT(ClAutoScreenshot, cl_auto_screenshot, 0, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Automatically take game over screenshot")
 MACRO_CONFIG_INT(ClAutoScreenshotMax, cl_auto_screenshot_max, 10, 0, 1000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Maximum number of automatically created screenshots (0 = no limit)")
@@ -374,7 +380,7 @@ MACRO_CONFIG_INT(BrSort, br_sort, 4, 0, 256, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Sor
 MACRO_CONFIG_INT(BrSortOrder, br_sort_order, 2, 0, 2, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Sorting order in server browser")
 MACRO_CONFIG_INT(BrMaxRequests, br_max_requests, 100, 0, 1000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Number of concurrent requests to use when refreshing server browser")
 
-MACRO_CONFIG_INT(BrDemoSort, br_demo_sort, 0, 0, 2, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Sorting column in demo browser")
+MACRO_CONFIG_INT(BrDemoSort, br_demo_sort, 0, 0, 3, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Sorting column in demo browser")
 MACRO_CONFIG_INT(BrDemoSortOrder, br_demo_sort_order, 0, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Sorting order in demo browser")
 MACRO_CONFIG_INT(BrDemoFetchInfo, br_demo_fetch_info, 0, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Whether to auto fetch demo infos on refresh")
 
@@ -401,9 +407,9 @@ MACRO_CONFIG_INT(SndServerMessage, snd_servermessage, 1, 0, 1, CFGFLAG_SAVE | CF
 MACRO_CONFIG_INT(SndHighlight, snd_highlight, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Enable highlighted chat sound")
 
 MACRO_CONFIG_INT(GfxScreen, gfx_screen, 0, 0, 15, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Screen index")
-MACRO_CONFIG_INT(GfxScreenWidth, gfx_screen_width, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Screen resolution width")
-MACRO_CONFIG_INT(GfxScreenHeight, gfx_screen_height, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Screen resolution height")
-MACRO_CONFIG_INT(GfxScreenRefreshRate, gfx_screen_refresh_rate, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Screen refresh rate")
+MACRO_CONFIG_INT(GfxScreenWidth, gfx_screen_width, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Screen resolution width (only in pure fullscreen mode)")
+MACRO_CONFIG_INT(GfxScreenHeight, gfx_screen_height, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Screen resolution height (only in pure fullscreen mode)")
+MACRO_CONFIG_INT(GfxScreenRefreshRate, gfx_screen_refresh_rate, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Refresh rate for the screen (in Hz; only in pure fullscreen mode)")
 
 MACRO_CONFIG_INT(GfxDesktopWidth, gfx_desktop_width, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Desktop resolution width for detecting display changes (not recommended to change manually)")
 MACRO_CONFIG_INT(GfxDesktopHeight, gfx_desktop_height, 0, 0, 0, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Desktop resolution height for detecting display changes (not recommended to change manually)")
@@ -423,7 +429,7 @@ MACRO_CONFIG_INT(GfxVsync, gfx_vsync, 0, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "V
 MACRO_CONFIG_INT(GfxDisplayAllVideoModes, gfx_display_all_video_modes, 0, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Show all video modes")
 MACRO_CONFIG_INT(GfxHighDetail, gfx_high_detail, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "High detail")
 MACRO_CONFIG_INT(GfxFsaaSamples, gfx_fsaa_samples, 0, 0, 64, CFGFLAG_SAVE | CFGFLAG_CLIENT, "FSAA samples (may cause delay)")
-MACRO_CONFIG_INT(GfxRefreshRate, gfx_refresh_rate, 0, 0, 10000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Screen refresh rate")
+MACRO_CONFIG_INT(GfxRefreshRate, gfx_refresh_rate, 0, 0, 10000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Refresh rate for rendering frames (in Hz; limited by cl_refresh_rate)")
 MACRO_CONFIG_INT(GfxBackgroundRender, gfx_backgroundrender, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Render graphics when window is in background")
 MACRO_CONFIG_INT(GfxTextOverlay, gfx_text_overlay, 10, 1, 100, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Stop rendering textoverlay in editor or with entities: high value = less details = more speed")
 MACRO_CONFIG_INT(GfxAsyncRenderOld, gfx_asyncrender_old, 1, 0, 1, CFGFLAG_SAVE | CFGFLAG_CLIENT, "During an update cycle, skip the render cycle, if the render cycle would need to wait for the previous render cycle to finish")
@@ -444,12 +450,12 @@ MACRO_CONFIG_INT(InpControllerX, inp_controller_x, 0, 0, 12, CFGFLAG_SAVE | CFGF
 MACRO_CONFIG_INT(InpControllerY, inp_controller_y, 1, 0, 12, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Controller axis that controls Y axis of cursor")
 MACRO_CONFIG_INT(InpControllerTolerance, inp_controller_tolerance, 5, 0, 50, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Controller axis tolerance to account for jitter")
 
-MACRO_CONFIG_INT(ClPort, cl_port, 0, 0, 65535, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Port to use for client connections to server (0 to choose a random port, 1024 or higher to set a manual port, requires a restart)")
-MACRO_CONFIG_INT(ClDummyPort, cl_dummy_port, 0, 0, 65535, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Port to use for dummy connections to server (0 to choose a random port, 1024 or higher to set a manual port, requires a restart)")
-MACRO_CONFIG_INT(ClContactPort, cl_contact_port, 0, 0, 65535, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Port to use for serverinfo connections to server (0 to choose a random port, 1024 or higher to set a manual port, requires a restart)")
+MACRO_CONFIG_INT(ClPort, cl_port, 0, 0, 65535, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Port to use for client connections to server (0 to choose a random port, 1024 or higher to set a manual port)")
+MACRO_CONFIG_INT(ClDummyPort, cl_dummy_port, 0, 0, 65535, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Port to use for dummy connections to server (0 to choose a random port, 1024 or higher to set a manual port)")
+MACRO_CONFIG_INT(ClContactPort, cl_contact_port, 0, 0, 65535, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Port to use for serverinfo connections to server (0 to choose a random port, 1024 or higher to set a manual port)")
 
 MACRO_CONFIG_STR(SvName, sv_name, 128, "unnamed server", CFGFLAG_SERVER, "Server name")
-MACRO_CONFIG_STR(Bindaddr, bindaddr, 128, "", CFGFLAG_CLIENT | CFGFLAG_SERVER | CFGFLAG_MASTER, "Address to bind the client/server to")
+MACRO_CONFIG_STR(Bindaddr, bindaddr, 128, "", CFGFLAG_CLIENT | CFGFLAG_SERVER, "Address to bind the client/server to")
 MACRO_CONFIG_INT(SvIpv4Only, sv_ipv4only, 0, 0, 1, CFGFLAG_SERVER, "Whether to bind only to ipv4, otherwise bind to all available interfaces")
 MACRO_CONFIG_INT(SvPort, sv_port, 0, 0, 65535, CFGFLAG_SERVER, "Port to use for the server (Only ports 8303-8310 work in LAN server browser, 0 to automatically find a free port in 8303-8310). See sv_register_port for the external port if you're behind NAT")
 MACRO_CONFIG_STR(SvHostname, sv_hostname, 128, "", CFGFLAG_SERVER, "Server hostname (0.7 only)")
@@ -462,6 +468,9 @@ MACRO_CONFIG_STR(SvRegister, sv_register, 16, "1", CFGFLAG_SERVER, "Register ser
 MACRO_CONFIG_STR(SvRegisterExtra, sv_register_extra, 256, "", CFGFLAG_SERVER, "Extra headers to send to the register endpoint, comma-separated 'Header: Value' pairs")
 MACRO_CONFIG_STR(SvRegisterUrl, sv_register_url, 128, "https://master1.ddnet.org/ddnet/15/register", CFGFLAG_SERVER, "Masterserver URL to register to")
 MACRO_CONFIG_INT(SvRegisterPort, sv_register_port, 0, 0, 65535, CFGFLAG_SERVER, "Port for the master server to register the server with, useful if you are behind NAT, otherwise you only need sv_port")
+MACRO_CONFIG_STR(SvRegisterCommunityToken, sv_register_community_token, 128, "", CFGFLAG_SERVER, "Token to register this server to a particular community")
+MACRO_CONFIG_INT(SvFlag, sv_flag, -1, -1, 999, CFGFLAG_SERVER, "Country flag to group this community under (ISO 3166-1 numeric)")
+MACRO_CONFIG_STR(SvOfficialTutorial, sv_official_tutorial, 128, "", CFGFLAG_SERVER, "Don't set this, used to mark official tutorial servers")
 MACRO_CONFIG_STR(SvMapsBaseUrl, sv_maps_base_url, 128, "", CFGFLAG_SERVER, "Base path used to provide HTTPS map download URL to the clients")
 MACRO_CONFIG_STR(SvRconPassword, sv_rcon_password, 128, "", CFGFLAG_SERVER | CFGFLAG_NONTEEHISTORIC, "Remote console password (full access)")
 MACRO_CONFIG_STR(SvRconModPassword, sv_rcon_mod_password, 128, "", CFGFLAG_SERVER | CFGFLAG_NONTEEHISTORIC, "Remote console password for moderators (limited access)")
@@ -481,7 +490,7 @@ MACRO_CONFIG_STR(SvDnsblBanReason, sv_dnsbl_ban_reason, 128, "VPN detected, try 
 MACRO_CONFIG_INT(SvDnsblChat, sv_dnsbl_chat, 0, 0, 1, CFGFLAG_SERVER, "Don't allow chat from blacklisted addresses")
 MACRO_CONFIG_INT(SvRconVote, sv_rcon_vote, 0, 0, 1, CFGFLAG_SERVER, "Only allow authed clients to call votes")
 
-MACRO_CONFIG_INT(SvPlayerDemoRecord, sv_player_demo_record, 0, 0, 1, CFGFLAG_SERVER, "Automatically record demos for each player")
+MACRO_CONFIG_INT(SvPlayerDemoRecord, sv_player_demo_record, 0, 0, 1, CFGFLAG_SERVER, "Automatically record a demo when a player sets a new personal best time.")
 MACRO_CONFIG_INT(SvDemoChat, sv_demo_chat, 0, 0, 1, CFGFLAG_SERVER, "Record chat for demos")
 MACRO_CONFIG_INT(SvServerInfoPerSecond, sv_server_info_per_second, 50, 0, 10000, CFGFLAG_SERVER, "Maximum number of complete server info responses that are sent out per second (0 for no limit)")
 MACRO_CONFIG_INT(SvVanConnPerSecond, sv_van_conn_per_second, 10, 0, 10000, CFGFLAG_SERVER, "Antispoof specific ratelimit (0 for no limit)")
@@ -500,11 +509,15 @@ MACRO_CONFIG_INT(DbgSql, dbg_sql, 1, 0, 1, CFGFLAG_SERVER, "Debug SQL")
 MACRO_CONFIG_INT(DbgCurl, dbg_curl, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SERVER, "Debug curl")
 MACRO_CONFIG_INT(DbgGraphs, dbg_graphs, 0, 0, 1, CFGFLAG_CLIENT, "Show performance graphs")
 MACRO_CONFIG_INT(DbgGfx, dbg_gfx, 0, 0, 4, CFGFLAG_CLIENT, "Show graphic library warnings and errors, if the GPU supports it (0: none, 1: minimal, 2: affects performance, 3: verbose, 4: all)")
-MACRO_CONFIG_INT(DbgRenderLayers, dbg_render_layers, 0, 0, 3, CFGFLAG_CLIENT, "Debug map layer rendering (0: off, 1: group clips, 2: automatic quad clips; bitwise")
-#ifdef CONF_DEBUG
-MACRO_CONFIG_INT(DbgStress, dbg_stress, 0, 0, 1, CFGFLAG_CLIENT, "Stress systems (Debug build only)")
-MACRO_CONFIG_STR(DbgStressServer, dbg_stress_server, 32, "localhost", CFGFLAG_CLIENT, "Server to stress (Debug build only)")
+#if defined(CONF_WEBSOCKETS)
+MACRO_CONFIG_INT(DbgWebsockets, dbg_websockets, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SERVER, "Debug websockets")
 #endif
+MACRO_CONFIG_INT(DbgRenderGroupClips, dbg_render_group_clips, 0, 0, 1, CFGFLAG_CLIENT, "Debug group clipping")
+MACRO_CONFIG_INT(DbgRenderQuadClips, dbg_render_quad_clips, 0, 0, 1, CFGFLAG_CLIENT, "Debug quad layer clipping")
+MACRO_CONFIG_INT(DbgRenderClusterClips, dbg_render_cluster_clips, 0, 0, 1, CFGFLAG_CLIENT, "Debug quad layer cluster clipping")
+MACRO_CONFIG_INT(DbgRenderTileClips, dbg_render_tile_clips, 0, 0, 1, CFGFLAG_CLIENT, "Debug tile layer clipping")
+MACRO_CONFIG_INT(DbgStress, dbg_stress, 0, 0, 1, CFGFLAG_DEBUG_CLIENT, "Stress systems (Debug build only)")
+MACRO_CONFIG_STR(DbgStressServer, dbg_stress_server, 32, "localhost", CFGFLAG_DEBUG_CLIENT, "Server to stress (Debug build only)")
 
 MACRO_CONFIG_INT(HttpAllowInsecure, http_allow_insecure, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SERVER, "Allow insecure HTTP protocol in addition to the secure HTTPS one. Mostly useful for testing.")
 
@@ -517,7 +530,7 @@ MACRO_CONFIG_INT(SvHit, sv_hit, 1, 0, 1, CFGFLAG_SERVER | CFGFLAG_GAME, "Whether
 MACRO_CONFIG_INT(SvEndlessDrag, sv_endless_drag, 0, 0, 1, CFGFLAG_SERVER | CFGFLAG_GAME, "Turns endless hooking on/off")
 MACRO_CONFIG_INT(SvTestingCommands, sv_test_cmds, 0, 0, 1, CFGFLAG_SERVER, "Turns testing commands aka cheats on/off (setting only works in initial config)")
 MACRO_CONFIG_INT(SvFreezeDelay, sv_freeze_delay, 3, 1, 30, CFGFLAG_SERVER | CFGFLAG_GAME, "How many seconds the players will remain frozen (applies to all except delayed freeze in switch layer & deepfreeze)")
-MACRO_CONFIG_INT(ClDDRaceBindsSet, cl_race_binds_set, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "What level the DDRace binds are set to (this is automated, you don't need to use this)")
+MACRO_CONFIG_INT(ClDDRaceBindsSet, cl_race_binds_set, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "What level the DDRace binds are set to (this is automated, you don't need to use this)")
 MACRO_CONFIG_INT(SvEndlessSuperHook, sv_endless_super_hook, 0, 0, 1, CFGFLAG_SERVER, "Endless hook for super players on/off")
 MACRO_CONFIG_INT(SvHideScore, sv_hide_score, 0, 0, 1, CFGFLAG_SERVER, "Whether players scores will be announced or not")
 MACRO_CONFIG_INT(SvSaveWorseScores, sv_save_worse_scores, 1, 0, 1, CFGFLAG_SERVER | CFGFLAG_GAME, "Whether to save worse scores when you already have a better one")
@@ -585,7 +598,7 @@ MACRO_CONFIG_INT(SvMinTeamSize, sv_min_team_size, 2, 1, SERVER_MAX_CLIENTS, CFGF
 MACRO_CONFIG_INT(SvMaxTeamSize, sv_max_team_size, SERVER_MAX_CLIENTS, 1, SERVER_MAX_CLIENTS, CFGFLAG_SERVER | CFGFLAG_GAME, "Maximum team size")
 MACRO_CONFIG_INT(SvMapVote, sv_map_vote, 1, 0, 1, CFGFLAG_SERVER, "Whether to allow /map")
 
-MACRO_CONFIG_STR(SvAnnouncementFileName, sv_announcement_filename, IO_MAX_PATH_LENGTH, "announcement.txt", CFGFLAG_SERVER, "File which contains the announcements, one on each line")
+MACRO_CONFIG_STR(SvAnnouncementFilename, sv_announcement_filename, IO_MAX_PATH_LENGTH, "announcement.txt", CFGFLAG_SERVER, "File which contains the announcements, one on each line")
 MACRO_CONFIG_INT(SvAnnouncementInterval, sv_announcement_interval, 120, 1, 9999, CFGFLAG_SERVER, "The time (minutes) for how often an announcement will be displayed from the announcement file")
 MACRO_CONFIG_INT(SvAnnouncementRandom, sv_announcement_random, 1, 0, 1, CFGFLAG_SERVER, "Whether announcements are sequential or random")
 
@@ -634,13 +647,13 @@ MACRO_CONFIG_INT(ClRaceShowGhost, cl_race_show_ghost, 1, 0, 1, CFGFLAG_CLIENT | 
 MACRO_CONFIG_INT(ClRaceSaveGhost, cl_race_save_ghost, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Save ghost")
 MACRO_CONFIG_INT(ClRaceGhostStrictMap, cl_race_ghost_strict_map, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Match ghosts by map version instead of only map name")
 MACRO_CONFIG_INT(ClRaceGhostSaveBest, cl_race_ghost_save_best, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Save only ghosts that are better than the previous record.")
-MACRO_CONFIG_INT(ClRaceGhostAlpha, cl_race_ghost_alpha, 40, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visbility of ghosts (alpha value, 0 invisible, 100 fully visible)")
+MACRO_CONFIG_INT(ClRaceGhostAlpha, cl_race_ghost_alpha, 40, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Visibility of ghosts (alpha value, 0 invisible, 100 fully visible)")
 
 MACRO_CONFIG_INT(SvResetPickups, sv_reset_pickups, 0, 0, 1, CFGFLAG_SERVER | CFGFLAG_GAME, "Whether the weapons are reset on passing the start tile or not")
 MACRO_CONFIG_INT(ClShowOthers, cl_show_others, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show players in other teams (2 to show own team only)")
 MACRO_CONFIG_INT(ClShowOthersAlpha, cl_show_others_alpha, 40, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show players in other teams (alpha value, 0 invisible, 100 fully visible)")
 MACRO_CONFIG_INT(ClOverlayEntities, cl_overlay_entities, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Overlay game tiles with a percentage of opacity")
-MACRO_CONFIG_INT(ClShowQuads, cl_showquads, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show quads (only interesting for mappers, or if your system has extremely bad performance)")
+MACRO_CONFIG_INT(ClShowQuads, cl_showquads, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show background quads (only interesting for mappers, or if your system has extremely bad performance)")
 MACRO_CONFIG_COL(ClBackgroundColor, cl_background_color, 128, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Background color") // 0 0 128
 MACRO_CONFIG_COL(ClBackgroundEntitiesColor, cl_background_entities_color, 128, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Background (entities) color") // 0 0 128
 MACRO_CONFIG_STR(ClBackgroundEntities, cl_background_entities, IO_MAX_PATH_LENGTH, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Background (entities)")
@@ -687,7 +700,7 @@ MACRO_CONFIG_STR(SvBannedVersions, sv_banned_versions, 128, "", CFGFLAG_SERVER, 
 
 // netlimit
 MACRO_CONFIG_INT(SvNetlimit, sv_netlimit, 0, 0, 10000, CFGFLAG_SERVER, "Netlimit: Maximum amount of traffic a client is allowed to use (in kb/s)")
-MACRO_CONFIG_INT(SvNetlimitAlpha, sv_netlimit_alpha, 50, 1, 100, CFGFLAG_SERVER, "Netlimit: Alpha of Exponention moving average")
+MACRO_CONFIG_INT(SvNetlimitAlpha, sv_netlimit_alpha, 50, 1, 100, CFGFLAG_SERVER, "Netlimit: Alpha of Exponentiation moving average")
 
 MACRO_CONFIG_INT(SvConnlimit, sv_connlimit, 5, 0, 100, CFGFLAG_SERVER, "Connlimit: Number of connections an IP is allowed to do in a timespan")
 MACRO_CONFIG_INT(SvConnlimitTime, sv_connlimit_time, 20, 0, 1000, CFGFLAG_SERVER, "Connlimit: Time in which IP's connections are counted")
@@ -696,7 +709,8 @@ MACRO_CONFIG_INT(SvConnlimitTime, sv_connlimit_time, 20, 0, 1000, CFGFLAG_SERVER
 MACRO_CONFIG_STR(SvConnLoggingServer, sv_conn_logging_server, 128, "", CFGFLAG_SERVER, "Unix socket server for IP address logging (Unix only)")
 #endif
 
-MACRO_CONFIG_INT(ClUnpredictedShadow, cl_unpredicted_shadow, 0, -1, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show unpredicted shadow tee (0 = off, 1 = on, -1 = don't even show in debug mode)")
+MACRO_CONFIG_INT(ClUnpredictedShadow, cl_unpredicted_shadow, 0, 0, 3, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show unpredicted shadow tee (0 = off, 1 = self, 2 = only others, 3 = all)")
+MACRO_CONFIG_INT(ClUnpredictedShadowAlpha, cl_unpredicted_shadow_alpha, 10, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show unpredicted shadow tee (alpha value, 0 invisible, 100 fully visible)")
 MACRO_CONFIG_INT(ClPredictFreeze, cl_predict_freeze, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Predict freeze tiles (0 = off, 1 = on, 2 = partial (allow a small amount of movement in freeze)")
 MACRO_CONFIG_INT(ClShowNinja, cl_show_ninja, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show ninja skin")
 MACRO_CONFIG_INT(ClShowHookCollOther, cl_show_hook_coll_other, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show other players' hook collision line (2 to always show)")
@@ -708,6 +722,7 @@ MACRO_CONFIG_INT(ClHookCollAlpha, cl_hook_coll_alpha, 100, 0, 100, CFGFLAG_CLIEN
 MACRO_CONFIG_COL(ClHookCollColorNoColl, cl_hook_coll_color_no_coll, 65407, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Specifies the color of a hookline that hits nothing.")
 MACRO_CONFIG_COL(ClHookCollColorHookableColl, cl_hook_coll_color_hookable_coll, 6401973, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Specifies the color of a hookline that hits hookable tiles.")
 MACRO_CONFIG_COL(ClHookCollColorTeeColl, cl_hook_coll_color_tee_coll, 2817919, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Specifies the color of a hookline that hits tees.")
+MACRO_CONFIG_COL(ClHookCollTipColor, cl_hook_coll_tip_color, 2150367104, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Specifies the color of the hookline tip")
 
 MACRO_CONFIG_INT(ClChatTeamColors, cl_chat_teamcolors, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show names in chat in team colors")
 MACRO_CONFIG_INT(ClChatReset, cl_chat_reset, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Reset chat when pressing escape")

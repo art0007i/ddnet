@@ -9,6 +9,27 @@
 #define DEFAULT_BTN []() -> int { return -1; }
 
 REGISTER_QUICK_ACTION(
+	ShowHelp,
+	"Show help",
+	[&]() { ShowHelp(); },
+	ALWAYS_FALSE,
+	ALWAYS_FALSE,
+	DEFAULT_BTN,
+	"[F1] Open the DDNet Wiki page for the map editor in a web browser.")
+REGISTER_QUICK_ACTION(
+	BrushPicker,
+	"Brush picker",
+	[&]() { m_ShowPickerToggle = !m_ShowPickerToggle; },
+	[&]() -> bool {
+		return m_Mode != MODE_LAYERS ||
+		       Map()->m_vSelectedLayers.size() != 1 ||
+		       Map()->SelectedLayer(0) == nullptr ||
+		       (Map()->SelectedLayer(0)->m_Type != LAYERTYPE_TILES && Map()->SelectedLayer(0)->m_Type != LAYERTYPE_QUADS);
+	},
+	[&]() -> bool { return m_ShowPickerToggle; },
+	DEFAULT_BTN,
+	"[Ctrl+Space, Hold Space] Toggle brush picker.")
+REGISTER_QUICK_ACTION(
 	ToggleGrid,
 	"Toggle grid",
 	[&]() { MapView()->MapGrid()->Toggle(); },
@@ -139,7 +160,7 @@ REGISTER_QUICK_ACTION(
 REGISTER_QUICK_ACTION(
 	ZoomOut,
 	"Zoom out",
-	[&]() { MapView()->Zoom()->ChangeValue(50.0f); },
+	[&]() { MapView()->Zoom()->ScaleValue(1.331f); },
 	ALWAYS_FALSE,
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
@@ -147,7 +168,7 @@ REGISTER_QUICK_ACTION(
 REGISTER_QUICK_ACTION(
 	ZoomIn,
 	"Zoom in",
-	[&]() { MapView()->Zoom()->ChangeValue(-50.0f); },
+	[&]() { MapView()->Zoom()->ScaleValue(1.0f / 1.331f); },
 	ALWAYS_FALSE,
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
@@ -174,7 +195,7 @@ REGISTER_QUICK_ACTION(
 	AddSwitchLayer,
 	"Add switch layer",
 	[&]() { AddSwitchLayer(); },
-	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || m_Map.m_pSwitchLayer; },
+	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pSwitchLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new switch layer.")
@@ -182,7 +203,7 @@ REGISTER_QUICK_ACTION(
 	AddTuneLayer,
 	"Add tune layer",
 	[&]() { AddTuneLayer(); },
-	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || m_Map.m_pTuneLayer; },
+	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pTuneLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new tuning layer.")
@@ -190,7 +211,7 @@ REGISTER_QUICK_ACTION(
 	AddSpeedupLayer,
 	"Add speedup layer",
 	[&]() { AddSpeedupLayer(); },
-	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || m_Map.m_pSpeedupLayer; },
+	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pSpeedupLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new speedup layer.")
@@ -198,7 +219,7 @@ REGISTER_QUICK_ACTION(
 	AddTeleLayer,
 	"Add tele layer",
 	[&]() { AddTeleLayer(); },
-	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || m_Map.m_pTeleLayer; },
+	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pTeleLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new tele layer.")
@@ -206,7 +227,7 @@ REGISTER_QUICK_ACTION(
 	AddFrontLayer,
 	"Add front layer",
 	[&]() { AddFrontLayer(); },
-	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || m_Map.m_pFrontLayer; },
+	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pFrontLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new item layer.")
@@ -219,7 +240,7 @@ REGISTER_QUICK_ACTION(
 	"Save as",
 	[&]() {
 		char aDefaultName[IO_MAX_PATH_LENGTH];
-		fs_split_file_extension(fs_filename(m_aFileName), aDefaultName, sizeof(aDefaultName));
+		fs_split_file_extension(fs_filename(Map()->m_aFilename), aDefaultName, sizeof(aDefaultName));
 		m_FileBrowser.ShowFileDialog(IStorage::TYPE_SAVE, CFileBrowser::EFileType::MAP, "Save map", "Save as", "maps", aDefaultName, CallbackSaveMap, this);
 	},
 	ALWAYS_FALSE,
@@ -292,7 +313,6 @@ REGISTER_QUICK_ACTION(
 	"Show info: Off",
 	[&]() {
 		m_ShowTileInfo = SHOW_TILE_OFF;
-		m_ShowEnvelopePreview = SHOWENV_NONE;
 	},
 	ALWAYS_FALSE,
 	[&]() -> bool { return m_ShowTileInfo == SHOW_TILE_OFF; },
@@ -303,7 +323,6 @@ REGISTER_QUICK_ACTION(
 	"Show info: Dec",
 	[&]() {
 		m_ShowTileInfo = SHOW_TILE_DECIMAL;
-		m_ShowEnvelopePreview = SHOWENV_NONE;
 	},
 	ALWAYS_FALSE,
 	[&]() -> bool { return m_ShowTileInfo == SHOW_TILE_DECIMAL; },
@@ -314,21 +333,31 @@ REGISTER_QUICK_ACTION(
 	"Show info: Hex",
 	[&]() {
 		m_ShowTileInfo = SHOW_TILE_HEXADECIMAL;
-		m_ShowEnvelopePreview = SHOWENV_NONE;
 	},
 	ALWAYS_FALSE,
 	[&]() -> bool { return m_ShowTileInfo == SHOW_TILE_HEXADECIMAL; },
 	DEFAULT_BTN,
 	"[Ctrl+Shift+I] Show tile information in hexadecimal.")
 REGISTER_QUICK_ACTION(
+	PreviewQuadEnvelopes,
+	"Preview quad envelopes",
+	[&]() {
+		m_ShowEnvelopePreview = !m_ShowEnvelopePreview;
+		m_ActiveEnvelopePreview = EEnvelopePreview::NONE;
+	},
+	ALWAYS_FALSE,
+	[&]() -> bool { return m_ShowEnvelopePreview; },
+	DEFAULT_BTN,
+	"Toggle previewing the paths of quads with a position envelope when a quad layer is selected.")
+REGISTER_QUICK_ACTION(
 	DeleteLayer,
 	"Delete layer",
 	[&]() { DeleteSelectedLayer(); },
 	[&]() -> bool {
-		std::shared_ptr<CLayer> pCurrentLayer = GetSelectedLayer(0);
+		std::shared_ptr<CLayer> pCurrentLayer = Map()->SelectedLayer(0);
 		if(!pCurrentLayer)
 			return true;
-		return m_Map.m_pGameLayer == pCurrentLayer;
+		return Map()->m_pGameLayer == pCurrentLayer;
 	},
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
@@ -354,7 +383,7 @@ REGISTER_QUICK_ACTION(
 	"Add quad",
 	[&]() { AddQuadOrSound(); },
 	[&]() -> bool {
-		std::shared_ptr<CLayer> pLayer = GetSelectedLayer(0);
+		std::shared_ptr<CLayer> pLayer = Map()->SelectedLayer(0);
 		if(!pLayer)
 			return false;
 		return pLayer->m_Type != LAYERTYPE_QUADS;
@@ -367,7 +396,7 @@ REGISTER_QUICK_ACTION(
 	"Add sound source",
 	[&]() { AddQuadOrSound(); },
 	[&]() -> bool {
-		std::shared_ptr<CLayer> pLayer = GetSelectedLayer(0);
+		std::shared_ptr<CLayer> pLayer = Map()->SelectedLayer(0);
 		if(!pLayer)
 			return false;
 		return pLayer->m_Type != LAYERTYPE_SOUNDS;

@@ -1,18 +1,20 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 
-#include <engine/shared/config.h>
+#include "camera.h"
+
+#include "controls.h"
 
 #include <base/log.h>
 #include <base/math.h>
 #include <base/vmath.h>
+
+#include <engine/shared/config.h>
+
 #include <game/client/gameclient.h>
 #include <game/collision.h>
 #include <game/localization.h>
 #include <game/mapitems.h>
-
-#include "camera.h"
-#include "controls.h"
 
 #include <limits>
 
@@ -28,7 +30,7 @@ CCamera::CCamera()
 	m_GotoSwitchLastPos = ivec2(-1, -1);
 	m_GotoTeleLastPos = ivec2(-1, -1);
 
-	mem_zero(m_aLastPos, sizeof(m_aLastPos));
+	std::fill(std::begin(m_aLastPos), std::end(m_aLastPos), vec2(0.0f, 0.0f));
 	m_PrevCenter = vec2(0, 0);
 	m_Center = vec2(0, 0);
 
@@ -39,7 +41,7 @@ CCamera::CCamera()
 
 	m_LastTargetPos = vec2(0, 0);
 	m_DyncamTargetCameraOffset = vec2(0, 0);
-	mem_zero(m_aDyncamCurrentCameraOffset, sizeof(m_aDyncamCurrentCameraOffset));
+	std::fill(std::begin(m_aDyncamCurrentCameraOffset), std::end(m_aDyncamCurrentCameraOffset), vec2(0.0f, 0.0f));
 	m_DyncamSmoothingSpeedBias = 0.5f;
 
 	m_AutoSpecCamera = true;
@@ -47,7 +49,7 @@ CCamera::CCamera()
 	m_CanUseCameraInfo = false;
 	m_UsingAutoSpecCamera = false;
 
-	mem_zero(m_aAutoSpecCameraTooltip, sizeof(m_aAutoSpecCameraTooltip));
+	m_aAutoSpecCameraTooltip[0] = '\0';
 }
 
 float CCamera::CameraSmoothingProgress(float CurrentTime) const
@@ -114,7 +116,7 @@ void CCamera::ResetAutoSpecCamera()
 
 void CCamera::UpdateCamera()
 {
-	// use hardcoded smooth camera for spectating unless player explictly turn it off
+	// use hardcoded smooth camera for spectating unless player explicitly turn it off
 	bool CanUseCameraInfo = !GameClient()->m_MultiViewActivated;
 	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
 	{
@@ -323,6 +325,7 @@ void CCamera::OnRender()
 		{
 			m_aLastPos[g_Config.m_ClDummy] = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
 			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = m_PrevCenter;
+			GameClient()->m_Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::AUTOMATED;
 			GameClient()->m_Controls.ClampMousePos();
 			m_CamType = CAMTYPE_SPEC;
 		}
@@ -333,6 +336,7 @@ void CCamera::OnRender()
 		if(m_CamType != CAMTYPE_PLAYER)
 		{
 			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = m_aLastPos[g_Config.m_ClDummy];
+			GameClient()->m_Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::AUTOMATED;
 			GameClient()->m_Controls.ClampMousePos();
 			m_CamType = CAMTYPE_PLAYER;
 		}
@@ -345,6 +349,7 @@ void CCamera::OnRender()
 
 	if(m_ForceFreeview && m_CamType == CAMTYPE_SPEC)
 	{
+		GameClient()->m_Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::AUTOMATED;
 		m_Center = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = m_ForceFreeviewPos;
 		m_ForceFreeview = false;
 	}

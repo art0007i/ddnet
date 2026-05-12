@@ -1,20 +1,23 @@
 #ifndef ENGINE_SHARED_HTTP_H
 #define ENGINE_SHARED_HTTP_H
 
+#include <base/dbg.h>
 #include <base/hash_ctxt.h>
-#include <base/system.h>
+#include <base/mem.h>
+#include <base/str.h>
+#include <base/types.h>
 
+#include <engine/http.h>
 #include <engine/shared/jobs.h>
 
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
+#include <cstdlib>
 #include <deque>
 #include <mutex>
 #include <optional>
 #include <unordered_map>
-
-#include <engine/http.h>
 
 typedef struct _json_value json_value;
 class IStorage;
@@ -76,8 +79,7 @@ class CHttpRequest : public IHttpRequest
 			return "POST";
 		}
 
-		dbg_assert(false, "unreachable");
-		dbg_break();
+		dbg_assert_failed("unreachable");
 	}
 
 	char m_aUrl[256] = {0};
@@ -94,9 +96,9 @@ class CHttpRequest : public IHttpRequest
 	int64_t m_IfModifiedSince = -1;
 	REQUEST m_Type = REQUEST::GET;
 
-	SHA256_DIGEST m_ActualSha256 = SHA256_ZEROED;
+	std::optional<SHA256_DIGEST> m_ActualSha256;
 	SHA256_CTX m_ActualSha256Ctx;
-	SHA256_DIGEST m_ExpectedSha256 = SHA256_ZEROED;
+	std::optional<SHA256_DIGEST> m_ExpectedSha256;
 
 	bool m_WriteToMemory = true;
 	bool m_WriteToFile = false;
@@ -305,8 +307,7 @@ void EscapeUrl(char (&aBuf)[N], const char *pStr)
 
 bool HttpHasIpresolveBug();
 
-// In an ideal world this would be a kernel interface
-class CHttp : public IHttp
+class CHttp : public IEngineHttp
 {
 	enum EState
 	{
@@ -333,13 +334,13 @@ class CHttp : public IHttp
 	void RunLoop();
 
 public:
-	// Startup
-	bool Init(std::chrono::milliseconds ShutdownDelay);
+	// Lifecycle
+	bool Init(std::chrono::milliseconds ShutdownDelay) override;
+	void Shutdown() override;
+	~CHttp() override;
 
 	// User
 	void Run(std::shared_ptr<IHttpRequest> pRequest) override;
-	void Shutdown() override;
-	~CHttp();
 };
 
 #endif // ENGINE_SHARED_HTTP_H

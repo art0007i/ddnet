@@ -17,19 +17,19 @@ enum ERenderType
 	RENDERTYPE_BACKGROUND_FORCE,
 	RENDERTYPE_FOREGROUND,
 	RENDERTYPE_FULL_DESIGN,
-	RENDERTYPE_ALL = -1,
 };
 
 class IEnvelopeEval
 {
 public:
 	virtual ~IEnvelopeEval() = default;
-	virtual void EnvelopeEval(int TimeOffsetMillis, int Env, ColorRGBA &Result, size_t Channels) = 0;
+	virtual void EnvelopeEval(int TimeOffsetMillis, int EnvelopeIndex, ColorRGBA &Result, size_t Channels) = 0;
 };
 
 class IMapImages
 {
 public:
+	virtual ~IMapImages() = default;
 	virtual IGraphics::CTextureHandle Get(int Index) const = 0;
 	virtual int Num() const = 0;
 	// DDRace

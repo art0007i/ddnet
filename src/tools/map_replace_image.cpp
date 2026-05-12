@@ -1,8 +1,12 @@
 /* (c) DDNet developers. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.  */
 
+#include <base/dbg.h>
+#include <base/fs.h>
+#include <base/io.h>
 #include <base/logger.h>
-#include <base/system.h>
+#include <base/os.h>
+#include <base/str.h>
 
 #include <engine/gfx/image_loader.h>
 #include <engine/shared/datafile.h>
@@ -57,7 +61,7 @@ static void *ReplaceImageItem(int Index, CMapItemImage *pImgItem, const char *pI
 	pNewImgItem->m_Height = ImgInfo.m_Height;
 
 	g_NewNameId = pImgItem->m_ImageName;
-	IStorage::StripPathAndExtension(pImgFile, g_aNewName, sizeof(g_aNewName));
+	fs_split_file_extension(fs_filename(pImgFile), g_aNewName, sizeof(g_aNewName));
 	g_NewDataId = pImgItem->m_ImageData;
 	g_pNewData = ImgInfo.m_pData;
 	g_NewDataSize = ImgInfo.DataSize();
@@ -86,21 +90,21 @@ int main(int argc, const char **argv)
 		return -1;
 	}
 
-	const char *pSourceFileName = argv[1];
-	const char *pDestFileName = argv[2];
+	const char *pSourceFilename = argv[1];
+	const char *pDestFilename = argv[2];
 	const char *pImageName = argv[3];
 	const char *pImageFile = argv[4];
 
-	if(!g_DataReader.Open(pStorage.get(), pSourceFileName, IStorage::TYPE_ALL))
+	if(!g_DataReader.Open(pStorage.get(), pSourceFilename, IStorage::TYPE_ALL))
 	{
-		dbg_msg("map_replace_image", "failed to open source map. filename='%s'", pSourceFileName);
+		dbg_msg("map_replace_image", "failed to open source map. filename='%s'", pSourceFilename);
 		return -1;
 	}
 
 	CDataFileWriter Writer;
-	if(!Writer.Open(pStorage.get(), pDestFileName))
+	if(!Writer.Open(pStorage.get(), pDestFilename))
 	{
-		dbg_msg("map_replace_image", "failed to open destination map. filename='%s'", pDestFileName);
+		dbg_msg("map_replace_image", "failed to open destination map. filename='%s'", pDestFilename);
 		return -1;
 	}
 
@@ -134,7 +138,7 @@ int main(int argc, const char **argv)
 
 	if(g_NewDataId == -1)
 	{
-		dbg_msg("map_replace_image", "image '%s' not found on source map '%s'.", pImageName, pSourceFileName);
+		dbg_msg("map_replace_image", "image '%s' not found on source map '%s'.", pImageName, pSourceFilename);
 		return -1;
 	}
 

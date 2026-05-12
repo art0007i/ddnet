@@ -1,10 +1,15 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "lineinput.h"
+
+#include "ui.h"
+
+#include <base/dbg.h>
+#include <base/mem.h>
+#include <base/str.h>
+
 #include <engine/keys.h>
 #include <engine/shared/config.h>
-
-#include "lineinput.h"
-#include "ui.h"
 
 IInput *CLineInput::ms_pInput = nullptr;
 ITextRender *CLineInput::ms_pTextRender = nullptr;
@@ -592,7 +597,6 @@ void CLineInput::RenderCandidates()
 
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
-	Graphics()->BlendNormal();
 
 	// Draw window shadow
 	Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.8f);
@@ -683,8 +687,7 @@ void CLineInputNumber::SetInteger(int Number, int Base, int HexPrefix)
 		str_format(aBuf, sizeof(aBuf), "%0*X", HexPrefix, Number);
 		break;
 	default:
-		dbg_assert(false, "Base unsupported");
-		return;
+		dbg_assert_failed("Base %d unsupported", Base);
 	}
 	if(str_comp(aBuf, GetString()) != 0)
 		Set(aBuf);
@@ -707,8 +710,7 @@ void CLineInputNumber::SetInteger64(int64_t Number, int Base, int HexPrefix)
 		str_format(aBuf, sizeof(aBuf), "%0*" PRIX64, HexPrefix, Number);
 		break;
 	default:
-		dbg_assert(false, "Base unsupported");
-		return;
+		dbg_assert_failed("Base %d unsupported", Base);
 	}
 	if(str_comp(aBuf, GetString()) != 0)
 		Set(aBuf);

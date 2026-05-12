@@ -70,7 +70,7 @@ protected:
 	CLogFilter m_Filter;
 
 public:
-	virtual ~ILogger() {}
+	virtual ~ILogger() = default;
 
 	/**
 	 * Set a new filter. It's up to the logger implementation to actually
@@ -131,9 +131,10 @@ void log_set_global_logger(ILogger *logger);
  * threads.
  *
  * This is logging to stdout on most platforms and to the system log on
- * Android.
+ * Android. Discards log messages if stdout is not available.
  *
  * @see log_set_global_logger
+ * @see log_logger_default
  */
 void log_set_global_logger_default();
 
@@ -189,6 +190,14 @@ std::unique_ptr<ILogger> log_logger_collection(std::vector<std::shared_ptr<ILogg
 /**
  * @ingroup Log
  *
+ * Sane default logger. This is logging to stdout on most platforms and to the
+ * system log on Android. Discards log messages if stdout is not available.
+ */
+std::unique_ptr<ILogger> log_logger_default();
+
+/**
+ * @ingroup Log
+ *
  * Logger for writing logs to the given file.
  *
  * @param file File to write to, must be opened for writing.
@@ -199,6 +208,8 @@ std::unique_ptr<ILogger> log_logger_file(IOHANDLE file);
  * @ingroup Log
  *
  * Logger for writing logs to the standard output (stdout).
+ *
+ * @remark This function can return `nullptr` if the standard output is not available.
  */
 std::unique_ptr<ILogger> log_logger_stdout();
 
@@ -293,8 +304,8 @@ public:
 	}
 	~CLogScope()
 	{
-		//dbg_assert(log_get_scope_logger() == new_scope_logger, "loggers weren't properly scoped");
 		log_set_scope_logger(old_scope_logger);
 	}
+	CLogScope(const CLogScope &) = delete;
 };
 #endif // BASE_LOGGER_H

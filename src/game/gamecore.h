@@ -3,10 +3,9 @@
 #ifndef GAME_GAMECORE_H
 #define GAME_GAMECORE_H
 
-#include <base/vmath.h>
+#include "prng.h"
 
-#include <set>
-#include <vector>
+#include <base/vmath.h>
 
 #include <engine/shared/protocol.h>
 
@@ -14,7 +13,8 @@
 
 #include <game/teamscore.h>
 
-#include "prng.h"
+#include <set>
+#include <vector>
 
 class CCollision;
 class CTeamsCore;
@@ -46,7 +46,7 @@ class CTuningParams
 public:
 	CTuningParams()
 	{
-#define MACRO_TUNING_PARAM(Name, ScriptName, Value, Description) m_##Name.Set((int)((Value)*100.0f));
+#define MACRO_TUNING_PARAM(Name, ScriptName, Value, Description) m_##Name.Set((int)((Value) * 100.0f));
 #include "tuning.h"
 #undef MACRO_TUNING_PARAM
 	}
@@ -59,6 +59,8 @@ public:
 	{
 		return sizeof(CTuningParams) / sizeof(int);
 	}
+	int *NetworkArray() { return (int *)this; }
+	const int *NetworkArray() const { return (const int *)this; }
 	bool Set(int Index, float Value);
 	bool Set(const char *pName, float Value);
 	bool Get(int Index, float *pValue) const;
@@ -156,7 +158,7 @@ public:
 		m_pPrng = nullptr;
 	}
 
-	int RandomOr0(int BelowThis)
+	int RandomOr0(int BelowThis) // NOLINT(readability-make-member-function-const)
 	{
 		if(BelowThis <= 1 || !m_pPrng)
 		{
@@ -168,7 +170,6 @@ public:
 		return m_pPrng->RandomBits() % BelowThis;
 	}
 
-	CTuningParams m_aTuning[2];
 	class CCharacterCore *m_apCharacters[MAX_CLIENTS];
 	CPrng *m_pPrng;
 
@@ -182,8 +183,8 @@ class CCharacterCore
 	CCollision *m_pCollision;
 
 public:
-	static constexpr float PhysicalSize() { return 28.0f; };
-	static constexpr vec2 PhysicalSizeVec2() { return vec2(28.0f, 28.0f); };
+	static constexpr float PhysicalSize() { return 28.0f; }
+	static constexpr vec2 PhysicalSizeVec2() { return vec2(28.0f, 28.0f); }
 	vec2 m_Pos;
 	vec2 m_Vel;
 

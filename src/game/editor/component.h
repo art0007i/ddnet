@@ -15,7 +15,7 @@ public:
 	/**
 	 * Initialize the component and interface pointers.
 	 * Needs to be the first function that is called.
-	 * The default implentation also resets the component.
+	 * The default implementation also resets the component.
 	 */
 	void OnInit(CEditor *pEditor) override;
 
@@ -24,14 +24,11 @@ public:
 	virtual void OnMapLoad();
 
 	/**
-	 * Gets called before @link OnRender @endlink. Should return `true`
-	 * if the event was consumed.
+	 * Should return `true` if the event was consumed.
 	 */
 	virtual bool OnInput(const IInput::CEvent &Event);
 
 	virtual void OnUpdate();
-
-	virtual void OnRender(CUIRect View);
 
 	/**
 	 * Initialize all registered subcomponents.
@@ -43,7 +40,7 @@ public:
 	void RegisterSubComponent(CEditorComponent &Component);
 
 private:
-	std::vector<std::reference_wrapper<CEditorComponent>> m_vSubComponents = {};
+	std::vector<std::reference_wrapper<CEditorComponent>> m_vSubComponents;
 };
 
 #endif

@@ -3,9 +3,8 @@
 
 #include "host_lookup.h"
 
-#include <base/system.h>
-
-CHostLookup::CHostLookup() = default;
+#include <base/net.h>
+#include <base/str.h>
 
 CHostLookup::CHostLookup(const char *pHostname, int Nettype)
 {

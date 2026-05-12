@@ -6,6 +6,7 @@
 #include "ringbuffer.h"
 #include "stun.h"
 
+#include <base/net.h>
 #include <base/types.h>
 
 #include <array>
@@ -49,11 +50,14 @@ CURRENT:
 
 enum
 {
-	NETSENDFLAG_VITAL = 1,
-	NETSENDFLAG_CONNLESS = 2,
-	NETSENDFLAG_FLUSH = 4,
-	NETSENDFLAG_EXTENDED = 8,
+	NETSENDFLAG_VITAL = 1 << 0,
+	NETSENDFLAG_CONNLESS = 1 << 1,
+	NETSENDFLAG_FLUSH = 1 << 2,
+	NETSENDFLAG_EXTENDED = 1 << 3,
+};
 
+enum
+{
 	NETSTATE_OFFLINE = 0,
 	NETSTATE_CONNECTING,
 	NETSTATE_ONLINE,
@@ -63,6 +67,12 @@ enum
 {
 	NET_MAX_PACKETSIZE = 1400,
 	NET_MAX_PAYLOAD = NET_MAX_PACKETSIZE - 6,
+	/**
+	 * The maximum size of a chunk within a connection-oriented packet.
+	 *
+	 * This is 1023 because the size is packed into 10 bits in the chunk header.
+	 */
+	NET_MAX_CHUNK_SIZE = 1023,
 	NET_MAX_CHUNKHEADERSIZE = 3,
 	NET_PACKETHEADERSIZE = 3,
 	NET_CONNLESS_EXTRA_SIZE = 4,
@@ -218,9 +228,9 @@ public:
 class CNetConnection
 {
 	// TODO: is this needed because this needs to be aware of
-	// the ack sequencing number and is also responible for updating
+	// the ack sequencing number and is also responsible for updating
 	// that. this should be fixed.
-	friend class CNetRecvUnpacker;
+	friend class CPacketChunkUnpacker;
 
 public:
 	enum class EState
@@ -239,7 +249,7 @@ private:
 	unsigned short m_Sequence;
 	unsigned short m_Ack;
 	unsigned short m_PeerAck;
-	EState m_State;
+	EState m_State = EState::OFFLINE;
 	int m_RemoteClosed;
 	bool m_BlockCloseMsg;
 	bool m_UnknownSeq;
@@ -325,7 +335,7 @@ public:
 	int SecurityToken() const { return m_SecurityToken; }
 	CStaticRingBuffer<CNetChunkResend, NET_CONN_BUFFERSIZE> *ResendBuffer() { return &m_Buffer; }
 
-	void SetTimedOut(const NETADDR *pAddr, int Sequence, int Ack, SECURITY_TOKEN SecurityToken, CStaticRingBuffer<CNetChunkResend, NET_CONN_BUFFERSIZE> *pResendBuffer, bool Sixup);
+	void ResumeConnection(const NETADDR *pAddr, int Sequence, int Ack, SECURITY_TOKEN SecurityToken, CStaticRingBuffer<CNetChunkResend, NET_CONN_BUFFERSIZE> *pResendBuffer, bool Sixup);
 
 	// anti spoof
 	void DirectInit(const NETADDR &Addr, SECURITY_TOKEN SecurityToken, SECURITY_TOKEN Token, bool Sixup);
@@ -350,6 +360,7 @@ private:
 	EState m_State;
 
 	NETADDR m_PeerAddr;
+	std::array<char, NETADDR_MAXSTRSIZE> m_aPeerAddrStr;
 	NETSOCKET m_Socket;
 
 	char m_aBuffer[NET_MAX_PACKETSIZE];
@@ -360,12 +371,16 @@ private:
 	bool m_LineEndingDetected;
 	char m_aLineEnding[3];
 
+	void SetPeerAddr(const NETADDR *pAddr);
+	void ClearPeerAddr();
+
 public:
 	int Init(NETSOCKET Socket, const NETADDR *pAddr);
 	void Disconnect(const char *pReason);
 
 	EState State() const { return m_State; }
 	const NETADDR *PeerAddress() const { return &m_PeerAddr; }
+	const std::array<char, NETADDR_MAXSTRSIZE> &PeerAddressString() const { return m_aPeerAddrStr; }
 	const char *ErrorString() const { return m_aErrorString; }
 
 	void Reset();
@@ -374,22 +389,25 @@ public:
 	int Recv(char *pLine, int MaxLength);
 };
 
-class CNetRecvUnpacker
+/**
+ * Accepts a non-control packet containing one or more chunks and unpacks each chunk individually.
+ * After a packet has been fed into the unpacker by calling @link FeedPacket @endlink, all chunks have
+ * to be unpacked by calling @link UnpackNextChunk @endlink until the function returns `false`, before
+ * the unpacker can be fed another packet.
+ */
+class CPacketChunkUnpacker
 {
 public:
-	bool m_Valid;
+	void FeedPacket(const NETADDR &Addr, const CNetPacketConstruct &Packet, CNetConnection *pConnection, int ClientId);
+	bool UnpackNextChunk(CNetChunk *pChunk);
 
+private:
+	bool m_Valid = false;
 	NETADDR m_Addr;
 	CNetConnection *m_pConnection;
 	int m_CurrentChunk;
 	int m_ClientId;
 	CNetPacketConstruct m_Data;
-	unsigned char m_aBuffer[NET_MAX_PACKETSIZE];
-
-	CNetRecvUnpacker() { Clear(); }
-	void Clear();
-	void Start(const NETADDR *pAddr, CNetConnection *pConnection, int ClientId);
-	int FetchChunk(CNetChunk *pChunk);
 };
 
 // server side
@@ -412,7 +430,7 @@ class CNetServer
 	NETSOCKET m_Socket;
 	CNetBan *m_pNetBan;
 	CSlot m_aSlots[NET_MAX_CLIENTS];
-	int m_MaxClients;
+	int m_MaxClients = NET_MAX_CLIENTS;
 	int m_MaxClientsPerIp;
 
 	NETFUNC_NEWCLIENT m_pfnNewClient;
@@ -429,7 +447,8 @@ class CNetServer
 
 	CSpamConn m_aSpamConns[NET_CONNLIMIT_IPS];
 
-	CNetRecvUnpacker m_RecvUnpacker;
+	CPacketChunkUnpacker m_PacketChunkUnpacker;
+	CNetPacketConstruct m_RecvBuffer;
 
 	void OnTokenCtrlMsg(NETADDR &Addr, int ControlMsg, const CNetPacketConstruct &Packet);
 	int OnSixupCtrlMsg(NETADDR &Addr, CNetChunk *pChunk, int ControlMsg, const CNetPacketConstruct &Packet, SECURITY_TOKEN &ResponseToken, SECURITY_TOKEN Token);
@@ -474,8 +493,9 @@ public:
 
 	//
 	void SetMaxClientsPerIp(int Max);
-	bool SetTimedOut(int ClientId, int OrigId);
-	void SetTimeoutProtected(int ClientId);
+	bool HasErrored(int ClientId);
+	void ResumeOldConnection(int ClientId, int OrigId);
+	void IgnoreTimeouts(int ClientId);
 
 	void ResetErrorString(int ClientId);
 	const char *ErrorString(int ClientId);
@@ -501,8 +521,6 @@ class CNetConsole
 	NETFUNC_DELCLIENT m_pfnDelClient;
 	void *m_pUser;
 
-	CNetRecvUnpacker m_RecvUnpacker;
-
 public:
 	void SetCallbacks(NETFUNC_NEWCLIENT_CON pfnNewClient, NETFUNC_DELCLIENT pfnDelClient, void *pUser);
 
@@ -521,6 +539,7 @@ public:
 
 	// status requests
 	const NETADDR *ClientAddr(int ClientId) const { return m_aSlots[ClientId].m_Connection.PeerAddress(); }
+	const std::array<char, NETADDR_MAXSTRSIZE> &ClientAddrString(int ClientId) const { return m_aSlots[ClientId].m_Connection.PeerAddressString(); }
 	CNetBan *NetBan() const { return m_pNetBan; }
 };
 
@@ -562,13 +581,14 @@ private:
 class CNetClient
 {
 	CNetConnection m_Connection;
-	CNetRecvUnpacker m_RecvUnpacker;
+	CPacketChunkUnpacker m_PacketChunkUnpacker;
+	CNetPacketConstruct m_RecvBuffer;
 	CNetTokenCache m_TokenCache;
 
 	CStun *m_pStun = nullptr;
 
 public:
-	NETSOCKET m_Socket;
+	NETSOCKET m_Socket = nullptr;
 	// openness
 	bool Open(NETADDR BindAddr);
 	void Close();

@@ -1,12 +1,15 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "particles.h"
+
+#include <base/dbg.h>
 #include <base/math.h>
+#include <base/time.h>
+
 #include <engine/demo.h>
 #include <engine/graphics.h>
 
 #include <generated/client_data.h>
-
-#include "particles.h"
 
 #include <game/client/gameclient.h>
 
@@ -39,16 +42,9 @@ void CParticles::OnReset()
 
 void CParticles::Add(int Group, CParticle *pPart, float TimePassed)
 {
-	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+	if(GameClient()->IsWorldPaused() || GameClient()->IsDemoPlaybackPaused())
 	{
-		const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
-		if(pInfo->m_Paused)
-			return;
-	}
-	else
-	{
-		if(GameClient()->m_Snap.m_pGameInfoObj && GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_PAUSED)
-			return;
+		return;
 	}
 
 	if(m_FirstFree == -1)
@@ -97,7 +93,6 @@ void CParticles::Update(float TimePassed)
 		while(i != -1)
 		{
 			int Next = m_aParticles[i].m_NextPart;
-			//m_aParticles[i].vel += flow_get(m_aParticles[i].pos)*time_passed * m_aParticles[i].flow_affected;
 			m_aParticles[i].m_Vel.y += m_aParticles[i].m_Gravity * TimePassed;
 
 			for(int f = 0; f < FrictionCount; f++) // apply friction
@@ -149,21 +144,9 @@ void CParticles::OnRender()
 		return;
 
 	set_new_tick();
-	int64_t t = time();
-
-	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
-	{
-		const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
-		if(!pInfo->m_Paused)
-			Update((float)((t - m_LastRenderTime) / (double)time_freq()) * pInfo->m_Speed);
-	}
-	else
-	{
-		if(GameClient()->m_Snap.m_pGameInfoObj && !(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_PAUSED))
-			Update((float)((t - m_LastRenderTime) / (double)time_freq()));
-	}
-
-	m_LastRenderTime = t;
+	const int64_t Now = time();
+	Update((float)((Now - m_LastRenderTime) / (double)time_freq()) * GameClient()->GetAnimationPlaybackSpeed());
+	m_LastRenderTime = Now;
 }
 
 void CParticles::OnInit()
@@ -268,8 +251,9 @@ void CParticles::RenderGroup(int Group)
 			// the current position, respecting the size, is inside the viewport, render it, else ignore
 			if(ParticleIsVisibleOnScreen(p, Size))
 			{
-				if((size_t)CurParticleRenderCount == gs_GraphicsMaxParticlesRenderCount || LastColor.r != m_aParticles[i].m_Color.r || LastColor.g != m_aParticles[i].m_Color.g || LastColor.b != m_aParticles[i].m_Color.b || LastColor.a != Alpha || LastQuadOffset != QuadOffset)
+				if((size_t)CurParticleRenderCount == GRAPHICS_MAX_PARTICLES_RENDER_COUNT || LastColor.r != m_aParticles[i].m_Color.r || LastColor.g != m_aParticles[i].m_Color.g || LastColor.b != m_aParticles[i].m_Color.b || LastColor.a != Alpha || LastQuadOffset != QuadOffset)
 				{
+					dbg_assert(LastQuadOffset >= FirstParticleOffset, "Invalid particle offsets: %d < %d", LastQuadOffset, FirstParticleOffset);
 					Graphics()->TextureSet(aParticles[LastQuadOffset - FirstParticleOffset]);
 					Graphics()->RenderQuadContainerAsSpriteMultiple(ParticleQuadContainerIndex, LastQuadOffset - FirstParticleOffset, CurParticleRenderCount, s_aParticleRenderInfo);
 					CurParticleRenderCount = 0;
@@ -298,14 +282,17 @@ void CParticles::RenderGroup(int Group)
 			i = m_aParticles[i].m_NextPart;
 		}
 
-		Graphics()->TextureSet(aParticles[LastQuadOffset - FirstParticleOffset]);
-		Graphics()->RenderQuadContainerAsSpriteMultiple(ParticleQuadContainerIndex, LastQuadOffset - FirstParticleOffset, CurParticleRenderCount, s_aParticleRenderInfo);
+		if(CurParticleRenderCount > 0)
+		{
+			dbg_assert(LastQuadOffset >= FirstParticleOffset, "Invalid particle offsets: %d < %d", LastQuadOffset, FirstParticleOffset);
+			Graphics()->TextureSet(aParticles[LastQuadOffset - FirstParticleOffset]);
+			Graphics()->RenderQuadContainerAsSpriteMultiple(ParticleQuadContainerIndex, LastQuadOffset - FirstParticleOffset, CurParticleRenderCount, s_aParticleRenderInfo);
+		}
 	}
 	else
 	{
 		int i = m_aFirstPart[Group];
 
-		Graphics()->BlendNormal();
 		Graphics()->WrapClamp();
 
 		while(i != -1)
@@ -341,6 +328,5 @@ void CParticles::RenderGroup(int Group)
 			i = m_aParticles[i].m_NextPart;
 		}
 		Graphics()->WrapNormal();
-		Graphics()->BlendNormal();
 	}
 }

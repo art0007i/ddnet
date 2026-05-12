@@ -3,6 +3,8 @@
 
 #include <game/map/render_map.h>
 #include <game/mapitems.h>
+
+#include <array>
 #include <vector>
 
 class CEnvelope
@@ -10,20 +12,20 @@ class CEnvelope
 public:
 	std::vector<CEnvPoint_runtime> m_vPoints;
 	char m_aName[32] = "";
-	bool m_Synchronized = false;
+	bool m_Synchronized = true;
 
 	enum class EType
 	{
 		POSITION,
 		COLOR,
-		SOUND
+		SOUND,
 	};
 	explicit CEnvelope(EType Type);
 	explicit CEnvelope(int NumChannels);
 
 	std::pair<float, float> GetValueRange(int ChannelMask);
 	void Eval(float Time, ColorRGBA &Result, size_t Channels);
-	void AddPoint(CFixedTime Time, int v0, int v1 = 0, int v2 = 0, int v3 = 0);
+	void AddPoint(CFixedTime Time, std::array<int, CEnvPoint::MAX_CHANNELS> aValues);
 	float EndTime() const;
 	int FindPointIndex(CFixedTime Time) const;
 	int GetChannels() const;

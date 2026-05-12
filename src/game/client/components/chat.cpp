@@ -1,6 +1,11 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 
+#include "chat.h"
+
+#include <base/io.h>
+#include <base/time.h>
+
 #include <engine/editor.h>
 #include <engine/graphics.h>
 #include <engine/keys.h>
@@ -12,13 +17,12 @@
 #include <generated/protocol7.h>
 
 #include <game/client/animstate.h>
+#include <game/client/components/censor.h>
 #include <game/client/components/scoreboard.h>
 #include <game/client/components/skins.h>
 #include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
 #include <game/localization.h>
-
-#include "chat.h"
 
 char CChat::ms_aDisplayText[MAX_LINE_LENGTH] = "";
 
@@ -32,6 +36,7 @@ void CChat::CLine::Reset(CChat &This)
 {
 	This.TextRender()->DeleteTextContainer(m_TextContainerIndex);
 	This.Graphics()->DeleteQuadContainer(m_QuadContainerIndex);
+	m_Initialized = false;
 	m_Time = 0;
 	m_aText[0] = '\0';
 	m_aName[0] = '\0';
@@ -44,7 +49,6 @@ CChat::CChat()
 {
 	m_Mode = MODE_NONE;
 
-	m_Input.SetClipboardLineCallback([this](const char *pStr) { SendChatQueued(pStr); });
 	m_Input.SetCalculateOffsetCallback([this]() { return m_IsInputCensored; });
 	m_Input.SetDisplayTextCallback([this](char *pStr, size_t NumChars) {
 		m_IsInputCensored = false;
@@ -98,6 +102,8 @@ void CChat::RebuildChat()
 {
 	for(auto &Line : m_aLines)
 	{
+		if(!Line.m_Initialized)
+			continue;
 		TextRender()->DeleteTextContainer(Line.m_TextContainerIndex);
 		Graphics()->DeleteQuadContainer(Line.m_QuadContainerIndex);
 		// recalculate sizes
@@ -137,7 +143,7 @@ void CChat::Reset()
 	m_EditingNewLine = true;
 	m_ServerSupportsCommandInfo = false;
 	m_ServerCommandsNeedSorting = false;
-	mem_zero(m_aCurrentInputText, sizeof(m_aCurrentInputText));
+	m_aCurrentInputText[0] = '\0';
 	DisableMode();
 	m_vServerCommands.clear();
 
@@ -308,8 +314,8 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 				}
 			}
 			std::stable_sort(m_aPlayerCompletionList, m_aPlayerCompletionList + m_PlayerCompletionListLength,
-				[](const CRateablePlayer &p1, const CRateablePlayer &p2) -> bool {
-					return p1.m_Score < p2.m_Score;
+				[](const CRateablePlayer &Player1, const CRateablePlayer &Player2) -> bool {
+					return Player1.m_Score < Player2.m_Score;
 				});
 		}
 
@@ -518,7 +524,6 @@ void CChat::EnableMode(int Team)
 		else
 			m_Mode = MODE_ALL;
 
-		Input()->Clear();
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
 		m_Input.Activate(EInputPriority::CHAT);
@@ -542,7 +547,26 @@ void CChat::OnMessage(int MsgType, void *pRawMsg)
 	if(MsgType == NETMSGTYPE_SV_CHAT)
 	{
 		CNetMsg_Sv_Chat *pMsg = (CNetMsg_Sv_Chat *)pRawMsg;
+
+		/*
+		if(g_Config.m_ClCensorChat)
+		{
+			char aMessage[MAX_LINE_LENGTH];
+			str_copy(aMessage, pMsg->m_pMessage);
+			GameClient()->m_Censor.CensorMessage(aMessage);
+			AddLine(pMsg->m_ClientId, pMsg->m_Team, aMessage);
+		}
+		else
+			AddLine(pMsg->m_ClientId, pMsg->m_Team, pMsg->m_pMessage);
+		*/
+
 		AddLine(pMsg->m_ClientId, pMsg->m_Team, pMsg->m_pMessage);
+
+		if(Client()->State() != IClient::STATE_DEMOPLAYBACK &&
+			pMsg->m_ClientId == SERVER_MSG)
+		{
+			StoreSave(pMsg->m_pMessage);
+		}
 	}
 	else if(MsgType == NETMSGTYPE_SV_COMMANDINFO)
 	{
@@ -585,6 +609,8 @@ static constexpr const char *SAVES_HEADER[] = {
 	"Code",
 };
 
+// TODO: remove this in a few releases (in 2027 or later)
+//       it got deprecated by CGameClient::StoreSave
 void CChat::StoreSave(const char *pText)
 {
 	const char *pStart = str_find(pText, "Team successfully saved by ");
@@ -603,19 +629,7 @@ void CChat::StoreSave(const char *pText)
 	str_truncate(aSaveCode, sizeof(aSaveCode), pMid + 13, (pOn ? pOn : pEnd) - pMid - 13);
 
 	char aTimestamp[20];
-	str_timestamp_format(aTimestamp, sizeof(aTimestamp), FORMAT_SPACE);
-
-	// TODO: Find a simple way to get the names of team members. This doesn't
-	// work since team is killed first, then save message gets sent:
-	/*
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		const CNetObj_PlayerInfo *pInfo = GameClient()->m_Snap.m_paInfoByDDTeam[i];
-		if(!pInfo)
-			continue;
-		pInfo->m_Team // All 0
-	}
-	*/
+	str_timestamp_format(aTimestamp, sizeof(aTimestamp), TimestampFormat::SPACE);
 
 	const bool SavesFileExists = Storage()->FileExists(SAVES_FILE, IStorage::TYPE_SAVE);
 	IOHANDLE File = Storage()->OpenFile(SAVES_FILE, IOFLAG_APPEND, IStorage::TYPE_SAVE);
@@ -625,7 +639,7 @@ void CChat::StoreSave(const char *pText)
 	const char *apColumns[4] = {
 		aTimestamp,
 		aName,
-		Client()->GetCurrentMap(),
+		GameClient()->Map()->BaseName(),
 		aSaveCode,
 	};
 
@@ -680,12 +694,6 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	bool Highlighted = false;
 
 	auto &&FChatMsgCheckAndPrint = [this](const CLine &Line) {
-		if(Line.m_ClientId < 0) // server or client message
-		{
-			if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
-				StoreSave(Line.m_aText);
-		}
-
 		char aBuf[1024];
 		str_format(aBuf, sizeof(aBuf), "%s%s%s", Line.m_aName, Line.m_ClientId >= 0 ? ": " : "", Line.m_aText);
 
@@ -734,7 +742,11 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	// 0 = global; 1 = team; 2 = sending whisper; 3 = receiving whisper
 
 	// If it's a client message, m_aText will have ": " prepended so we have to work around it.
-	if(PreviousLine.m_TeamNumber == Team && PreviousLine.m_ClientId == ClientId && str_comp(PreviousLine.m_aText, pLine) == 0 && PreviousLine.m_CustomColor == CustomColor)
+	if(PreviousLine.m_Initialized &&
+		PreviousLine.m_TeamNumber == Team &&
+		PreviousLine.m_ClientId == ClientId &&
+		str_comp(PreviousLine.m_aText, pLine) == 0 &&
+		PreviousLine.m_CustomColor == CustomColor)
 	{
 		PreviousLine.m_TimesRepeated++;
 		TextRender()->DeleteTextContainer(PreviousLine.m_TextContainerIndex);
@@ -751,7 +763,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 
 	CLine &CurrentLine = m_aLines[m_CurrentLine];
 	CurrentLine.Reset(*this);
-
+	CurrentLine.m_Initialized = true;
 	CurrentLine.m_Time = time();
 	CurrentLine.m_aYOffset[0] = -1.0f;
 	CurrentLine.m_aYOffset[1] = -1.0f;
@@ -937,7 +949,8 @@ void CChat::OnPrepareLines(float y)
 	for(int i = 0; i < MAX_LINES; i++)
 	{
 		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
-
+		if(!Line.m_Initialized)
+			break;
 		if(Now > Line.m_Time + 16 * time_freq() && !m_PrevShowChat)
 			break;
 
@@ -964,15 +977,15 @@ void CChat::OnPrepareLines(float y)
 		{
 			if(str_startswith(Line.m_aText, "Team save in progress. You'll be able to load with '/load ") && str_endswith(Line.m_aText, "'"))
 			{
-				pText = "Team save in progress. You'll be able to load with '/load ***'";
+				pText = "Team save in progress. You'll be able to load with '/load *** *** ***'";
 			}
 			else if(str_startswith(Line.m_aText, "Team save in progress. You'll be able to load with '/load") && str_endswith(Line.m_aText, "if it fails"))
 			{
-				pText = "Team save in progress. You'll be able to load with '/load ***' if save is successful or with '/load *** *** ***' if it fails";
+				pText = "Team save in progress. You'll be able to load with '/load *** *** ***' if save is successful or with '/load *** *** ***' if it fails";
 			}
 			else if(str_startswith(Line.m_aText, "Team successfully saved by ") && str_endswith(Line.m_aText, " to continue"))
 			{
-				pText = "Team successfully saved by ***. Use '/load ***' to continue";
+				pText = "Team successfully saved by ***. Use '/load *** *** ***' to continue";
 			}
 		}
 
@@ -1254,6 +1267,8 @@ void CChat::OnRender()
 	for(int i = 0; i < MAX_LINES; i++)
 	{
 		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
+		if(!Line.m_Initialized)
+			break;
 		if(Now > Line.m_Time + 16 * time_freq() && !m_PrevShowChat)
 			break;
 

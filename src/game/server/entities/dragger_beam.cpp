@@ -1,5 +1,6 @@
 /* See "licence DDRace.txt" and the readme.txt in the root of the distribution for more information. */
 #include "dragger_beam.h"
+
 #include "character.h"
 #include "dragger.h"
 
@@ -14,7 +15,7 @@
 
 CDraggerBeam::CDraggerBeam(CGameWorld *pGameWorld, CDragger *pDragger, vec2 Pos, float Strength, bool IgnoreWalls,
 	int ForClientId, int Layer, int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER)
+	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
 {
 	m_pDragger = pDragger;
 	m_Pos = Pos;
@@ -127,19 +128,22 @@ void CDraggerBeam::Snap(int SnappingClient)
 		StartTick = -1;
 	}
 
-	int SnapObjId = GetId();
-	if(m_pDragger->WillDraggerBeamUseDraggerId(m_ForClientId, SnappingClient))
+	std::optional<int> SnapObjId = GetId();
+	if(m_pDragger->WillDraggerBeamUseDraggerId(m_ForClientId, SnappingClient) && m_pDragger->GetId().has_value())
 	{
 		SnapObjId = m_pDragger->GetId();
 	}
 
-	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), SnapObjId,
+	if(!SnapObjId.has_value())
+		return;
+
+	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), SnapObjId.value(),
 		TargetPos, m_Pos, StartTick, m_ForClientId, LASERTYPE_DRAGGER, Subtype, m_Number);
 }
 
 void CDraggerBeam::SwapClients(int Client1, int Client2)
 {
-	m_ForClientId = m_ForClientId == Client1 ? Client2 : m_ForClientId == Client2 ? Client1 : m_ForClientId;
+	m_ForClientId = m_ForClientId == Client1 ? Client2 : (m_ForClientId == Client2 ? Client1 : m_ForClientId);
 }
 
 ESaveResult CDraggerBeam::BlocksSave(int ClientId)

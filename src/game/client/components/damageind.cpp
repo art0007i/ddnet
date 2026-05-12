@@ -1,6 +1,9 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "damageind.h"
+
 #include <base/color.h>
+
 #include <engine/demo.h>
 #include <engine/graphics.h>
 
@@ -8,8 +11,6 @@
 #include <generated/protocol.h>
 
 #include <game/client/gameclient.h>
-
-#include "damageind.h"
 
 CDamageInd::CDamageInd()
 {
@@ -36,23 +37,7 @@ void CDamageInd::OnRender()
 		return;
 
 	static float s_LastLocalTime = LocalTime();
-	float LifeAdjustment;
-	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
-	{
-		const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
-		if(pInfo->m_Paused)
-			LifeAdjustment = 0.0f;
-		else
-			LifeAdjustment = (LocalTime() - s_LastLocalTime) * pInfo->m_Speed;
-	}
-	else
-	{
-		const auto &pGameInfoObj = GameClient()->m_Snap.m_pGameInfoObj;
-		if(pGameInfoObj && pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_PAUSED)
-			LifeAdjustment = 0.0f;
-		else
-			LifeAdjustment = LocalTime() - s_LastLocalTime;
-	}
+	const float LifeAdjustment = (LocalTime() - s_LastLocalTime) * GameClient()->GetAnimationPlaybackSpeed();
 	s_LastLocalTime = LocalTime();
 
 	Graphics()->TextureSet(GameClient()->m_GameSkin.m_aSpriteStars[0]);

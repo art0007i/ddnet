@@ -8,7 +8,7 @@
 #include "warning.h"
 
 #include <base/color.h>
-#include <base/system.h>
+#include <base/vmath.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -129,8 +129,8 @@ struct GL_SVertexTex3DStream
 	GL_STexCoord3D m_Tex;
 };
 
-static constexpr size_t gs_GraphicsMaxQuadsRenderCount = 256;
-static constexpr size_t gs_GraphicsMaxParticlesRenderCount = 512;
+static constexpr size_t GRAPHICS_MAX_QUADS_RENDER_COUNT = 256;
+static constexpr size_t GRAPHICS_MAX_PARTICLES_RENDER_COUNT = 512;
 
 enum EGraphicsDriverAgeType
 {
@@ -227,8 +227,8 @@ public:
 
 	virtual void WarnPngliteIncompatibleImages(bool Warn) = 0;
 	virtual void SetWindowParams(int FullscreenMode, bool IsBorderless) = 0;
-	virtual bool SetWindowScreen(int Index) = 0;
-	virtual bool SwitchWindowScreen(int Index) = 0;
+	virtual bool SetWindowScreen(int Index, bool MoveToCenter) = 0;
+	virtual bool SwitchWindowScreen(int Index, bool MoveToCenter) = 0;
 	virtual bool SetVSync(bool State) = 0;
 	virtual bool SetMultiSampling(uint32_t ReqMultiSamplingCount, uint32_t &MultiSamplingCountBackend) = 0;
 	virtual int GetWindowScreen() = 0;
@@ -240,13 +240,13 @@ public:
 	virtual bool IsScreenKeyboardShown() = 0;
 
 	/**
-	* Listens to a resize event of the canvas, which is usually caused by a window resize.
-	* Will only be triggered if the actual size changed.
-	*/
+	 * Listens to a resize event of the canvas, which is usually caused by a window resize.
+	 * Will only be triggered if the actual size changed.
+	 */
 	virtual void AddWindowResizeListener(WINDOW_RESIZE_FUNC pFunc) = 0;
 	/**
-	* Listens to various window property changes, such as minimize, maximize, move, fullscreen mode
-	*/
+	 * Listens to various window property changes, such as minimize, maximize, move, fullscreen mode
+	 */
 	virtual void AddWindowPropChangeListener(WINDOW_PROPS_CHANGED_FUNC pFunc) = 0;
 
 	virtual void WindowDestroyNtf(uint32_t WindowId) = 0;
@@ -261,12 +261,12 @@ public:
 	virtual void MapScreen(float TopLeftX, float TopLeftY, float BottomRightX, float BottomRightY) = 0;
 
 	// helper functions
-	void CalcScreenParams(float Aspect, float Zoom, float *pWidth, float *pHeight);
+	void CalcScreenParams(float Aspect, float Zoom, float *pWidth, float *pHeight) const;
 	void MapScreenToWorld(float CenterX, float CenterY, float ParallaxX, float ParallaxY,
-		float ParallaxZoom, float OffsetX, float OffsetY, float Aspect, float Zoom, float *pPoints);
+		float ParallaxZoom, float OffsetX, float OffsetY, float Aspect, float Zoom, float *pPoints) const;
 	void MapScreenToInterface(float CenterX, float CenterY, float Zoom = 1.0f);
 
-	virtual void GetScreen(float *pTopLeftX, float *pTopLeftY, float *pBottomRightX, float *pBottomRightY) = 0;
+	virtual void GetScreen(float *pTopLeftX, float *pTopLeftY, float *pBottomRightX, float *pBottomRightY) const = 0;
 
 	// TODO: These should perhaps not be virtuals
 	virtual void BlendNone() = 0;
@@ -340,11 +340,13 @@ public:
 	virtual bool IsTextBufferingEnabled() = 0;
 	virtual bool IsQuadContainerBufferingEnabled() = 0;
 	virtual bool Uses2DTextureArrays() = 0;
+	virtual int TextureLoadFlags() = 0;
 	virtual bool HasTextureArraysSupport() = 0;
 
 	virtual const char *GetVendorString() = 0;
 	virtual const char *GetVersionString() = 0;
 	virtual const char *GetRendererString() = 0;
+	virtual const char *GetFatalError() const = 0;
 
 	class CLineItem
 	{
@@ -353,6 +355,13 @@ public:
 		CLineItem() = default;
 		CLineItem(float x0, float y0, float x1, float y1) :
 			m_X0(x0), m_Y0(y0), m_X1(x1), m_Y1(y1) {}
+		CLineItem(vec2 From, vec2 To)
+		{
+			m_X0 = From.x;
+			m_Y0 = From.y;
+			m_X1 = To.x;
+			m_Y1 = To.y;
+		}
 	};
 	virtual void LinesBegin() = 0;
 	virtual void LinesEnd() = 0;
@@ -386,6 +395,8 @@ public:
 		CFreeformItem() = default;
 		CFreeformItem(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3) :
 			m_X0(x0), m_Y0(y0), m_X1(x1), m_Y1(y1), m_X2(x2), m_Y2(y2), m_X3(x3), m_Y3(y3) {}
+		CFreeformItem(vec2 Point1, vec2 Point2, vec2 Point3, vec2 Point4) :
+			m_X0(Point1.x), m_Y0(Point1.y), m_X1(Point2.x), m_Y1(Point2.y), m_X2(Point3.x), m_Y2(Point3.y), m_X3(Point4.x), m_Y3(Point4.y) {}
 	};
 
 	struct CQuadItem
@@ -394,6 +405,8 @@ public:
 		CQuadItem() = default;
 		CQuadItem(float x, float y, float w, float h) :
 			m_X(x), m_Y(y), m_Width(w), m_Height(h) {}
+		CQuadItem(vec2 Position, vec2 Size) :
+			m_X(Position.x), m_Y(Position.y), m_Width(Size.x), m_Height(Size.y) {}
 	};
 	virtual void QuadsDraw(CQuadItem *pArray, int Num) = 0;
 	virtual void QuadsDrawTL(const CQuadItem *pArray, int Num) = 0;
@@ -573,7 +586,7 @@ public:
 		EMessageBoxType m_Type = EMessageBoxType::ERROR;
 		/**
 		 * Buttons shown in the message box. At least one button is required.
-		 * The buttons are layed out from left to right.
+		 * The buttons are laid out from left to right.
 		 */
 		std::vector<CMessageBoxButton> m_vButtons = {{.m_pLabel = "OK", .m_Confirm = true, .m_Cancel = true}};
 	};
@@ -593,7 +606,7 @@ public:
 	virtual bool IsBackendInitialized() = 0;
 
 protected:
-	inline CTextureHandle CreateTextureHandle(int Index)
+	CTextureHandle CreateTextureHandle(int Index)
 	{
 		CTextureHandle Tex;
 		Tex.m_Id = Index;
@@ -609,7 +622,6 @@ public:
 	void Shutdown() override = 0;
 
 	virtual void Minimize() = 0;
-	virtual void Maximize() = 0;
 
 	virtual int WindowActive() = 0;
 	virtual int WindowOpen() = 0;

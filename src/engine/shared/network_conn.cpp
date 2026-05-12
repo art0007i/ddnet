@@ -3,8 +3,12 @@
 #include "config.h"
 #include "network.h"
 
+#include <base/dbg.h>
 #include <base/log.h>
-#include <base/system.h>
+#include <base/mem.h>
+#include <base/secure.h>
+#include <base/str.h>
+#include <base/time.h>
 
 void CNetConnection::SetPeerAddr(const NETADDR *pAddr)
 {
@@ -74,7 +78,7 @@ void CNetConnection::Init(NETSOCKET Socket, bool BlockCloseMsg)
 
 	m_Socket = Socket;
 	m_BlockCloseMsg = BlockCloseMsg;
-	mem_zero(m_aErrorString, sizeof(m_aErrorString));
+	m_aErrorString[0] = '\0';
 }
 
 void CNetConnection::AckChunks(int Ack)
@@ -223,7 +227,7 @@ int CNetConnection::Connect(const NETADDR *pAddr, int NumAddrs)
 		m_aConnectAddrs[i] = pAddr[i];
 	}
 	m_NumConnectAddrs = NumAddrs;
-	mem_zero(m_aErrorString, sizeof(m_aErrorString));
+	m_aErrorString[0] = '\0';
 	m_State = EState::CONNECT;
 	SendConnect();
 	return 0;
@@ -251,7 +255,7 @@ int CNetConnection::Connect7(const NETADDR *pAddr, int NumAddrs)
 	m_NumConnectAddrs = NumAddrs;
 	SetPeerAddr(pAddr);
 	SetToken7(GenerateToken7(pAddr));
-	mem_zero(m_aErrorString, sizeof(m_aErrorString));
+	m_aErrorString[0] = '\0';
 	m_State = EState::WANT_TOKEN;
 	SendControlWithToken7(protocol7::NET_CTRLMSG_TOKEN, NET_TOKEN_NONE);
 	m_Sixup = true;
@@ -306,7 +310,7 @@ void CNetConnection::DirectInit(const NETADDR &Addr, SECURITY_TOKEN SecurityToke
 	m_State = EState::ONLINE;
 
 	SetPeerAddr(&Addr);
-	mem_zero(m_aErrorString, sizeof(m_aErrorString));
+	m_aErrorString[0] = '\0';
 
 	int64_t Now = time_get();
 	m_LastSendTime = Now;
@@ -443,7 +447,7 @@ int CNetConnection::Feed(CNetPacketConstruct *pPacket, NETADDR *pAddr, SECURITY_
 						Reset();
 						m_State = EState::PENDING;
 						SetPeerAddr(pAddr);
-						mem_zero(m_aErrorString, sizeof(m_aErrorString));
+						m_aErrorString[0] = '\0';
 						m_LastSendTime = Now;
 						m_LastRecvTime = Now;
 						m_LastUpdateTime = Now;
@@ -587,7 +591,7 @@ int CNetConnection::Update()
 	return 0;
 }
 
-void CNetConnection::SetTimedOut(const NETADDR *pAddr, int Sequence, int Ack, SECURITY_TOKEN SecurityToken, CStaticRingBuffer<CNetChunkResend, NET_CONN_BUFFERSIZE> *pResendBuffer, bool Sixup)
+void CNetConnection::ResumeConnection(const NETADDR *pAddr, int Sequence, int Ack, SECURITY_TOKEN SecurityToken, CStaticRingBuffer<CNetChunkResend, NET_CONN_BUFFERSIZE> *pResendBuffer, bool Sixup)
 {
 	int64_t Now = time_get();
 
@@ -597,7 +601,7 @@ void CNetConnection::SetTimedOut(const NETADDR *pAddr, int Sequence, int Ack, SE
 
 	m_State = EState::ONLINE;
 	SetPeerAddr(pAddr);
-	mem_zero(m_aErrorString, sizeof(m_aErrorString));
+	m_aErrorString[0] = '\0';
 	m_LastSendTime = Now;
 	m_LastRecvTime = Now;
 	m_LastUpdateTime = Now;

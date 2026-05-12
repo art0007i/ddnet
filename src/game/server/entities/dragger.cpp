@@ -1,5 +1,6 @@
 /* (c) Shereef Marzouk. See "licence DDRace.txt" and the readme.txt in the root of the distribution for more information. */
 #include "dragger.h"
+
 #include "character.h"
 #include "dragger_beam.h"
 
@@ -14,7 +15,7 @@
 #include <game/server/teams.h>
 
 CDragger::CDragger(CGameWorld *pGameWorld, vec2 Pos, float Strength, bool IgnoreWalls, int Layer, int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER)
+	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
 {
 	m_Core = vec2(0.0f, 0.0f);
 	m_Pos = Pos;
@@ -28,7 +29,7 @@ CDragger::CDragger(CGameWorld *pGameWorld, vec2 Pos, float Strength, bool Ignore
 	{
 		TargetId = -1;
 	}
-	mem_zero(m_apDraggerBeam, sizeof(m_apDraggerBeam));
+	std::fill(std::begin(m_apDraggerBeam), std::end(m_apDraggerBeam), nullptr);
 	GameWorld()->InsertEntity(this);
 }
 
@@ -57,7 +58,7 @@ void CDragger::LookForPlayersToDrag()
 {
 	// Create a list of players who are in the range of the dragger
 	CEntity *apPlayersInRange[MAX_CLIENTS];
-	mem_zero(apPlayersInRange, sizeof(apPlayersInRange));
+	std::fill(std::begin(apPlayersInRange), std::end(apPlayersInRange), nullptr);
 
 	int NumPlayersInRange = GameServer()->m_World.FindEntities(m_Pos,
 		g_Config.m_SvDraggerRange - CCharacterCore::PhysicalSize(),
@@ -68,13 +69,10 @@ void CDragger::LookForPlayersToDrag()
 	bool aCanStillBeTeamTarget[MAX_CLIENTS];
 	bool aIsTarget[MAX_CLIENTS];
 	int aMinDistInTeam[MAX_CLIENTS];
-	mem_zero(aCanStillBeTeamTarget, sizeof(aCanStillBeTeamTarget));
-	mem_zero(aMinDistInTeam, sizeof(aMinDistInTeam));
-	mem_zero(aIsTarget, sizeof(aIsTarget));
-	for(int &TargetId : aClosestTargetIdInTeam)
-	{
-		TargetId = -1;
-	}
+	std::fill(std::begin(aCanStillBeTeamTarget), std::end(aCanStillBeTeamTarget), false);
+	std::fill(std::begin(aMinDistInTeam), std::end(aMinDistInTeam), 0);
+	std::fill(std::begin(aIsTarget), std::end(aIsTarget), false);
+	std::fill(std::begin(aClosestTargetIdInTeam), std::end(aClosestTargetIdInTeam), -1);
 
 	for(int i = 0; i < NumPlayersInRange; i++)
 	{
@@ -189,7 +187,7 @@ void CDragger::Reset()
 void CDragger::Snap(int SnappingClient)
 {
 	// Only players with the dragger in their field of view or who want to see everything will receive the snap
-	if(NetworkClipped(SnappingClient))
+	if(NetworkClipped(SnappingClient) || !GetId().has_value())
 		return;
 
 	// Send the dragger in its resting position if the player would not otherwise see a dragger beam within its own team
@@ -232,7 +230,7 @@ void CDragger::Snap(int SnappingClient)
 			StartTick = Server()->Tick();
 	}
 
-	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId(),
+	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
 		m_Pos, m_Pos, StartTick, -1, LASERTYPE_DRAGGER, Subtype, m_Number);
 }
 
@@ -241,6 +239,6 @@ void CDragger::SwapClients(int Client1, int Client2)
 	std::swap(m_apDraggerBeam[Client1], m_apDraggerBeam[Client2]);
 	for(int &TargetId : m_aTargetIdInTeam)
 	{
-		TargetId = TargetId == Client1 ? Client2 : TargetId == Client2 ? Client1 : TargetId;
+		TargetId = TargetId == Client1 ? Client2 : (TargetId == Client2 ? Client1 : TargetId);
 	}
 }

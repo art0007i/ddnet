@@ -3,13 +3,9 @@
 #ifndef GAME_CLIENT_COMPONENTS_MENUS_H
 #define GAME_CLIENT_COMPONENTS_MENUS_H
 
+#include <base/bytes.h>
 #include <base/types.h>
 #include <base/vmath.h>
-
-#include <chrono>
-#include <deque>
-#include <optional>
-#include <vector>
 
 #include <engine/console.h>
 #include <engine/demo.h>
@@ -19,29 +15,20 @@
 #include <engine/textrender.h>
 
 #include <game/client/component.h>
+#include <game/client/components/community_icons.h>
 #include <game/client/components/mapimages.h>
 #include <game/client/components/menus_ingame_touch_controls.h>
+#include <game/client/components/menus_settings_controls.h>
+#include <game/client/components/menus_start.h>
+#include <game/client/components/skins7.h>
 #include <game/client/lineinput.h>
 #include <game/client/ui.h>
 #include <game/voting.h>
 
-#include <game/client/components/community_icons.h>
-#include <game/client/components/menus_start.h>
-#include <game/client/components/skins7.h>
-
-// component to fetch keypresses, override all other input
-class CMenusKeyBinder : public CComponent
-{
-public:
-	const void *m_pKeyReaderId;
-	bool m_TakeKey;
-	bool m_GotKey;
-	IInput::CEvent m_Key;
-	int m_ModifierCombination;
-	CMenusKeyBinder();
-	int Sizeof() const override { return sizeof(*this); }
-	bool OnInput(const IInput::CEvent &Event) override;
-};
+#include <chrono>
+#include <deque>
+#include <optional>
+#include <vector>
 
 class CMenus : public CComponent
 {
@@ -74,16 +61,8 @@ private:
 	ColorHSLA DoButton_ColorPicker(const CUIRect *pRect, unsigned int *pHslaColor, bool Alpha);
 
 	void DoLaserPreview(const CUIRect *pRect, ColorHSLA OutlineColor, ColorHSLA InnerColor, int LaserType);
-	int DoButton_GridHeader(const void *pId, const char *pText, int Checked, const CUIRect *pRect);
+	int DoButton_GridHeader(const void *pId, const char *pText, int Checked, const CUIRect *pRect, int Align = TEXTALIGN_ML);
 	int DoButton_Favorite(const void *pButtonId, const void *pParentId, bool Checked, const CUIRect *pRect);
-
-	int DoKeyReader(const void *pId, const CUIRect *pRect, int Key, int ModifierCombination, int *pNewModifierCombination);
-
-	void DoSettingsControlsButtons(int Start, int Stop, CUIRect View);
-
-	float RenderSettingsControlsJoystick(CUIRect View);
-	void DoJoystickAxisPicker(CUIRect View);
-	void DoJoystickBar(const CUIRect *pRect, float Current, float Tolerance, bool Active);
 
 	bool m_SkinListScrollToSelected = false;
 	std::optional<std::chrono::nanoseconds> m_SkinList7LastRefreshTime;
@@ -167,7 +146,31 @@ protected:
 
 	bool m_DummyNamePlatePreview = false;
 
-	bool m_JoinTutorial = false;
+	class CJoinTutorial
+	{
+	public:
+		bool m_Queued = false;
+		enum class EStatus
+		{
+			REFRESHING,
+			SERVER_LIST_ERROR,
+			NO_TUTORIAL_AVAILABLE,
+		};
+		EStatus m_Status = EStatus::REFRESHING;
+		bool m_TryRefresh = false;
+		bool m_TriedRefresh = false;
+		enum class ELocalServerState
+		{
+			NOT_TRIED,
+			TRY,
+			WAITING_STOP,
+			WAITING_START,
+		};
+		ELocalServerState m_LocalServerState = ELocalServerState::NOT_TRIED;
+		std::chrono::nanoseconds m_StateChange = std::chrono::nanoseconds(0);
+	};
+	CJoinTutorial m_JoinTutorial;
+
 	bool m_CreateDefaultFavoriteCommunities = false;
 	bool m_ForceRefreshLanPage = false;
 
@@ -270,12 +273,14 @@ protected:
 	enum
 	{
 		SORT_DEMONAME = 0,
+		SORT_MARKERS,
 		SORT_LENGTH,
 		SORT_DATE,
 	};
 
-	struct CDemoItem
+	class CDemoItem
 	{
+	public:
 		char m_aFilename[IO_MAX_PATH_LENGTH];
 		char m_aName[IO_MAX_PATH_LENGTH];
 		bool m_IsDir;
@@ -307,10 +312,10 @@ protected:
 
 		bool operator<(const CDemoItem &Other) const
 		{
-			if(!str_comp(m_aFilename, ".."))
-				return true;
 			if(!str_comp(Other.m_aFilename, ".."))
 				return false;
+			if(!str_comp(m_aFilename, ".."))
+				return true;
 			if(m_IsDir && !Other.m_IsDir)
 				return true;
 			if(!m_IsDir && Other.m_IsDir)
@@ -329,6 +334,8 @@ protected:
 			if(!m_InfosLoaded)
 				return !Other.m_InfosLoaded;
 
+			if(g_Config.m_BrDemoSort == SORT_MARKERS)
+				return Left.NumMarkers() < Right.NumMarkers();
 			if(g_Config.m_BrDemoSort == SORT_LENGTH)
 				return Left.Length() < Right.Length();
 
@@ -470,6 +477,8 @@ protected:
 
 	// found in menus_demo.cpp
 	vec2 m_DemoControlsPositionOffset = vec2(0.0f, 0.0f);
+	bool m_PausedBeforeSeeking;
+	float m_PrevSeekAmount;
 	float m_LastPauseChange = -1.0f;
 	float m_LastSpeedChange = -1.0f;
 	static constexpr int DEFAULT_SKIP_DURATION_INDEX = 3;
@@ -485,6 +494,7 @@ protected:
 	void RenderDemoBrowserList(CUIRect ListView, bool &WasListboxItemActivated);
 	void RenderDemoBrowserDetails(CUIRect DetailsView);
 	void RenderDemoBrowserButtons(CUIRect ButtonsView, bool WasListboxItemActivated);
+	void PopupConfirmPlayDemo();
 	void PopupConfirmDeleteDemo();
 	void PopupConfirmDeleteFolder();
 	static void ConchainDemoPlay(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
@@ -493,7 +503,6 @@ protected:
 	// found in menus_ingame.cpp
 	STextContainerIndex m_MotdTextContainerIndex;
 	void RenderGame(CUIRect MainView);
-	void RenderTouchControlsEditor(CUIRect MainView);
 	void PopupConfirmDisconnect();
 	void PopupConfirmDisconnectDummy();
 	void PopupConfirmDiscardTouchControlsChanges();
@@ -505,6 +514,7 @@ protected:
 	void PopupConfirmChangeSelectedButton();
 	void PopupCancelChangeSelectedButton();
 	void PopupConfirmTurnOffEditor();
+	void PopupConfirmOpenWiki();
 	void RenderPlayers(CUIRect MainView);
 	void RenderServerInfo(CUIRect MainView);
 	void RenderServerInfoMotd(CUIRect Motd);
@@ -563,20 +573,21 @@ protected:
 	void RenderThemeSelection(CUIRect MainView);
 	void RenderSettingsGeneral(CUIRect MainView);
 	void RenderSettingsPlayer(CUIRect MainView);
-	void RenderSettingsDummyPlayer(CUIRect MainView);
 	void RenderSettingsTee(CUIRect MainView);
 	void RenderSettingsTee7(CUIRect MainView);
 	void RenderSettingsTeeCustom7(CUIRect MainView);
 	void RenderSkinSelection7(CUIRect MainView);
 	void RenderSkinPartSelection7(CUIRect MainView);
-	void RenderSettingsControls(CUIRect MainView);
-	void ResetSettingsControls();
 	void RenderSettingsGraphics(CUIRect MainView);
 	void RenderSettingsSound(CUIRect MainView);
 	void RenderSettings(CUIRect MainView);
 	void RenderSettingsCustom(CUIRect MainView);
 
-	std::vector<CButtonContainer> m_vButtonContainersJoystickAbsolute = {{}, {}};
+	// found in menus_settings_controls.cpp
+	// TODO: Change PopupConfirm to avoid using a function pointer to a CMenus
+	//       member function, to move this function to CMenusSettingsControls
+	void ResetSettingsControls();
+
 	std::vector<CButtonContainer> m_vButtonContainersNamePlateShow = {{}, {}, {}, {}};
 	std::vector<CButtonContainer> m_vButtonContainersNamePlateKeyPresses = {{}, {}, {}, {}};
 
@@ -599,10 +610,10 @@ protected:
 
 	static bool CompareFilenameAscending(const CMapListItem Lhs, const CMapListItem Rhs)
 	{
-		if(str_comp(Lhs.m_aFilename, "..") == 0)
-			return true;
 		if(str_comp(Rhs.m_aFilename, "..") == 0)
 			return false;
+		if(str_comp(Lhs.m_aFilename, "..") == 0)
+			return true;
 		if(Lhs.m_IsDirectory != Rhs.m_IsDirectory)
 			return Lhs.m_IsDirectory;
 		return str_comp_filenames(Lhs.m_aFilename, Rhs.m_aFilename) < 0;
@@ -617,8 +628,6 @@ protected:
 
 public:
 	void RenderBackground();
-
-	CMenusKeyBinder m_Binder;
 
 	CMenus();
 	int Sizeof() const override { return sizeof(*this); }
@@ -663,7 +672,10 @@ public:
 		PAGE_GHOST,
 
 		PAGE_LENGTH,
+	};
 
+	enum
+	{
 		SETTINGS_LANGUAGE = 0,
 		SETTINGS_GENERAL,
 		SETTINGS_PLAYER,
@@ -676,7 +688,10 @@ public:
 		SETTINGS_ASSETS,
 
 		SETTINGS_LENGTH,
+	};
 
+	enum
+	{
 		BIG_TAB_NEWS = 0,
 		BIG_TAB_INTERNET,
 		BIG_TAB_LAN,
@@ -689,7 +704,10 @@ public:
 		BIG_TAB_DEMOS,
 
 		BIG_TAB_LENGTH,
+	};
 
+	enum
+	{
 		SMALL_TAB_HOME = 0,
 		SMALL_TAB_QUIT,
 		SMALL_TAB_SETTINGS,
@@ -772,6 +790,7 @@ public:
 		POPUP_MESSAGE, // generic message popup (one button)
 		POPUP_CONFIRM, // generic confirmation popup (two buttons)
 		POPUP_FIRST_LAUNCH,
+		POPUP_JOIN_TUTORIAL,
 		POPUP_POINTS,
 		POPUP_DISCONNECTED,
 		POPUP_LANGUAGE,
@@ -783,7 +802,10 @@ public:
 		POPUP_RESTART,
 		POPUP_WARNING,
 		POPUP_SAVE_SKIN,
+	};
 
+	enum
+	{
 		// demo player states
 		DEMOPLAYER_NONE = 0,
 		DEMOPLAYER_SLICE_SAVE,
@@ -794,12 +816,15 @@ public:
 	void ForceRefreshLanPage();
 	void SetShowStart(bool ShowStart);
 	void ShowQuitPopup();
+	void JoinTutorial();
 
 private:
 	CCommunityIcons m_CommunityIcons;
-	CMenusStart m_MenusStart;
 	CMenusIngameTouchControls m_MenusIngameTouchControls;
 	friend CMenusIngameTouchControls;
+	CMenusSettingsControls m_MenusSettingsControls;
+	friend CMenusSettingsControls;
+	CMenusStart m_MenusStart;
 
 	static int GhostlistFetchCallback(const CFsFileInfo *pInfo, int IsDir, int StorageType, void *pUser);
 

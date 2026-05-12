@@ -3,23 +3,28 @@
 #ifndef ENGINE_SERVER_H
 #define ENGINE_SERVER_H
 
-#include <array>
-#include <optional>
-#include <type_traits>
-
-#include <base/hash.h>
-#include <base/math.h>
-#include <base/system.h>
-
 #include "kernel.h"
 #include "message.h"
+
+#include <base/dbg.h>
+#include <base/hash.h>
+#include <base/math.h>
+#include <base/mem.h>
+#include <base/str.h>
+
 #include <engine/shared/jsonwriter.h>
 #include <engine/shared/protocol.h>
+
 #include <generated/protocol.h>
 #include <generated/protocol7.h>
 #include <generated/protocolglue.h>
 
+#include <array>
+#include <optional>
+#include <type_traits>
+
 struct CAntibotRoundData;
+class IMap;
 
 // When recording a demo on the server, the ClientId -1 is used
 enum
@@ -63,7 +68,7 @@ public:
 	virtual void SetClientDDNetVersion(int ClientId, int DDNetVersion) = 0;
 	virtual const NETADDR *ClientAddr(int ClientId) const = 0;
 	virtual const std::array<char, NETADDR_MAXSTRSIZE> &ClientAddrStringImpl(int ClientId, bool IncludePort) const = 0;
-	inline const char *ClientAddrString(int ClientId, bool IncludePort) const { return ClientAddrStringImpl(ClientId, IncludePort).data(); }
+	const char *ClientAddrString(int ClientId, bool IncludePort) const { return ClientAddrStringImpl(ClientId, IncludePort).data(); }
 
 	/**
 	 * Returns the version of the client with the given client ID.
@@ -78,8 +83,9 @@ public:
 	virtual int GetClientVersion(int ClientId) const = 0;
 	virtual int SendMsg(CMsgPacker *pMsg, int Flags, int ClientId) = 0;
 
-	template<class T, typename std::enable_if<!protocol7::is_sixup<T>::value, int>::type = 0>
-	inline int SendPackMsg(const T *pMsg, int Flags, int ClientId)
+	template<class T>
+		requires(!protocol7::is_sixup<T>::value)
+	int SendPackMsg(const T *pMsg, int Flags, int ClientId)
 	{
 		int Result = 0;
 		if(ClientId == -1)
@@ -95,8 +101,9 @@ public:
 		return Result;
 	}
 
-	template<class T, typename std::enable_if<protocol7::is_sixup<T>::value, int>::type = 1>
-	inline int SendPackMsg(const T *pMsg, int Flags, int ClientId)
+	template<class T>
+		requires(protocol7::is_sixup<T>::value)
+	int SendPackMsg(const T *pMsg, int Flags, int ClientId)
 	{
 		int Result = 0;
 		if(ClientId == -1)
@@ -221,8 +228,6 @@ public:
 		return true;
 	}
 
-	virtual void GetMapInfo(char *pMapName, int MapNameSize, int *pMapSize, SHA256_DIGEST *pSha256, int *pMapCrc) = 0;
-
 	virtual bool WouldClientNameChange(int ClientId, const char *pNameRequest) = 0;
 	virtual bool WouldClientClanChange(int ClientId, const char *pClanRequest) = 0;
 	virtual void SetClientName(int ClientId, const char *pName) = 0;
@@ -231,18 +236,19 @@ public:
 	virtual void SetClientScore(int ClientId, std::optional<int> Score) = 0;
 	virtual void SetClientFlags(int ClientId, int Flags) = 0;
 
-	virtual int SnapNewId() = 0;
+	virtual std::optional<int> SnapNewId() = 0;
 	virtual void SnapFreeId(int Id) = 0;
-	virtual void *SnapNewItem(int Type, int Id, int Size) = 0;
+	virtual bool SnapNewItem(int Type, int Id, rust::Slice<const int32_t> Data) = 0;
 
 	template<typename T>
-	T *SnapNewItem(int Id)
+	bool SnapNewItem(int Id, const T &Data)
 	{
 		const int Type = protocol7::is_sixup<T>::value ? -T::ms_MsgId : T::ms_MsgId;
-		return static_cast<T *>(SnapNewItem(Type, Id, sizeof(T)));
+		return SnapNewItem(Type, Id, Data.AsSlice());
 	}
 
 	virtual void SnapSetStaticsize(int ItemType, int Size) = 0;
+	virtual void SnapSetStaticsize7(int ItemType, int Size) = 0;
 
 	enum
 	{
@@ -290,8 +296,6 @@ public:
 
 	virtual void SendMsgRaw(int ClientId, const void *pData, int Size, int Flags) = 0;
 
-	virtual const char *GetMapName() const = 0;
-
 	virtual bool IsSixup(int ClientId) const = 0;
 };
 
@@ -316,7 +320,8 @@ public:
 	//
 	// GlobalSnap is true when sending snapshots to all clients,
 	// otherwise only forced high bandwidth clients would receive snap.
-	virtual void OnSnap(int ClientId, bool GlobalSnap) = 0;
+	// RecordingDemo is true when this snapshot will be recorded to a demo.
+	virtual void OnSnap(int ClientId, bool GlobalSnap, bool RecordingDemo) = 0;
 
 	// Called after sending snapshots to all clients.
 	//
@@ -363,6 +368,8 @@ public:
 	virtual const char *Version() const = 0;
 	virtual const char *NetVersion() const = 0;
 
+	virtual IMap *Map() = 0;
+	virtual const IMap *Map() const = 0;
 	virtual CNetObjHandler *GetNetObjHandler() = 0;
 	virtual protocol7::CNetObjHandler *GetNetObjHandler7() = 0;
 
@@ -380,16 +387,17 @@ public:
 	virtual void TeehistorianRecordPlayerName(int ClientId, const char *pName) = 0;
 	virtual void TeehistorianRecordPlayerFinish(int ClientId, int TimeTicks) = 0;
 	virtual void TeehistorianRecordTeamFinish(int TeamId, int TimeTicks) = 0;
+	virtual void TeehistorianRecordAuthLogin(int ClientId, int Level, const char *pAuthName) = 0;
 
 	virtual void FillAntibot(CAntibotRoundData *pData) = 0;
 
 	/**
-	 * Used to report custom player info to master servers.
+	 * Used to report custom player info to the master server.
 	 *
-	 * @param pJsonWriter A pointer to a CJsonStringWriter which the custom data will be added to.
-	 * @param i The client id.
+	 * @param pJsonWriter A pointer to a @link CJsonWriter @endlink to which the custom data will written.
+	 * @param ClientId The client ID.
 	 */
-	virtual void OnUpdatePlayerServerInfo(CJsonStringWriter *pJSonWriter, int Id) = 0;
+	virtual void OnUpdatePlayerServerInfo(CJsonWriter *pJsonWriter, int ClientId) = 0;
 };
 
 extern IGameServer *CreateGameServer();

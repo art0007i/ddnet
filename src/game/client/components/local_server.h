@@ -3,12 +3,14 @@
 
 #include <base/types.h>
 
+#include <engine/shared/config.h>
+
 #include <game/client/component.h>
 
 class CLocalServer : public CComponentInterfaces
 {
 public:
-	void RunServer(const std::vector<const char *> &vpArguments);
+	bool RunServer(const std::vector<const char *> &vpArguments);
 	void KillServer();
 	bool IsServerRunning();
 	void RconAuthIfPossible();

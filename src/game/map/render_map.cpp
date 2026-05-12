@@ -1,16 +1,16 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+#include "render_map.h"
+
 #include <base/math.h>
+#include <base/str.h>
 
 #include <engine/graphics.h>
 #include <engine/map.h>
-#include <engine/textrender.h>
-
 #include <engine/shared/config.h>
 #include <engine/shared/datafile.h>
 #include <engine/shared/map.h>
-
-#include "render_map.h"
+#include <engine/textrender.h>
 
 #include <generated/client_data.h>
 
@@ -51,14 +51,14 @@ int IEnvelopePointAccess::FindPointIndex(CFixedTime Time) const
 	return FoundIndex;
 }
 
-CMapBasedEnvelopePointAccess::CMapBasedEnvelopePointAccess(CDataFileReader *pReader)
+CMapBasedEnvelopePointAccess::CMapBasedEnvelopePointAccess(IMap *pMap)
 {
 	bool FoundBezierEnvelope = false;
-	int EnvStart, EnvNum;
-	pReader->GetType(MAPITEMTYPE_ENVELOPE, &EnvStart, &EnvNum);
-	for(int EnvIndex = 0; EnvIndex < EnvNum; EnvIndex++)
+	int EnvelopeStart, EnvelopeNum;
+	pMap->GetType(MAPITEMTYPE_ENVELOPE, &EnvelopeStart, &EnvelopeNum);
+	for(int EnvelopeIndex = 0; EnvelopeIndex < EnvelopeNum; EnvelopeIndex++)
 	{
-		CMapItemEnvelope *pEnvelope = static_cast<CMapItemEnvelope *>(pReader->GetItem(EnvStart + EnvIndex));
+		CMapItemEnvelope *pEnvelope = static_cast<CMapItemEnvelope *>(pMap->GetItem(EnvelopeStart + EnvelopeIndex));
 		if(pEnvelope->m_Version >= CMapItemEnvelope::VERSION_TEEWORLDS_BEZIER)
 		{
 			FoundBezierEnvelope = true;
@@ -72,30 +72,30 @@ CMapBasedEnvelopePointAccess::CMapBasedEnvelopePointAccess(CDataFileReader *pRea
 		m_pPointsBezier = nullptr;
 
 		int EnvPointStart, FakeEnvPointNum;
-		pReader->GetType(MAPITEMTYPE_ENVPOINTS, &EnvPointStart, &FakeEnvPointNum);
+		pMap->GetType(MAPITEMTYPE_ENVPOINTS, &EnvPointStart, &FakeEnvPointNum);
 		if(FakeEnvPointNum > 0)
-			m_pPointsBezierUpstream = static_cast<CEnvPointBezier_upstream *>(pReader->GetItem(EnvPointStart));
+			m_pPointsBezierUpstream = static_cast<CEnvPointBezier_upstream *>(pMap->GetItem(EnvPointStart));
 		else
 			m_pPointsBezierUpstream = nullptr;
 
-		m_NumPointsMax = pReader->GetItemSize(EnvPointStart) / sizeof(CEnvPointBezier_upstream);
+		m_NumPointsMax = pMap->GetItemSize(EnvPointStart) / sizeof(CEnvPointBezier_upstream);
 	}
 	else
 	{
 		int EnvPointStart, FakeEnvPointNum;
-		pReader->GetType(MAPITEMTYPE_ENVPOINTS, &EnvPointStart, &FakeEnvPointNum);
+		pMap->GetType(MAPITEMTYPE_ENVPOINTS, &EnvPointStart, &FakeEnvPointNum);
 		if(FakeEnvPointNum > 0)
-			m_pPoints = static_cast<CEnvPoint *>(pReader->GetItem(EnvPointStart));
+			m_pPoints = static_cast<CEnvPoint *>(pMap->GetItem(EnvPointStart));
 		else
 			m_pPoints = nullptr;
 
-		m_NumPointsMax = pReader->GetItemSize(EnvPointStart) / sizeof(CEnvPoint);
+		m_NumPointsMax = pMap->GetItemSize(EnvPointStart) / sizeof(CEnvPoint);
 
 		int EnvPointBezierStart, FakeEnvPointBezierNum;
-		pReader->GetType(MAPITEMTYPE_ENVPOINTS_BEZIER, &EnvPointBezierStart, &FakeEnvPointBezierNum);
-		const int NumPointsBezier = pReader->GetItemSize(EnvPointBezierStart) / sizeof(CEnvPointBezier);
+		pMap->GetType(MAPITEMTYPE_ENVPOINTS_BEZIER, &EnvPointBezierStart, &FakeEnvPointBezierNum);
+		const int NumPointsBezier = pMap->GetItemSize(EnvPointBezierStart) / sizeof(CEnvPointBezier);
 		if(FakeEnvPointBezierNum > 0 && m_NumPointsMax == NumPointsBezier)
-			m_pPointsBezier = static_cast<CEnvPointBezier *>(pReader->GetItem(EnvPointBezierStart));
+			m_pPointsBezier = static_cast<CEnvPointBezier *>(pMap->GetItem(EnvPointBezierStart));
 		else
 			m_pPointsBezier = nullptr;
 
@@ -103,11 +103,6 @@ CMapBasedEnvelopePointAccess::CMapBasedEnvelopePointAccess(CDataFileReader *pRea
 	}
 
 	SetPointsRange(0, m_NumPointsMax);
-}
-
-CMapBasedEnvelopePointAccess::CMapBasedEnvelopePointAccess(IMap *pMap) :
-	CMapBasedEnvelopePointAccess(static_cast<CMap *>(pMap)->GetReader())
-{
 }
 
 void CMapBasedEnvelopePointAccess::SetPointsRange(int StartPoint, int NumPoints)
@@ -199,7 +194,7 @@ static float SolveBezier(float x, float p0, float p1, float p2, float p3)
 		const double c = x0 / x3;
 
 		// substitute t = y - a / 3
-		const double sub = a / 3.0;
+		const double Substitute = a / 3.0;
 
 		// depressed form x^3 + px + q = 0
 		// cardano's method
@@ -212,34 +207,34 @@ static float SolveBezier(float x, float p0, float p1, float p2, float p3)
 		{
 			// only one 'real' solution
 			const double s = std::sqrt(D);
-			return std::cbrt(s - q) - std::cbrt(s + q) - sub;
+			return std::cbrt(s - q) - std::cbrt(s + q) - Substitute;
 		}
 		else if(D == 0.0)
 		{
 			// one single, one double solution or triple solution
 			const double s = std::cbrt(-q);
-			const double t = 2.0 * s - sub;
+			const double t = 2.0 * s - Substitute;
 
 			if(0.0 <= t && t <= 1.0001)
 				return t;
-			return (-s - sub);
+			return (-s - Substitute);
 		}
 		else
 		{
 			// Casus irreducibilis ... ,_,
-			const double phi = std::acos(-q / std::sqrt(-(p * p * p))) / 3.0;
+			const double Phi = std::acos(-q / std::sqrt(-(p * p * p))) / 3.0;
 			const double s = 2.0 * std::sqrt(-p);
 
-			const double t1 = s * std::cos(phi) - sub;
+			const double t1 = s * std::cos(Phi) - Substitute;
 
 			if(0.0 <= t1 && t1 <= 1.0001)
 				return t1;
 
-			const double t2 = -s * std::cos(phi + pi / 3.0) - sub;
+			const double t2 = -s * std::cos(Phi + pi / 3.0) - Substitute;
 
 			if(0.0 <= t2 && t2 <= 1.0001)
 				return t2;
-			return -s * std::cos(phi - pi / 3.0) - sub;
+			return -s * std::cos(Phi - pi / 3.0) - Substitute;
 		}
 	}
 }

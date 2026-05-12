@@ -2,7 +2,8 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "voting.h"
 
-#include <base/system.h>
+#include <base/str.h>
+#include <base/time.h>
 
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
@@ -142,8 +143,6 @@ void CVoting::AddvoteOption(const char *pDescription, const char *pCommand)
 
 void CVoting::Vote(int v)
 {
-	if(m_Voted == 0)
-		m_Voted = v;
 	CNetMsg_Cl_Vote Msg = {v};
 	Client()->SendPackMsgActive(&Msg, MSGFLAG_VITAL);
 }
@@ -235,8 +234,8 @@ void CVoting::ClearOptions()
 void CVoting::OnReset()
 {
 	m_Opentime = m_Closetime = 0;
-	m_aDescription[0] = 0;
-	m_aReason[0] = 0;
+	m_aDescription[0] = '\0';
+	m_aReason[0] = '\0';
 	m_Yes = m_No = m_Pass = m_Total = 0;
 	m_Voted = 0;
 	m_ReceivingOptions = false;
@@ -250,6 +249,9 @@ void CVoting::OnConsoleInit()
 
 void CVoting::OnMessage(int MsgType, void *pRawMsg)
 {
+	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+		return;
+
 	if(MsgType == NETMSGTYPE_SV_VOTESET)
 	{
 		CNetMsg_Sv_VoteSet *pMsg = (CNetMsg_Sv_VoteSet *)pRawMsg;
@@ -335,7 +337,7 @@ void CVoting::OnMessage(int MsgType, void *pRawMsg)
 
 void CVoting::Render()
 {
-	if((!g_Config.m_ClShowVotesAfterVoting && !GameClient()->m_Scoreboard.IsActive() && TakenChoice()) || !IsVoting() || Client()->State() == IClient::STATE_DEMOPLAYBACK)
+	if((!g_Config.m_ClShowVotesAfterVoting && !GameClient()->m_Scoreboard.IsActive() && TakenChoice()) || !IsVoting())
 		return;
 	const int Seconds = SecondsLeft();
 	if(Seconds < 0)

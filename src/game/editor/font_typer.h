@@ -1,14 +1,19 @@
 #ifndef GAME_EDITOR_FONT_TYPER_H
 #define GAME_EDITOR_FONT_TYPER_H
 
+#include "component.h"
+
 #include <base/vmath.h>
+
 #include <engine/graphics.h>
-#include <game/editor/mapitems/layer_tiles.h>
+
+#include <game/client/ui.h>
 
 #include <chrono>
 #include <memory>
 
-#include "component.h"
+class CLayer;
+class CLayerTiles;
 
 class CFontTyper : public CEditorComponent
 {
@@ -22,7 +27,7 @@ class CFontTyper : public CEditorComponent
 	bool m_Active = false;
 	std::chrono::nanoseconds m_CursorRenderTime;
 	IGraphics::CTextureHandle m_CursorTextTexture;
-	std::shared_ptr<class CLayer> m_pLastLayer;
+	std::shared_ptr<CLayer> m_pLastLayer;
 	CUi::SConfirmPopupContext m_ConfirmActivatePopupContext;
 	int m_TilesPlacedSinceActivate = 0;
 
@@ -32,7 +37,7 @@ class CFontTyper : public CEditorComponent
 	void SetTile(ivec2 Pos, unsigned char Index, const std::shared_ptr<CLayerTiles> &pLayer);
 
 public:
-	void OnRender(CUIRect View) override;
+	void Render();
 	bool OnInput(const IInput::CEvent &Event) override;
 	void OnInit(CEditor *pEditor) override;
 

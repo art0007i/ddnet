@@ -1,10 +1,10 @@
+#include "community_icons.h"
+
 #include <base/log.h>
 
 #include <engine/engine.h>
 #include <engine/gfx/image_manipulation.h>
 #include <engine/storage.h>
-
-#include "community_icons.h"
 
 CCommunityIcons::CAbstractCommunityIconJob::CAbstractCommunityIconJob(CCommunityIcons *pCommunityIcons, const char *pCommunityId, int StorageType) :
 	m_pCommunityIcons(pCommunityIcons),
@@ -177,7 +177,7 @@ void CCommunityIcons::Update()
 	}
 
 	// Rescan for changed communities only when necessary
-	if(!ServerBrowser()->DDNetInfoAvailable() || (m_CommunityIconsInfoSha256 != SHA256_ZEROED && m_CommunityIconsInfoSha256 == ServerBrowser()->DDNetInfoSha256()))
+	if(!ServerBrowser()->DDNetInfoAvailable() || m_CommunityIconsInfoSha256 == ServerBrowser()->DDNetInfoSha256().value())
 		return;
 	m_CommunityIconsInfoSha256 = ServerBrowser()->DDNetInfoSha256();
 
@@ -200,17 +200,17 @@ void CCommunityIcons::Update()
 	// Find added and updated community icons
 	for(const auto &Community : ServerBrowser()->Communities())
 	{
-		if(str_comp(Community.Id(), IServerBrowser::COMMUNITY_NONE) == 0)
+		if(!Community.IconSha256().has_value())
 			continue;
 		auto ExistingIcon = std::find_if(m_vCommunityIcons.begin(), m_vCommunityIcons.end(), [Community](const auto &Element) {
 			return str_comp(Element.m_aCommunityId, Community.Id()) == 0;
 		});
-		auto pExistingDownload = std::find_if(m_CommunityIconDownloadJobs.begin(), m_CommunityIconDownloadJobs.end(), [Community](const auto &Element) {
+		auto ExistingDownload = std::find_if(m_CommunityIconDownloadJobs.begin(), m_CommunityIconDownloadJobs.end(), [Community](const auto &Element) {
 			return str_comp(Element->CommunityId(), Community.Id()) == 0;
 		});
-		if(pExistingDownload == m_CommunityIconDownloadJobs.end() && (ExistingIcon == m_vCommunityIcons.end() || ExistingIcon->m_Sha256 != Community.IconSha256()))
+		if(ExistingDownload == m_CommunityIconDownloadJobs.end() && (ExistingIcon == m_vCommunityIcons.end() || ExistingIcon->m_Sha256 != Community.IconSha256().value()))
 		{
-			std::shared_ptr<CCommunityIconDownloadJob> pJob = std::make_shared<CCommunityIconDownloadJob>(this, Community.Id(), Community.IconUrl(), Community.IconSha256());
+			std::shared_ptr<CCommunityIconDownloadJob> pJob = std::make_shared<CCommunityIconDownloadJob>(this, Community.Id(), Community.IconUrl(), Community.IconSha256().value());
 			Http()->Run(pJob);
 			m_CommunityIconDownloadJobs.push_back(pJob);
 		}

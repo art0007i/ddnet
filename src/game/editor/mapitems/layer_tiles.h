@@ -1,11 +1,15 @@
 #ifndef GAME_EDITOR_MAPITEMS_LAYER_TILES_H
 #define GAME_EDITOR_MAPITEMS_LAYER_TILES_H
 
+#include "layer.h"
+
+#include <base/dbg.h>
+#include <base/mem.h>
+
 #include <game/editor/editor_trackers.h>
 #include <game/editor/enums.h>
-#include <map>
 
-#include "layer.h"
+#include <map>
 
 struct STileStateChange
 {
@@ -29,8 +33,9 @@ enum class EShiftDirection : int
 	DOWN,
 };
 
-struct RECTi
+class CIntRect
 {
+public:
 	int x, y;
 	int w, h;
 };
@@ -84,8 +89,7 @@ protected:
 			}
 			break;
 		default:
-			dbg_assert(false, "Direction invalid: %d", (int)Direction);
-			break;
+			dbg_assert_failed("Direction invalid: %d", (int)Direction);
 		}
 	}
 	template<typename T>
@@ -104,9 +108,9 @@ protected:
 	}
 
 public:
-	CLayerTiles(CEditor *pEditor, int w, int h);
+	CLayerTiles(CEditorMap *pMap, int w, int h);
 	CLayerTiles(const CLayerTiles &Other);
-	~CLayerTiles();
+	~CLayerTiles() override;
 
 	[[nodiscard]] virtual CTile GetTile(int x, int y) const;
 	virtual void SetTile(int x, int y, CTile Tile);
@@ -120,19 +124,19 @@ public:
 
 	int ConvertX(float x) const;
 	int ConvertY(float y) const;
-	void Convert(CUIRect Rect, RECTi *pOut) const;
+	void Convert(CUIRect Rect, CIntRect *pOut) const;
 	void Snap(CUIRect *pRect) const;
-	void Clamp(RECTi *pRect) const;
+	void Clamp(CIntRect *pRect) const;
 
 	bool IsEntitiesLayer() const override;
 
 	[[nodiscard]] virtual bool IsEmpty() const;
 	void BrushSelecting(CUIRect Rect) override;
-	int BrushGrab(std::shared_ptr<CLayerGroup> pBrush, CUIRect Rect) override;
-	void FillSelection(bool Empty, std::shared_ptr<CLayer> pBrush, CUIRect Rect) override;
+	int BrushGrab(CLayerGroup *pBrush, CUIRect Rect) override;
+	void FillSelection(bool Empty, CLayer *pBrush, CUIRect Rect) override;
 	void FillGameTiles(EGameTileOp Fill);
 	bool CanFillGameTiles() const;
-	void BrushDraw(std::shared_ptr<CLayer> pBrush, vec2 WorldPos) override;
+	void BrushDraw(CLayer *pBrush, vec2 WorldPos) override;
 	void BrushFlipX() override;
 	void BrushFlipY() override;
 	void BrushRotate(float Amount) override;
@@ -155,13 +159,16 @@ public:
 		int m_Height = -1;
 		int m_Color = 0;
 	};
-	static CUi::EPopupMenuFunctionResult RenderCommonProperties(SCommonPropState &State, CEditor *pEditor, CUIRect *pToolbox, std::vector<std::shared_ptr<CLayerTiles>> &vpLayers, std::vector<int> &vLayerIndices);
+	static CUi::EPopupMenuFunctionResult RenderCommonProperties(SCommonPropState &State, CEditorMap *pEditorMap, CUIRect *pToolbox, std::vector<std::shared_ptr<CLayerTiles>> &vpLayers, std::vector<int> &vLayerIndices);
+
+	bool IsEnvelopeUsed(int EnvelopeIndex) const override;
+	bool IsImageUsed(int ImageIndex) const override;
 
 	void ModifyImageIndex(const FIndexModifyFunction &IndexModifyFunction) override;
 	void ModifyEnvelopeIndex(const FIndexModifyFunction &IndexModifyFunction) override;
 
 	void PrepareForSave();
-	void ExtractTiles(int TilemapItemVersion, const CTile *pSavedTiles, size_t SavedTilesSize) const;
+	void ExtractTiles(const CTile *pSavedTiles, size_t SavedTilesSize) const;
 
 	void GetSize(float *pWidth, float *pHeight) override
 	{
@@ -193,11 +200,11 @@ public:
 	bool m_HasFront;
 	bool m_HasSwitch;
 	bool m_HasTune;
-	char m_aFileName[IO_MAX_PATH_LENGTH];
+	char m_aFilename[IO_MAX_PATH_LENGTH];
 	bool m_KnownTextModeLayer = false;
 
 	EditorTileStateChangeHistory<STileStateChange> m_TilesHistory;
-	inline virtual void ClearHistory() { m_TilesHistory.clear(); }
+	virtual void ClearHistory() { m_TilesHistory.clear(); }
 
 	static bool HasAutomapEffect(ETilesProp Prop);
 

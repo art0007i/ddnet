@@ -3,12 +3,14 @@
 #ifndef GAME_SERVER_PLAYER_H
 #define GAME_SERVER_PLAYER_H
 
+#include "teeinfo.h"
+
 #include <base/vmath.h>
+
 #include <engine/shared/protocol.h>
+
 #include <game/alloc.h>
 #include <game/server/save.h>
-
-#include "teeinfo.h"
 
 #include <memory>
 #include <optional>
@@ -31,7 +33,9 @@ public:
 	void Reset();
 
 	void TryRespawn();
-	void Respawn(bool WeakHook = false); // with WeakHook == true the character will be spawned after all calls of Tick from other Players
+
+	// mark respawning, with weak hook if WeakHook is true and strong otherwise
+	void Respawn(bool WeakHook = false);
 	CCharacter *ForceSpawn(vec2 Pos); // required for loading savegames
 	void SetTeam(int Team, bool DoChatMsg = true);
 	int GetTeam() const { return m_Team; }
@@ -102,7 +106,6 @@ public:
 
 	int m_DieTick;
 	int m_PreviousDieTick;
-	std::optional<int> m_Score;
 	int m_JoinTick;
 	int m_LastActionTick;
 	int m_TeamChangeTick;
@@ -157,7 +160,7 @@ public:
 	enum
 	{
 		TIMERTYPE_DEFAULT = -1,
-		TIMERTYPE_GAMETIMER = 0,
+		TIMERTYPE_GAMETIMER,
 		TIMERTYPE_BROADCAST,
 		TIMERTYPE_GAMETIMER_AND_BROADCAST,
 		TIMERTYPE_SIXUP,
@@ -176,10 +179,11 @@ public:
 	bool CanSpec() const;
 
 	bool IsPlaying() const;
-	int64_t m_Last_KickVote;
+	int64_t m_LastKickVote;
 	int64_t m_LastDDRaceTeamChange;
 	int m_ShowOthers;
 	bool m_ShowAll;
+	bool m_EnableSpectatorCount;
 	vec2 m_ShowDistance;
 	bool m_SpecTeam;
 	bool m_NinjaJetpack;
