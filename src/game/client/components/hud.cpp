@@ -1617,7 +1617,7 @@ void CHud::RenderSpectatorHud()
 		ZoomTextX = TagX - Padding;
 	}
 
-	char ZoomString[16];
+	char ZoomString[32];
 	snprintf(ZoomString, sizeof(ZoomString), "%ld", 10 + std::lroundf(log(GameClient()->m_Camera.m_ZoomSmoothingTarget) / log(GameClient()->m_Camera.ZOOM_STEP)));
 	const float TextWidth = TextRender()->TextWidth(6.0f, ZoomString);
 	TextRender()->Text(ZoomTextX - TextWidth, m_Height - 10.0f, 6.0f, ZoomString);
