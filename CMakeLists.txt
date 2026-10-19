@@ -2823,6 +2823,8 @@ if(CLIENT)
       $<TARGET_OBJECTS:engine-shared>
       $<TARGET_OBJECTS:game-shared>
       $<TARGET_OBJECTS:rust-bridge-shared>
+      src/game/client/components/racetool.h
+      src/game/client/components/racetool.cpp
       # tidy-alphabetical-end
     )
   endif()
@@ -3162,6 +3164,7 @@ if(TOOLS)
         $<TARGET_OBJECTS:engine-shared>
         $<TARGET_OBJECTS:game-shared>
         $<TARGET_OBJECTS:rust-bridge-shared>
+
         # tidy-alphabetical-end
       )
       target_include_directories(${TOOL} SYSTEM PRIVATE ${TOOL_INCLUDE_DIRS})
