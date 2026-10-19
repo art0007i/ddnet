@@ -5,6 +5,8 @@
 - show icon for dummy reset on switch (next to dummy hammer and dummy copy icons)
 - show zoom number next to player name when spectating
 - allow spectating self with left click quick spectate
+- show velspeed.x without ramp inside debug hud
+- racetool, which allows you to measure how fast you do a part (`rt_set_marker_zone` and `rt_set_marker_timecp`)
 
 [![DDraceNetwork](https://ddnet.org/ddnet-small.png)](https://ddnet.org)
 
