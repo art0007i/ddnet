@@ -2564,8 +2564,8 @@ if(CLIENT)
     components/players.h
     components/race_demo.cpp
     components/race_demo.h
-    components/racetool.h
     components/racetool.cpp
+    components/racetool.h
     components/scoreboard.cpp
     components/scoreboard.h
     components/skins.cpp
