@@ -68,6 +68,7 @@
 #include "components/tooltips.h"
 #include "components/touch_controls.h"
 #include "components/voting.h"
+
 #include <game/client/components/racetool.h>
 
 #include <memory>
@@ -187,7 +188,7 @@ public:
 
 	CRaceDemo m_RaceDemo;
 	CGhost m_Ghost;
-	
+
 	CRaceTool m_RaceTool;
 
 	CTooltips m_Tooltips;

@@ -50,10 +50,10 @@ void CDebugHud::RenderNetCorrections()
 
 	str_format(aBuf, sizeof(aBuf), "%.0f Bps", Velspeed / 32);
 	RenderRow("Velspeed:", aBuf);
-	
+
 	str_format(aBuf, sizeof(aBuf), "%.0f Bps", VelspeedX / 32);
 	RenderRow("Velspeed.x:", aBuf);
-	
+
 	str_format(aBuf, sizeof(aBuf), "%.0f Bps", VelspeedX / 32 * Ramp);
 	RenderRow("Velspeed.x * Ramp:", aBuf);
 
