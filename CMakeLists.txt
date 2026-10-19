@@ -2564,6 +2564,8 @@ if(CLIENT)
     components/players.h
     components/race_demo.cpp
     components/race_demo.h
+    components/racetool.h
+    components/racetool.cpp
     components/scoreboard.cpp
     components/scoreboard.h
     components/skins.cpp
@@ -2823,8 +2825,6 @@ if(CLIENT)
       $<TARGET_OBJECTS:engine-shared>
       $<TARGET_OBJECTS:game-shared>
       $<TARGET_OBJECTS:rust-bridge-shared>
-      src/game/client/components/racetool.h
-      src/game/client/components/racetool.cpp
       # tidy-alphabetical-end
     )
   endif()
